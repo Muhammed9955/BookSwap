@@ -3,7 +3,7 @@
 export const GA_TRACKING_ID =
   process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID ||
   process.env.NEXT_PUBLIC_GA_ID ||
-  ''
+  'G-8ZMN1F0SMM'
 export const GTM_ID = process.env.NEXT_PUBLIC_GTM_ID || ''
 
 // Pageview tracking
