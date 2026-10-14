@@ -77,10 +77,10 @@ export function WaraqLogo({
         className
       )}
     >
-      {/* Official WARAQ Leaf-Book Icon with preserved aspect ratio */}
+      {/* Official WARAQ Leaf-Book Icon with white background */}
       <div
         className={cn(
-          'relative flex items-center justify-center rounded-xl overflow-hidden shrink-0 transition-transform group-hover:scale-105',
+          'relative flex items-center justify-center rounded-xl overflow-hidden shrink-0 transition-transform group-hover:scale-105 bg-white shadow-2xs border border-black/5 p-0.5',
           cfg.iconWrapper
         )}
       >
@@ -90,7 +90,7 @@ export function WaraqLogo({
           width={cfg.iconSize}
           height={cfg.iconSize}
           priority={priority}
-          className="w-full h-full object-contain filter dark:brightness-125 dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.15)]"
+          className="w-full h-full object-contain"
         />
       </div>
 

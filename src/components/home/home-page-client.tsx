@@ -347,13 +347,13 @@ export function HomePageClient({
               {/* Bold Catchy Headline with Official WARAQ Slogan */}
               <div className="space-y-2">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-md p-1.5 flex items-center justify-center border border-white/20 shadow-md">
+                  <div className="w-10 h-10 rounded-xl bg-white p-1.5 flex items-center justify-center border border-white/80 shadow-md">
                     <Image
                       src="/images/logo.png"
                       alt="WARAQ Logo"
                       width={32}
                       height={32}
-                      className="w-full h-full object-contain filter brightness-125"
+                      className="w-full h-full object-contain"
                     />
                   </div>
                   <span className="text-xl sm:text-2xl font-black text-emerald-300 tracking-wider">

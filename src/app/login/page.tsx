@@ -21,11 +21,11 @@ export default function LoginPage() {
         </div>
         <div className="relative text-center text-white max-w-sm">
           <div className="mb-6 flex justify-center">
-            <div className="w-24 h-24 rounded-3xl bg-white/10 backdrop-blur-md p-3.5 flex items-center justify-center border border-white/20 shadow-2xl">
+            <div className="w-24 h-24 rounded-3xl bg-white p-3.5 flex items-center justify-center border border-white/80 shadow-2xl">
               <img
                 src="/images/logo.png"
                 alt="WARAQ Logo"
-                className="w-full h-full object-contain filter brightness-125"
+                className="w-full h-full object-contain"
               />
             </div>
           </div>
