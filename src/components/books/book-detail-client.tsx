@@ -40,7 +40,15 @@ interface BookDetailClientProps {
   sellerListings: BookListing[]
   isWishlisted: boolean
   wantCount: number
-  userListings: Array<{ id: string; book: { title: string } }>
+  userListings: Array<{
+    id: string
+    condition?: string
+    book: {
+      title: string
+      author?: string
+      cover_image_url?: string | null
+    }
+  }>
   existingRequest?: ExistingRequestInfo | null
 }
 
@@ -108,6 +116,18 @@ export function BookDetailClient({
     listing.price && listing.price > 10 ? String(Math.round(listing.price * 0.85)) : ''
   )
   const [selectedUserListing, setSelectedUserListing] = useState('')
+  const [swapBookSearch, setSwapBookSearch] = useState('')
+
+  const selectedListingObj = userListings.find(l => l.id === selectedUserListing)
+  const filteredUserListings = userListings.filter(l => {
+    if (!swapBookSearch.trim()) return true
+    const q = swapBookSearch.toLowerCase().trim()
+    return (
+      l.book.title.toLowerCase().includes(q) ||
+      Boolean(l.book.author && l.book.author.toLowerCase().includes(q))
+    )
+  })
+
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [actionSuccess, setActionSuccess] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
@@ -302,6 +322,9 @@ export function BookDetailClient({
         createdAt: new Date().toISOString(),
       })
       setShowSwapModal(false)
+      if ((res as any)?.conversationId) {
+        setTimeout(() => router.push(`/messages/${(res as any).conversationId}`), 1200)
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : (lang === 'ar' ? 'حدث خطأ أثناء إرسال طلب المبادلة.' : 'Error sending swap request.')
       setModalValidationError(msg)
@@ -1137,6 +1160,9 @@ export function BookDetailClient({
                     onClick={() => {
                       if (!user) { setShowAuthModal(true); return }
                       setModalValidationError(null)
+                      if (userListings.length === 1 && !selectedUserListing) {
+                        setSelectedUserListing(userListings[0].id)
+                      }
                       setShowSwapModal(true)
                     }}
                     disabled={Boolean(actionSuccess || currentExistingRequest)}
@@ -1294,123 +1320,296 @@ export function BookDetailClient({
 
         {/* Swap Modal */}
         {showSwapModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in">
-            <div className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 p-5 sm:p-6 space-y-4 shadow-2xl text-foreground">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
-                    <ArrowRightLeft className="h-5 w-5" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+            <div className="w-full max-w-xl max-h-[92vh] flex flex-col rounded-3xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden text-foreground">
+              {/* Sticky Header */}
+              <div className="p-4 sm:p-5 border-b border-border bg-white dark:bg-slate-900 shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-2xl bg-gradient-to-br from-purple-500/15 to-indigo-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                      <ArrowRightLeft className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-black text-foreground">
+                        {lang === 'ar' ? 'طلب مبادلة كتاب' : 'Request Book Swap'}
+                      </h3>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground">
+                        {lang === 'ar'
+                          ? 'مبادلة كتاب بكتاب بدون أي دفع مالي — صفقة مباشرة وآمنة'
+                          : 'Book-for-book trade with zero fees — direct & safe'}
+                      </p>
+                    </div>
                   </div>
-                  <h3 className="text-base font-black text-foreground">
-                    {lang === 'ar' ? 'طلب مبادلة كتاب' : 'Request Book Swap'}
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowSwapModal(false)}
-                  className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <p className="text-xs text-muted-foreground">
-                {lang === 'ar'
-                  ? `اختر الكتاب من مكتبتك الذي ترغب في مبادلته بكتاب "${book.title}":`
-                  : `Select a book from your listings to offer for "${book.title}":`
-                }
-              </p>
-
-              {userListings.length > 0 ? (
-                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-                  {userListings.map((l: { id: string; book: { title: string } }) => {
-                    const isSelected = selectedUserListing === l.id
-                    return (
-                      <button
-                        key={l.id}
-                        type="button"
-                        onClick={() => setSelectedUserListing(l.id)}
-                        className={cn(
-                          'w-full text-start p-3.5 rounded-2xl border-2 text-xs font-bold transition-all cursor-pointer flex items-center justify-between',
-                          isSelected
-                            ? 'border-purple-600 bg-purple-50 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200 shadow-xs'
-                            : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 hover:border-purple-500/50'
-                        )}
-                      >
-                        <span className="truncate">{l.book.title}</span>
-                        {isSelected && <Check className="h-4 w-4 text-purple-600 dark:text-purple-400 shrink-0" />}
-                      </button>
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-6 px-4 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 space-y-3">
-                  <div className="text-4xl">📚</div>
-                  <h4 className="font-bold text-xs text-foreground">
-                    {lang === 'ar' ? 'ليس لديك كتب معروضة للمبادلة حالياً' : "You don't have any books listed yet"}
-                  </h4>
-                  <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    {lang === 'ar'
-                      ? 'أضف أحد كتبك في دقيقة واحدة لتبدأ في طلب مبادلة هذا الكتاب مجاناً وبدون أي تكلفة.'
-                      : 'Add a book from your shelf in 1 minute to start swapping for free with fellow readers.'}
-                  </p>
-                  <Link href={`/books/add?redirectTo=/books/${listing.id}`}>
-                    <Button className="mt-1 font-black text-xs rounded-xl shadow-xs gap-1.5 bg-purple-600 hover:bg-purple-700 text-white cursor-pointer">
-                      <PlusCircle className="h-4 w-4" />
-                      {lang === 'ar' ? 'أضف كتاباً لمكتبتك الآن' : 'Add a Book to Swap'}
-                    </Button>
-                  </Link>
-                </div>
-              )}
-
-              {/* Meetup Proposal — same for Swap */}
-              <div className="pt-1">
-                <p className="text-xs font-black text-foreground mb-2">
-                  {lang === 'ar' ? '📍 مكان وموعد المقابلة:' : '📍 Meetup Location & Times:'}
-                </p>
-                <MeetupPicker value={swapMeetup} onChange={setSwapMeetup} lang={lang} />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-foreground block">
-                  {lang === 'ar' ? 'رسالة للمالك (اختياري):' : 'Message to owner (optional):'}
-                </label>
-                <textarea
-                  value={swapMessage}
-                  onChange={e => setSwapMessage(e.target.value)}
-                  placeholder={lang === 'ar' ? 'أي ملاحظات إضافية؟' : 'Any additional notes?'}
-                  className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground resize-none"
-                  rows={2}
-                />
-              </div>
-
-              {/* Validation Error Alert */}
-              {modalValidationError && (
-                <div className="p-3.5 rounded-2xl bg-red-500/10 border-2 border-red-500/30 text-red-700 dark:text-red-300 text-xs font-bold flex items-start gap-2.5 animate-in fade-in">
-                  <AlertCircle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
-                  <span className="flex-1 leading-relaxed">{modalValidationError}</span>
                   <button
                     type="button"
-                    onClick={() => setModalValidationError(null)}
-                    className="text-red-500 hover:text-red-700 shrink-0 font-black cursor-pointer"
+                    onClick={() => setShowSwapModal(false)}
+                    className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                    aria-label="Close"
                   >
                     ✕
                   </button>
                 </div>
-              )}
+              </div>
 
-              <div className="flex gap-2 pt-1">
-                <Button variant="outline" className="flex-1 rounded-xl font-bold cursor-pointer border-slate-300 dark:border-slate-700 py-5" onClick={() => setShowSwapModal(false)}>
-                  {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-                </Button>
-                <Button
-                  className="flex-1 rounded-xl font-black bg-purple-600 hover:bg-purple-700 text-white shadow-md shadow-purple-600/25 cursor-pointer py-5"
-                  onClick={handleSwapRequest}
-                  loading={actionLoading === 'swap'}
-                  disabled={!selectedUserListing}
-                >
-                  {lang === 'ar' ? 'إرسال طلب المبادلة' : 'Send Swap Request'}
-                </Button>
+              {/* Scrollable Body */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+                {/* Visual Exchange Preview Bar */}
+                <div className="relative rounded-2xl border-2 border-purple-500/25 bg-gradient-to-br from-purple-500/5 via-indigo-500/5 to-purple-500/10 p-3 sm:p-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 relative items-stretch">
+                    {/* Book You Receive */}
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-white/85 dark:bg-slate-800/85 border border-purple-500/20 shadow-xs">
+                      <div className="relative h-14 w-11 rounded-lg overflow-hidden bg-muted shrink-0 border border-slate-200 dark:border-slate-700">
+                        {primaryImage ? (
+                          <Image src={primaryImage} alt={book.title} fill className="object-cover" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center text-base">📖</div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-purple-700 dark:text-purple-300 bg-purple-500/15 px-1.5 py-0.5 rounded-md mb-1">
+                          {lang === 'ar' ? 'ستحصل على 📥' : 'You Receive 📥'}
+                        </span>
+                        <p className="text-xs font-black truncate text-foreground">{book.title}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{book.author || (lang === 'ar' ? 'كتاب المالك' : "Owner's book")}</p>
+                      </div>
+                    </div>
+
+                    {/* Desktop Center Swap Badge */}
+                    <div className="hidden sm:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10 h-8 w-8 items-center justify-center rounded-full bg-purple-600 text-white shadow-md shadow-purple-600/30 border-2 border-white dark:border-slate-900 pointer-events-none">
+                      <ArrowRightLeft className="h-3.5 w-3.5" />
+                    </div>
+
+                    {/* Book You Offer */}
+                    <div className={cn(
+                      'flex items-center gap-3 p-3 rounded-xl border transition-all',
+                      selectedListingObj
+                        ? 'bg-white/85 dark:bg-slate-800/85 border-indigo-500/30 shadow-xs'
+                        : 'bg-slate-100/70 dark:bg-slate-800/40 border-dashed border-slate-300 dark:border-slate-700'
+                    )}>
+                      {selectedListingObj ? (
+                        <>
+                          <div className="relative h-14 w-11 rounded-lg overflow-hidden bg-muted shrink-0 border border-slate-200 dark:border-slate-700">
+                            {selectedListingObj.book.cover_image_url ? (
+                              <Image src={selectedListingObj.book.cover_image_url} alt={selectedListingObj.book.title} fill className="object-cover" />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center text-base">📚</div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-indigo-700 dark:text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded-md mb-1">
+                              {lang === 'ar' ? 'ستقدّم بدلاً منه 📤' : 'You Offer in Return 📤'}
+                            </span>
+                            <p className="text-xs font-black truncate text-foreground">{selectedListingObj.book.title}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">
+                              {selectedListingObj.book.author || (lang === 'ar' ? 'من مكتبتك' : 'From your shelf')}
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-full text-center py-2 flex flex-col items-center justify-center gap-1">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-md">
+                            {lang === 'ar' ? 'ستقدّم بدلاً منه 📤' : 'You Offer in Return 📤'}
+                          </span>
+                          <p className="text-[11px] font-bold text-muted-foreground">
+                            {lang === 'ar' ? '👇 اختر كتاباً من مكتبتك بالأسفل' : '👇 Choose a book from list below'}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 1: Book Selection */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <label className="text-xs font-black text-foreground flex items-center gap-1.5">
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-white text-[11px]">1</span>
+                      {lang === 'ar'
+                        ? 'اختر الكتاب الذي ترغب في تقديمه للمبادلة:'
+                        : 'Choose which book from your shelf to offer:'}
+                    </label>
+                    {userListings.length > 0 && (
+                      <span className="text-[11px] font-bold text-purple-600 dark:text-purple-400">
+                        {userListings.length} {lang === 'ar' ? 'كتاب متاح' : 'available'}
+                      </span>
+                    )}
+                  </div>
+
+                  {userListings.length > 0 ? (
+                    <div className="space-y-2.5">
+                      {/* Search filter if user has more than 3 books */}
+                      {userListings.length > 3 && (
+                        <div className="relative">
+                          <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                          <input
+                            type="text"
+                            value={swapBookSearch}
+                            onChange={e => setSwapBookSearch(e.target.value)}
+                            placeholder={lang === 'ar' ? 'ابحث في كتبك بالعنوان أو المؤلف...' : 'Search your books by title or author...'}
+                            className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 ps-8 pe-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-purple-500"
+                          />
+                        </div>
+                      )}
+
+                      <div className="space-y-2 max-h-56 overflow-y-auto pe-1">
+                        {filteredUserListings.length > 0 ? (
+                          filteredUserListings.map(l => {
+                            const isSelected = selectedUserListing === l.id
+                            return (
+                              <button
+                                key={l.id}
+                                type="button"
+                                onClick={() => setSelectedUserListing(l.id)}
+                                className={cn(
+                                  'w-full text-start p-2.5 sm:p-3 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3',
+                                  isSelected
+                                    ? 'border-purple-600 bg-purple-500/10 dark:bg-purple-950/40 text-purple-950 dark:text-purple-100 shadow-sm ring-1 ring-purple-500/40'
+                                    : 'border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground hover:border-purple-400/40'
+                                )}
+                              >
+                                {/* Cover Thumbnail */}
+                                <div className="relative h-14 w-10 sm:h-16 sm:w-11 rounded-xl overflow-hidden bg-muted shrink-0 border border-slate-200 dark:border-slate-700">
+                                  {l.book.cover_image_url ? (
+                                    <Image src={l.book.cover_image_url} alt={l.book.title} fill className="object-cover" />
+                                  ) : (
+                                    <div className="h-full w-full flex items-center justify-center text-base sm:text-lg">📚</div>
+                                  )}
+                                </div>
+
+                                {/* Info */}
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-bold text-xs sm:text-sm text-foreground truncate">{l.book.title}</h4>
+                                  {l.book.author && (
+                                    <p className="text-[11px] text-muted-foreground truncate mt-0.5">{l.book.author}</p>
+                                  )}
+                                  {l.condition && (
+                                    <div className="mt-1 flex items-center gap-1.5">
+                                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                                        {getConditionLabel(l.condition as any, lang)}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Radio Check Indicator */}
+                                <div className={cn(
+                                  'h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
+                                  isSelected
+                                    ? 'border-purple-600 bg-purple-600 text-white shadow-xs'
+                                    : 'border-slate-300 dark:border-slate-600'
+                                )}>
+                                  {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                                </div>
+                              </button>
+                            )
+                          })
+                        ) : (
+                          <div className="text-center py-6 px-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 text-xs text-muted-foreground">
+                            {lang === 'ar' ? 'لا توجد نتائج مطابقة لبحثك.' : 'No books matched your search.'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-7 px-4 rounded-3xl border-2 border-dashed border-purple-500/30 bg-purple-500/5 dark:bg-purple-950/20 space-y-3">
+                      <div className="h-12 w-12 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 mx-auto flex items-center justify-center text-2xl shadow-inner">
+                        📚
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="font-black text-xs sm:text-sm text-foreground">
+                          {lang === 'ar' ? 'ليس لديك كتب معروضة في مكتبتك حالياً' : "You haven't listed any books yet"}
+                        </h4>
+                        <p className="text-[11px] text-muted-foreground max-w-sm mx-auto leading-relaxed">
+                          {lang === 'ar'
+                            ? 'نظام المبادلة يتيح تبادل كتاب بكتاب مجاناً وبدون أي تكلفة. أضف أحد كتبك في دقيقة واحدة لتبدأ في طلب المبادلة.'
+                            : 'Swap is a direct book-for-book trade. Add a book from your shelf in 1 minute to start swapping for free.'}
+                        </p>
+                      </div>
+                      <Link href={`/books/add?redirectTo=/books/${listing.id}`} className="inline-block pt-1">
+                        <Button className="font-black text-xs rounded-xl px-4 py-5 gap-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md shadow-purple-600/30 cursor-pointer">
+                          <PlusCircle className="h-4 w-4" />
+                          {lang === 'ar' ? 'أضف كتاباً لمكتبتك الآن' : 'Add a Book to Swap'}
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+
+                {/* Section 2: Meetup Proposal */}
+                <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+                  <label className="text-xs font-black text-foreground flex items-center gap-1.5">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-white text-[11px]">2</span>
+                    {lang === 'ar' ? 'مكان وموعد المقابلة والتسليم المقترح:' : 'Meetup & Handover Details:'}
+                  </label>
+                  <MeetupPicker value={swapMeetup} onChange={setSwapMeetup} lang={lang} />
+                </div>
+
+                {/* Section 3: Optional Message to Owner */}
+                <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+                  <label className="text-xs font-black text-foreground flex items-center gap-1.5">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-white text-[11px]">3</span>
+                    {lang === 'ar' ? 'رسالة أو ملاحظة للمالك (اختياري):' : 'Message to owner (optional):'}
+                  </label>
+                  <textarea
+                    value={swapMessage}
+                    onChange={e => setSwapMessage(e.target.value)}
+                    placeholder={lang === 'ar' ? 'أضف أي تفاصيل أو أوقات مفضلة للطرفين...' : 'Add any preferred times, notes, or greetings...'}
+                    className="w-full rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-purple-500 resize-none"
+                    rows={2}
+                  />
+                </div>
+
+                {/* Trust & Guarantee Banner */}
+                <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-900 dark:text-purple-200 text-xs flex items-center gap-2.5">
+                  <ShieldCheck className="h-4 w-4 shrink-0 text-purple-600 dark:text-purple-400" />
+                  <span className="leading-relaxed">
+                    {lang === 'ar'
+                      ? 'مبادلة مجانية 100% يداً بيد. يتم فحص حالة الكتابين مباشرة أثناء المقابلة والتأكد من مطابقة الوصف.'
+                      : '100% Free book swap. Both readers inspect condition directly upon meeting.'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Sticky Footer */}
+              <div className="p-4 sm:p-5 border-t border-border bg-slate-50 dark:bg-slate-900 shrink-0 space-y-3">
+                {/* Validation Error Alert */}
+                {modalValidationError && (
+                  <div className="p-3.5 rounded-2xl bg-red-500/10 border-2 border-red-500/30 text-red-700 dark:text-red-300 text-xs font-bold flex items-start gap-2.5 animate-in fade-in">
+                    <AlertCircle className="h-4 w-4 shrink-0 text-red-600 mt-0.5" />
+                    <span className="flex-1 leading-relaxed">{modalValidationError}</span>
+                    <button
+                      type="button"
+                      onClick={() => setModalValidationError(null)}
+                      className="text-red-500 hover:text-red-700 shrink-0 font-black cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex gap-2.5">
+                  <Button
+                    variant="outline"
+                    className="flex-1 rounded-xl font-bold cursor-pointer border-slate-300 dark:border-slate-700 py-5"
+                    onClick={() => setShowSwapModal(false)}
+                  >
+                    {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                  </Button>
+                  <Button
+                    className={cn(
+                      'flex-[1.5] rounded-xl font-black text-white shadow-lg py-5 gap-2 transition-all cursor-pointer',
+                      selectedUserListing
+                        ? 'bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-purple-600/30 hover:scale-[1.01] active:scale-[0.99]'
+                        : 'bg-purple-600/50 cursor-not-allowed shadow-none'
+                    )}
+                    onClick={handleSwapRequest}
+                    loading={actionLoading === 'swap'}
+                    disabled={!selectedUserListing}
+                  >
+                    <ArrowRightLeft className="h-4 w-4" />
+                    <span>{lang === 'ar' ? 'إرسال طلب المبادلة' : 'Send Swap Request'}</span>
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

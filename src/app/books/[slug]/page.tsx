@@ -177,7 +177,15 @@ export default async function BookDetailPage({ params }: BookPageProps) {
   // Check if user has wishlisted this book or already has a pending request
   let isWishlisted = false
   let userProfile = null
-  let userListings: Array<{ id: string; book: { title: string } }> = []
+  let userListings: Array<{
+    id: string
+    condition?: string
+    book: {
+      title: string
+      author?: string
+      cover_image_url?: string | null
+    }
+  }> = []
   let existingRequest: {
     id: string
     type: 'BUY' | 'BORROW' | 'SWAP'
@@ -197,7 +205,17 @@ export default async function BookDetailPage({ params }: BookPageProps) {
     ] = await Promise.all([
       supabase.from('wishlist_items').select('id').eq('user_id', user.id).eq('book_id', listing.book_id).maybeSingle(),
       supabase.from('profiles').select('*').eq('id', user.id).single(),
-      supabase.from('book_listings').select('id, book:books(title)').eq('seller_id', user.id).eq('status', 'ACTIVE').limit(20),
+      supabase
+        .from('book_listings')
+        .select(`
+          id,
+          condition,
+          book:books(title, author, cover_image_url),
+          images:book_images(url, is_primary)
+        `)
+        .eq('seller_id', user.id)
+        .eq('status', 'ACTIVE')
+        .limit(30),
       supabase
         .from('transactions')
         .select('id, status, transaction_type, buyer_note, created_at')
@@ -216,8 +234,18 @@ export default async function BookDetailPage({ params }: BookPageProps) {
     isWishlisted = !!wishlist
     userProfile = profile
     userListings = (myListings ?? []).map((l: any) => {
-      const bookTitle = Array.isArray(l.book) ? l.book[0]?.title : l.book?.title
-      return { id: l.id, book: { title: bookTitle ?? '' } }
+      const b = Array.isArray(l.book) ? l.book[0] : l.book
+      const imgs = Array.isArray(l.images) ? l.images : []
+      const primaryImg = imgs.find((img: any) => img.is_primary)?.url || imgs[0]?.url || b?.cover_image_url || null
+      return {
+        id: l.id,
+        condition: l.condition ?? 'GOOD',
+        book: {
+          title: b?.title ?? '',
+          author: b?.author ?? '',
+          cover_image_url: primaryImg,
+        },
+      }
     })
 
     if (pendingTx) {
