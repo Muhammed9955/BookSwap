@@ -3176,11 +3176,16 @@ export function CommunityDetailClient({
                     <span className="text-muted-foreground">{lang === 'ar' ? 'المبلغ المطلوب:' : 'Price:'}</span>
                     <span className="font-black text-foreground text-sm">{formatPrice(selectedBookForRequest.price ?? 0)}</span>
                   </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    {lang === 'ar'
-                      ? 'يتم الدفع نقداً عند مقابلة صاحب الكتاب في نقطة المجتمع بعد فحص الكتاب والتأكد من سلامته.'
-                      : 'Payment is made in cash during meetup at the community safe hub.'}
-                  </p>
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[11px] text-emerald-800 dark:text-emerald-300 space-y-1">
+                    <p className="font-bold">
+                      {lang === 'ar' ? '💵 الدفع نقداً بالفرع (بدون أي عمولة 0%):' : '💵 Cash at Hub (0% Commission):'}
+                    </p>
+                    <p className="text-muted-foreground leading-relaxed">
+                      {lang === 'ar'
+                        ? 'تدفع المبلغ نقداً لمسؤول نقطة المجتمع عند استلام الكتاب، ويتسلم صاحب الكتاب كامل المبلغ نقداً من المسؤول عند زيارته للفرع.'
+                        : 'Pay in cash to the community hub admin upon pickup. The admin collects the cash and hands 100% of it to the book owner.'}
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -3203,6 +3208,11 @@ export function CommunityDetailClient({
                   <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/60">
                     <span>{lang === 'ar' ? 'التأمين المسترد فور الإرجاع:' : 'Refundable Deposit:'}</span>
                     <span className="font-bold text-emerald-600">{selectedBookForRequest.deposit || 50} ج.م</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-muted/60 border border-border/70 text-[11px] text-muted-foreground">
+                    {lang === 'ar'
+                      ? 'تدفع رسوم الاستعارة والتأمين نقداً لمسؤول الفرع. يُرد مبلغ التأمين بالكامل نقداً فور إرجاع الكتاب بحالة سليمة.'
+                      : 'Borrow fee and deposit are paid in cash to the hub admin. The deposit is refunded in cash upon returning the book.'}
                   </div>
                   <label className="flex items-start gap-2 text-[11px] text-muted-foreground cursor-pointer pt-1">
                     <input
@@ -3246,6 +3256,11 @@ export function CommunityDetailClient({
                       ))}
                     </select>
                   )}
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    {lang === 'ar'
+                      ? 'عند زيارة الفرع، تسلّم كتابك البديل لمسؤول المجتمع وتستلم هذا الكتاب مباشرة. يُحفظ كتابك الجديد في عهدة الفرع لصالح مالك الكتاب الأصلي.'
+                      : 'Hand over your offered book to the hub admin and receive the requested book directly. Your book will be safely stored for the owner.'}
+                  </p>
                 </div>
               )}
 
