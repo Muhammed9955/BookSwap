@@ -69,6 +69,7 @@ import {
   updateCommunityDetails,
   deleteCommunity,
   updateCommunityBookApproval,
+  approveAllPendingCommunityBooks,
   generateCommunityIntakePin,
   removeBookFromCommunityShelf,
 } from '@/lib/communities/community-service'
@@ -79,6 +80,7 @@ import {
   submitBuyRequest,
   submitBorrowRequest,
   submitSwapRequest,
+  pushNotificationSafe,
   type MeetupProposal,
 } from '@/lib/transactions/lifecycle'
 import type { Community, CommunityPost, BookListing, CommunityMember, CommunityOrgType } from '@/types'
@@ -201,15 +203,6 @@ export function CommunityDetailClient({
   const { lang, isRTL } = useLanguage()
   const supabase = createClient()
   const [activeTab, setActiveTab] = useState<TabType>('bookshelf')
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      if (params.get('tab') === 'admin') {
-        setActiveTab('admin')
-      }
-    }
-  }, [])
   const [isMember, setIsMember] = useState(initialIsMember)
   const [memberCount, setMemberCount] = useState(community.member_count)
   const [posts, setPosts] = useState<CommunityPost[]>(initialPosts)
@@ -261,6 +254,23 @@ export function CommunityDetailClient({
     book?: any
     intakePin?: string
   }>({ isOpen: false, mode: 'VOUCHER' })
+
+  // Listen for query params e.g. /communities/slug?tab=admin&scan=true from notifications
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('tab') === 'admin') {
+        setActiveTab('admin')
+      }
+      if (params.get('scan') === 'true') {
+        setActiveTab('admin')
+        setIntakeQrModal({
+          isOpen: true,
+          mode: 'SCAN_AND_VERIFY',
+        })
+      }
+    }
+  }, [])
 
   // Remove Book from Shelf state
   const [bookToRemove, setBookToRemove] = useState<any | null>(null)
@@ -631,6 +641,44 @@ export function CommunityDetailClient({
     }
   }
 
+  // Batch approve ALL pending books in 1 click
+  const [approvingAllPending, setApprovingAllPending] = useState(false)
+  const handleApproveAllPendingBooks = async () => {
+    if (!currentUserId || pendingBooks.length === 0) return
+    setApprovingAllPending(true)
+    try {
+      const res = await approveAllPendingCommunityBooks({
+        communityId: community.id,
+        adminId: currentUserId,
+      })
+      if (res.success) {
+        const approvedList = (res.approvedBooks && res.approvedBooks.length > 0)
+          ? res.approvedBooks
+          : pendingBooks.map(b => ({ ...b, status: 'APPROVED' }))
+        const approvedCount = res.count || approvedList.length
+
+        setShelfBooks(prev => {
+          const existingIds = new Set(approvedList.map(b => b.listing_id || b.id))
+          return [...approvedList, ...prev.filter(b => !existingIds.has(b.listing_id || b.id))]
+        })
+        setPendingBooks([])
+        setApprovalToast(
+          lang === 'ar'
+            ? `تم اعتماد واستلام جميع الكتب المعلقة (${approvedCount} كتب) وإضافتها للرف بنجاح! 📚🎉`
+            : `All ${approvedCount} pending books approved and added to shelf! 📚🎉`
+        )
+        setTimeout(() => setApprovalToast(null), 5000)
+      } else {
+        setApprovalToast(
+          lang === 'ar' ? `فشل اعتماد الكتب: ${res.error || ''}` : `Failed to approve books: ${res.error || ''}`
+        )
+        setTimeout(() => setApprovalToast(null), 5000)
+      }
+    } finally {
+      setApprovingAllPending(false)
+    }
+  }
+
   // Remove Book from Community Shelf Handler (Admin or Owner)
   const handleConfirmRemoveBook = async () => {
     if (!bookToRemove || !currentUserId) return
@@ -734,6 +782,18 @@ export function CommunityDetailClient({
           buyerNote: reqNote || `طلب شراء من رف مجتمع ${commName} — الاستلام من فرع: ${community.hub_name}`,
           meetup: hubProposal,
         })
+        if (community.admin_id && community.admin_id !== currentUserId) {
+          await pushNotificationSafe(supabase, {
+            user_id: community.admin_id,
+            type: 'COMMUNITY_HANDOVER_REQUEST',
+            title: `طلب شراء كتاب من رف المجتمع (${selectedBookForRequest.title}) ☕`,
+            title_ar: `طلب شراء كتاب من رف المجتمع (${selectedBookForRequest.title}) ☕`,
+            body: `طلب عضو شراء كتاب "${selectedBookForRequest.title}" المخزن برف المجتمع. التعليمات: عند حضور المشتري لمقر "${community.hub_name || 'الفرع'}"، قم بتسليمه الكتاب وتحصيل ثمنه (${selectedBookForRequest.price ?? 0} ج.م نقداً بدون عمولة) لتسليمه لصاحب الكتاب.`,
+            body_ar: `طلب عضو شراء كتاب "${selectedBookForRequest.title}" المخزن برف المجتمع. التعليمات: عند حضور المشتري لمقر "${community.hub_name || 'الفرع'}"، قم بتسليمه الكتاب وتحصيل ثمنه (${selectedBookForRequest.price ?? 0} ج.م نقداً بدون عمولة) لتسليمه لصاحب الكتاب.`,
+            action_url: `/communities/${community.slug}?tab=admin`,
+            data: { communityId: community.id, bookTitle: selectedBookForRequest.title, type: 'BUY' },
+          })
+        }
         setReqSuccess(
           lang === 'ar'
             ? `تم إرسال طلب الشراء بنجاح! موعد ومكان الاستلام محدد في فرع المجتمع: ${community.hub_name || ''} ☕`
@@ -759,6 +819,18 @@ export function CommunityDetailClient({
           note: reqNote || `طلب استعارة من مجتمع ${commName} — الاستلام من فرع: ${community.hub_name}`,
           meetup: hubProposal,
         })
+        if (community.admin_id && community.admin_id !== currentUserId) {
+          await pushNotificationSafe(supabase, {
+            user_id: community.admin_id,
+            type: 'COMMUNITY_HANDOVER_REQUEST',
+            title: `طلب استعارة كتاب من رف المجتمع (${selectedBookForRequest.title}) ⏳`,
+            title_ar: `طلب استعارة كتاب من رف المجتمع (${selectedBookForRequest.title}) ⏳`,
+            body: `طلب عضو استعارة كتاب "${selectedBookForRequest.title}" لمدة ${reqLoanDays} يوماً. التعليمات: عند حضور المستعير لمقر "${community.hub_name || 'الفرع'}"، استلم مبلغ التأمين (${deposit} ج.م نقداً) ورسوم الإعارة (${calcFee} ج.م نقداً بدون عمولة)، وسلمه الكتاب مع التنبيه على موعد الإرجاع.`,
+            body_ar: `طلب عضو استعارة كتاب "${selectedBookForRequest.title}" لمدة ${reqLoanDays} يوماً. التعليمات: عند حضور المستعير لمقر "${community.hub_name || 'الفرع'}"، استلم مبلغ التأمين (${deposit} ج.م نقداً) ورسوم الإعارة (${calcFee} ج.م نقداً بدون عمولة)، وسلمه الكتاب مع التنبيه على موعد الإرجاع.`,
+            action_url: `/communities/${community.slug}?tab=admin`,
+            data: { communityId: community.id, bookTitle: selectedBookForRequest.title, type: 'BORROW', loanDays: reqLoanDays },
+          })
+        }
         setReqSuccess(
           lang === 'ar'
             ? `تم إرسال طلب الاستعارة لمدة ${reqLoanDays} يوماً بنجاح! الاستلام من الفرع: ${community.hub_name || ''} ⏳`
@@ -781,6 +853,18 @@ export function CommunityDetailClient({
           message: reqNote || `طلب مبادلة من رف مجتمع ${commName} — الاستلام من فرع: ${community.hub_name}`,
           meetup: hubProposal,
         })
+        if (community.admin_id && community.admin_id !== currentUserId) {
+          await pushNotificationSafe(supabase, {
+            user_id: community.admin_id,
+            type: 'COMMUNITY_HANDOVER_REQUEST',
+            title: `طلب مبادلة كتاب من رف المجتمع (${selectedBookForRequest.title}) 🔄`,
+            title_ar: `طلب مبادلة كتاب من رف المجتمع (${selectedBookForRequest.title}) 🔄`,
+            body: `طلب عضو مبادلة كتاب "${selectedBookForRequest.title}" المخزن بالرف بكتاب آخر. التعليمات: عند حضور الطرفين لمقر "${community.hub_name || 'الفرع'}"، عاين الكتاب البديل للتأكد من سلامته، ثم سلم الكتاب الأصلي وأودع الكتاب البديل في الرف.`,
+            body_ar: `طلب عضو مبادلة كتاب "${selectedBookForRequest.title}" المخزن بالرف بكتاب آخر. التعليمات: عند حضور الطرفين لمقر "${community.hub_name || 'الفرع'}"، عاين الكتاب البديل للتأكد من سلامته، ثم سلم الكتاب الأصلي وأودع الكتاب البديل في الرف.`,
+            action_url: `/communities/${community.slug}?tab=admin`,
+            data: { communityId: community.id, targetBookTitle: selectedBookForRequest.title, type: 'SWAP' },
+          })
+        }
         setReqSuccess(
           lang === 'ar'
             ? `تم إرسال عرض المبادلة بنجاح! ستلتقيان في فرع: ${community.hub_name || ''} لإتمام التبادل 🔄`
@@ -2084,19 +2168,38 @@ export function CommunityDetailClient({
                   </Badge>
                 </div>
 
-                {/* Scan QR Button */}
-                <Button
-                  onClick={() =>
-                    setIntakeQrModal({
-                      isOpen: true,
-                      mode: 'SCAN_AND_VERIFY',
-                    })
-                  }
-                  className="rounded-2xl font-black text-xs bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-600/20 gap-2 px-4 py-2.5 cursor-pointer"
-                >
-                  <QrCode className="h-4 w-4" />
-                  <span>{lang === 'ar' ? 'مسح رمز QR لاعتماد واستلام كتاب 📷' : 'Scan QR to Accept Book 📷'}</span>
-                </Button>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Approve All Pending Books in 1 Click */}
+                  {pendingBooks.length > 0 && (
+                    <Button
+                      variant="outline"
+                      loading={approvingAllPending}
+                      onClick={handleApproveAllPendingBooks}
+                      className="rounded-2xl font-black text-xs border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 gap-2 px-3.5 py-2.5 cursor-pointer"
+                    >
+                      <Check className="h-4 w-4 text-emerald-600" />
+                      <span>
+                        {lang === 'ar'
+                          ? `اعتماد الكل دفعة واحدة (${pendingBooks.length}) ✨`
+                          : `Approve All (${pendingBooks.length}) ✨`}
+                      </span>
+                    </Button>
+                  )}
+
+                  {/* Scan QR Button */}
+                  <Button
+                    onClick={() =>
+                      setIntakeQrModal({
+                        isOpen: true,
+                        mode: 'SCAN_AND_VERIFY',
+                      })
+                    }
+                    className="rounded-2xl font-black text-xs bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-600/20 gap-2 px-4 py-2.5 cursor-pointer"
+                  >
+                    <QrCode className="h-4 w-4" />
+                    <span>{lang === 'ar' ? 'مسح رمز QR لاعتماد واستلام كتاب 📷' : 'Scan QR to Accept Book 📷'}</span>
+                  </Button>
+                </div>
               </div>
 
               {pendingBooks.length === 0 ? (

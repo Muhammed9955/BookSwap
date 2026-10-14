@@ -29,6 +29,8 @@ const NOTIFICATION_ICONS: Record<string, string> = {
   NEW_BOOK_NEARBY: '📍',
   TRANSACTION_COMPLETED: '🎉',
   FOLLOW: '👤',
+  COMMUNITY_INTAKE_REQUEST: '📦',
+  COMMUNITY_HANDOVER_REQUEST: '☕',
 }
 
 interface NotificationsClientProps {

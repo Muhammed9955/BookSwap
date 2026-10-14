@@ -89,10 +89,12 @@ export function CommunityIntakeQrModal({
   const [isVerifying, setIsVerifying] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successResult, setSuccessResult] = useState<{
+    count: number
     bookTitle: string
     bookAuthor?: string
     bookCover?: string
     submitterName?: string
+    books?: CommunityShelfBook[]
   } | null>(null)
 
   // Camera Scanner State
@@ -302,19 +304,22 @@ export function CommunityIntakeQrModal({
 
       if (result.success && result.book) {
         triggerSuccessFeedback()
-        const isBatch = Boolean(result.books && result.books.length > 1)
+        const allBooks = result.books && result.books.length > 0 ? result.books : [result.book]
+        const isBatch = allBooks.length > 1
         setSuccessResult({
+          count: allBooks.length,
           bookTitle: isBatch
-            ? `${result.books!.length} ${lang === 'ar' ? 'كتب مستلمة' : 'books intaked'}`
+            ? `${allBooks.length} ${lang === 'ar' ? 'كتب تم اعتمادها واستلامها' : 'books approved & intaked'}`
             : result.book.title,
           bookAuthor: isBatch
-            ? result.books!.map(b => b.title).slice(0, 3).join(' • ')
+            ? allBooks.map(b => b.title).slice(0, 3).join(' • ')
             : result.book.author,
           bookCover: result.book.cover_image_url,
           submitterName: result.book.owner_name,
+          books: allBooks,
         })
         if (onVerifiedSuccess) {
-          onVerifiedSuccess(result.book, result.books)
+          onVerifiedSuccess(result.book, allBooks)
         }
       } else {
         setErrorMessage(lang === 'ar' ? result.messageAr : result.messageEn)
@@ -545,39 +550,84 @@ export function CommunityIntakeQrModal({
 
                   <div className="space-y-1.5">
                     <h3 className="text-lg font-black text-foreground">
-                      {lang === 'ar' ? 'تم اعتماد واستلام الكتاب بنجاح! 📚🎉' : 'Book Approved & Received! 📚🎉'}
+                      {successResult.count && successResult.count > 1
+                        ? (lang === 'ar'
+                            ? `تم اعتماد واستلام ${successResult.count} كتب دفعة واحدة! 📚🎉`
+                            : `${successResult.count} Books Approved & Received! 📚🎉`)
+                        : (lang === 'ar'
+                            ? 'تم اعتماد واستلام الكتاب بنجاح! 📚🎉'
+                            : 'Book Approved & Received! 📚🎉')}
                     </h3>
                     <p className="text-xs text-muted-foreground">
                       {lang === 'ar'
-                        ? 'تم إضافة الكتاب رسمياً إلى رف المجتمع وأصبح متاحاً للأعضاء الآن.'
-                        : 'Book is now officially listed on the community shelf for members.'}
+                        ? 'تم إضافة الكتب رسمياً إلى رف المجتمع وأصبحت متاحة للأعضاء الآن.'
+                        : 'Books are now officially listed on the community shelf for members.'}
                     </p>
                   </div>
 
-                  {/* Book Card */}
-                  <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 text-start max-w-sm mx-auto">
-                    <div className="relative h-16 w-12 rounded-xl overflow-hidden bg-muted border border-border/80 shrink-0">
-                      {successResult.bookCover ? (
-                        <Image src={successResult.bookCover} alt="" fill className="object-cover" />
-                      ) : (
-                        <div className="h-full w-full flex items-center justify-center text-xs">📖</div>
-                      )}
+                  {/* Multi-book List or Single Book Card */}
+                  {successResult.books && successResult.books.length > 1 ? (
+                    <div className="space-y-2 max-w-md mx-auto max-h-56 overflow-y-auto px-1">
+                      <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-xl px-3 py-1.5 flex items-center justify-between">
+                        <span>{lang === 'ar' ? 'قائمة الكتب المعتمدة بالرمز:' : 'Approved books in this batch:'}</span>
+                        <span className="font-mono">{successResult.books.length} {lang === 'ar' ? 'كتب' : 'books'}</span>
+                      </div>
+                      {successResult.books.map((b, idx) => (
+                        <div
+                          key={b.id || idx}
+                          className="flex items-center gap-3 p-2.5 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 text-start"
+                        >
+                          <div className="relative h-12 w-9 rounded-lg overflow-hidden bg-muted border border-border/80 shrink-0">
+                            {b.cover_image_url ? (
+                              <Image src={b.cover_image_url} alt="" fill className="object-cover" />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center text-[10px]">📖</div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-xs font-black text-foreground truncate">{b.title}</h4>
+                            <p className="text-[10px] text-muted-foreground truncate">{b.author || ''}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <Badge variant="outline" className="text-[9px] px-1 py-0">
+                                {b.listing_type || 'EXCHANGE'}
+                              </Badge>
+                              {b.price ? (
+                                <span className="text-[10px] font-bold text-foreground">{b.price} ج.م</span>
+                              ) : null}
+                            </div>
+                          </div>
+                          <div className="shrink-0 text-emerald-600">
+                            <CheckCircle2 className="h-4 w-4" />
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <h4 className="text-sm font-black text-foreground truncate">
-                        {successResult.bookTitle}
-                      </h4>
-                      {successResult.bookAuthor && (
-                        <p className="text-xs text-muted-foreground truncate">{successResult.bookAuthor}</p>
-                      )}
-                      {successResult.submitterName && (
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          {lang === 'ar' ? 'مقدم من:' : 'From:'}{' '}
-                          <span className="font-bold text-foreground">{successResult.submitterName}</span>
-                        </p>
-                      )}
+                  ) : (
+                    /* Book Card */
+                    <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 text-start max-w-sm mx-auto">
+                      <div className="relative h-16 w-12 rounded-xl overflow-hidden bg-muted border border-border/80 shrink-0">
+                        {successResult.bookCover ? (
+                          <Image src={successResult.bookCover} alt="" fill className="object-cover" />
+                        ) : (
+                          <div className="h-full w-full flex items-center justify-center text-xs">📖</div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-sm font-black text-foreground truncate">
+                          {successResult.bookTitle}
+                        </h4>
+                        {successResult.bookAuthor && (
+                          <p className="text-xs text-muted-foreground truncate">{successResult.bookAuthor}</p>
+                        )}
+                        {successResult.submitterName && (
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            {lang === 'ar' ? 'مقدم من:' : 'From:'}{' '}
+                            <span className="font-bold text-foreground">{successResult.submitterName}</span>
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="flex items-center gap-3 pt-2">
                     <Button
@@ -586,7 +636,7 @@ export function CommunityIntakeQrModal({
                       className="flex-1 rounded-2xl font-bold text-xs py-5 cursor-pointer"
                     >
                       <Camera className="h-4 w-4 me-1.5" />
-                      <span>{lang === 'ar' ? 'مسح كتاب آخر' : 'Scan Another Book'}</span>
+                      <span>{lang === 'ar' ? 'مسح رمز أو كتاب آخر' : 'Scan Another Code'}</span>
                     </Button>
                     <Button
                       onClick={onClose}

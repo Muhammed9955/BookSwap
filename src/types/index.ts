@@ -14,6 +14,7 @@ export type NotificationType =
   | 'NEW_OFFER' | 'OFFER_ACCEPTED' | 'NEW_MESSAGE' | 'NEW_REVIEW'
   | 'BOOK_SOLD' | 'BOOK_RESERVED' | 'RECOMMENDED_BOOK' | 'NEW_BOOK_NEARBY'
   | 'TRANSACTION_COMPLETED' | 'FOLLOW'
+  | 'COMMUNITY_INTAKE_REQUEST' | 'COMMUNITY_HANDOVER_REQUEST'
 export type DeliveryMethod = 'IN_PERSON' | 'COURIER'
 export type PaymentMethod = 'CASH' | 'ONLINE' | 'WALLET'
 export type PaymentStatus = 'UNPAID' | 'PENDING' | 'PAID' | 'REFUNDED' | 'FAILED'

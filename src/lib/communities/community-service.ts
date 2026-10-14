@@ -7,6 +7,7 @@ import type {
   CommunityShelfBook,
 } from '@/types'
 import { createClient } from '@/lib/supabase/client'
+import { pushNotificationSafe } from '@/lib/transactions/lifecycle'
 
 type SupabaseClient = any
 
@@ -778,6 +779,15 @@ export async function addBookToCommunity(params: {
     const bookId = inserted?.id || `cb-${Date.now()}`
     const intakePin = generateCommunityIntakePin(bookId)
 
+    if (initialStatus === 'PENDING') {
+      await notifyCommunityAdminOfIntake(supabase, {
+        communityId: params.communityId,
+        addedBy: params.addedBy,
+        count: 1,
+        intakePin,
+      })
+    }
+
     return {
       success: true,
       status: initialStatus,
@@ -786,6 +796,48 @@ export async function addBookToCommunity(params: {
     }
   } catch (err: any) {
     return { success: false, status: 'PENDING', error: err?.message }
+  }
+}
+
+async function notifyCommunityAdminOfIntake(
+  supabase: any,
+  params: {
+    communityId: string
+    addedBy: string
+    count: number
+    intakePin: string
+  }
+) {
+  try {
+    const { data: comm } = await supabase
+      .from('communities')
+      .select('id, name, name_ar, slug, hub_name, admin_id')
+      .eq('id', params.communityId)
+      .maybeSingle()
+
+    if (comm?.admin_id && comm.admin_id !== params.addedBy) {
+      const commName = comm.name_ar || comm.name
+      const hubName = comm.hub_name || 'نقطة المجتمع'
+      const count = params.count
+      const countText = count > 1 ? `${count} كتب` : 'كتاب'
+
+      await pushNotificationSafe(supabase, {
+        user_id: comm.admin_id,
+        type: 'COMMUNITY_INTAKE_REQUEST',
+        title: `طلب إيداع كتب جديدة بالفرع (${count}) 📦`,
+        title_ar: `طلب إيداع كتب جديدة بالفرع (${count}) 📦`,
+        body: `طلب عضو إيداع ${countText} في رف مجتمع "${commName}". التعليمات: عند حضور العضو إلى مقر "${hubName}"، افتح ماسح الـ QR أو أدخل كود التحقق [${params.intakePin}] لاعتماد واستلام الكتب دفعة واحدة وإضافتها للرف.`,
+        body_ar: `طلب عضو إيداع ${countText} في رف مجتمع "${commName}". التعليمات: عند حضور العضو إلى مقر "${hubName}"، افتح ماسح الـ QR أو أدخل كود التحقق [${params.intakePin}] لاعتماد واستلام الكتب دفعة واحدة وإضافتها للرف.`,
+        action_url: `/communities/${comm.slug}?tab=admin&scan=true`,
+        data: {
+          communityId: comm.id,
+          count,
+          intakePin: params.intakePin,
+        },
+      })
+    }
+  } catch (err) {
+    console.warn('[notifyCommunityAdminOfIntake] warning:', err)
   }
 }
 
@@ -1085,21 +1137,37 @@ export async function addBooksBatchToCommunity(params: {
         if (single?.id) insertedIds.push(single.id)
       }
       const primaryId = insertedIds[0] || `cb-${Date.now()}`
+      const intakePin = generateCommunityIntakePin(primaryId)
+      await notifyCommunityAdminOfIntake(supabase, {
+        communityId: params.communityId,
+        addedBy: params.addedBy,
+        count: params.listingIds.length,
+        intakePin,
+      })
       return {
         success: true,
         status: 'PENDING',
         communityBookIds: insertedIds,
-        intakePin: generateCommunityIntakePin(primaryId),
+        intakePin,
       }
     }
 
     const insertedIds = (data || []).map(r => r.id)
     const primaryId = insertedIds[0] || `cb-${Date.now()}`
+    const intakePin = generateCommunityIntakePin(primaryId)
+
+    await notifyCommunityAdminOfIntake(supabase, {
+      communityId: params.communityId,
+      addedBy: params.addedBy,
+      count: params.listingIds.length,
+      intakePin,
+    })
+
     return {
       success: true,
       status: 'PENDING',
       communityBookIds: insertedIds,
-      intakePin: generateCommunityIntakePin(primaryId),
+      intakePin,
     }
   } catch (err: any) {
     console.error('[addBooksBatchToCommunity] error:', err)
@@ -1108,6 +1176,58 @@ export async function addBooksBatchToCommunity(params: {
       error: err?.message || 'Failed to submit books for community intake',
       status: 'PENDING',
     }
+  }
+}
+
+/**
+ * Admin action: Batch approve ALL pending books for this community in 1 click
+ */
+export async function approveAllPendingCommunityBooks(params: {
+  communityId: string
+  adminId: string
+}): Promise<{
+  success: boolean
+  count: number
+  approvedBooks?: CommunityShelfBook[]
+  error?: string
+}> {
+  if (isDemoCommunityId(params.communityId)) {
+    return { success: true, count: 0, approvedBooks: [] }
+  }
+
+  const supabase = createClient()
+  try {
+    const { data: pending, error: fetchErr } = await supabase
+      .from('community_books')
+      .select(
+        'id, listing_id, status, added_by, community_id, note, listing:book_listings(*, book:books(*), images:book_images(*), seller:profiles(id, full_name, full_name_ar, avatar_url, rating_average))'
+      )
+      .eq('community_id', params.communityId)
+      .eq('status', 'PENDING')
+
+    if (fetchErr) throw fetchErr
+    if (!pending || pending.length === 0) {
+      return { success: true, count: 0, approvedBooks: [] }
+    }
+
+    const ids = pending.map(b => b.id)
+    const { error: updateErr } = await supabase
+      .from('community_books')
+      .update({
+        status: 'APPROVED',
+        approved_by: params.adminId,
+        approved_at: new Date().toISOString(),
+        admin_note: 'اعتماد جماعي فوري لجميع الكتب المعلقة من لوحة الإدارة',
+      })
+      .in('id', ids)
+
+    if (updateErr) throw updateErr
+
+    const mapped = pending.map(mapListingToShelfBook).filter(Boolean) as CommunityShelfBook[]
+    return { success: true, count: ids.length, approvedBooks: mapped }
+  } catch (err: any) {
+    console.error('[approveAllPendingCommunityBooks] error:', err)
+    return { success: false, count: 0, error: err?.message || 'Failed to approve pending books' }
   }
 }
 
