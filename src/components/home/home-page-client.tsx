@@ -511,8 +511,8 @@ export function HomePageClient({
                 <Link href="/explore">
                   <Button
                     size="lg"
-                    variant="outline"
-                    className="border-white/30 text-white hover:bg-white/10 px-6 py-6 rounded-2xl text-sm font-bold cursor-pointer"
+                    variant="ghost"
+                    className="border-2 border-white/30 hover:border-white/60 bg-white/10 hover:bg-white/20 text-white backdrop-blur-md px-6 py-6 rounded-2xl text-sm font-bold cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-md"
                   >
                     <span>{lang === 'ar' ? 'تصفح كل الكتب' : 'Explore All Books'}</span>
                     <ArrowRight className={cn('h-4 w-4 ms-1.5', isRTL && 'rotate-180')} />
@@ -1429,8 +1429,8 @@ export function HomePageClient({
               <Link href="/communities">
                 <Button
                   size="lg"
-                  variant="outline"
-                  className="border-white/30 text-white hover:bg-white/10 px-8 py-6 rounded-2xl text-sm font-bold cursor-pointer"
+                  variant="ghost"
+                  className="border-2 border-white/30 hover:border-white/60 bg-white/10 hover:bg-white/20 text-white backdrop-blur-md px-8 py-6 rounded-2xl text-sm font-bold cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-md"
                 >
                   <span>{lang === 'ar' ? 'استكشف نوادي القراءة' : 'Explore Reader Clubs'}</span>
                   <ArrowRight className={cn('h-4 w-4 ms-2', isRTL && 'rotate-180')} />

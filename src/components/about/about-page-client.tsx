@@ -124,14 +124,14 @@ export function AboutPageClient({ user }: AboutPageClientProps) {
 
           <div className="flex flex-wrap justify-center gap-4 pt-2">
             <Link href="/books/add">
-              <Button className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black px-8 py-6 rounded-2xl shadow-xl cursor-pointer">
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-black px-8 py-6 rounded-2xl shadow-xl cursor-pointer hover:scale-105 active:scale-95 transition-all border border-white/20">
                 {lang === 'ar' ? 'أضف كتابك مجاناً' : 'List Your Book Free'}
               </Button>
             </Link>
             <a href={whatsappUrl} target="_blank" rel="noopener noreferrer">
               <Button
-                variant="outline"
-                className="border-white/30 text-white hover:bg-white/10 px-8 py-6 rounded-2xl font-bold cursor-pointer"
+                variant="ghost"
+                className="border-2 border-white/30 hover:border-white/60 bg-white/10 hover:bg-white/20 text-white backdrop-blur-md px-8 py-6 rounded-2xl font-bold cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-md"
               >
                 <MessageCircle className="h-5 w-5 me-2" />
                 {lang === 'ar' ? 'تواصل معنا' : 'Contact Us'}
