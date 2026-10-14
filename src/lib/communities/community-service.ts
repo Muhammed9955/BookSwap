@@ -691,6 +691,13 @@ export async function updateMemberStatus(
   }
 }
 
+export function generateCommunityIntakePin(id: string): string {
+  if (!id) return 'COMM-8821'
+  const clean = id.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+  const part = clean.slice(-6).padEnd(6, '9')
+  return `COMM-${part}`
+}
+
 /**
  * Add a book listing to community shelf with status tracking
  */
@@ -699,7 +706,13 @@ export async function addBookToCommunity(params: {
   listingId: string
   addedBy: string
   note?: string
-}): Promise<{ success: boolean; status: 'APPROVED' | 'PENDING'; error?: string }> {
+}): Promise<{
+  success: boolean
+  status: 'APPROVED' | 'PENDING'
+  communityBookId?: string
+  intakePin?: string
+  error?: string
+}> {
   const supabase = createClient()
   try {
     // Check if submitter is the community admin or if community does not require approval
@@ -713,30 +726,54 @@ export async function addBookToCommunity(params: {
     const isAutoApproved = isAdmin || !comm?.requires_approval
     const initialStatus = isAutoApproved ? 'APPROVED' : 'PENDING'
 
-    const { error } = await supabase.from('community_books').insert({
-      community_id: params.communityId,
-      listing_id: params.listingId,
-      added_by: params.addedBy,
-      note: params.note || null,
-      status: initialStatus,
-      ...(isAutoApproved ? { approved_by: params.addedBy, approved_at: new Date().toISOString() } : {}),
-    })
+    const { data: inserted, error } = await supabase
+      .from('community_books')
+      .insert({
+        community_id: params.communityId,
+        listing_id: params.listingId,
+        added_by: params.addedBy,
+        note: params.note || null,
+        status: initialStatus,
+        ...(isAutoApproved ? { approved_by: params.addedBy, approved_at: new Date().toISOString() } : {}),
+      })
+      .select('id')
+      .maybeSingle()
 
     if (error) {
       // Fallback in case status column is not yet present
       if (error.message?.includes('status')) {
-        const { error: fbErr } = await supabase.from('community_books').insert({
-          community_id: params.communityId,
-          listing_id: params.listingId,
-          added_by: params.addedBy,
-          note: params.note || null,
-        })
-        return { success: !fbErr, status: 'APPROVED', error: fbErr?.message }
+        const { data: fbData, error: fbErr } = await supabase
+          .from('community_books')
+          .insert({
+            community_id: params.communityId,
+            listing_id: params.listingId,
+            added_by: params.addedBy,
+            note: params.note || null,
+          })
+          .select('id')
+          .maybeSingle()
+
+        const fbId = fbData?.id || `cb-${Date.now()}`
+        return {
+          success: !fbErr,
+          status: 'APPROVED',
+          communityBookId: fbId,
+          intakePin: generateCommunityIntakePin(fbId),
+          error: fbErr?.message,
+        }
       }
       return { success: false, status: initialStatus, error: error.message }
     }
 
-    return { success: true, status: initialStatus }
+    const bookId = inserted?.id || `cb-${Date.now()}`
+    const intakePin = generateCommunityIntakePin(bookId)
+
+    return {
+      success: true,
+      status: initialStatus,
+      communityBookId: bookId,
+      intakePin,
+    }
   } catch (err: any) {
     return { success: false, status: 'PENDING', error: err?.message }
   }
@@ -748,9 +785,11 @@ function mapListingToShelfBook(row: {
   status?: string | null
   added_by?: string | null
   community_id?: string | null
-  listing?: BookListing | null
+  note?: string | null
+  listing?: any
 }): CommunityShelfBook | null {
-  const listing = row.listing
+  const rawListing = row.listing
+  const listing: BookListing | null = Array.isArray(rawListing) ? rawListing[0] : rawListing
   if (!listing) return null
   const book = listing.book
   const cover =
@@ -775,11 +814,14 @@ function mapListingToShelfBook(row: {
     added_by: row.added_by || undefined,
     condition: listing.condition,
     community_id: row.community_id || undefined,
+    note: row.note || undefined,
   }
 }
 
 /**
- * Fetch approved books shared on a community shelf
+ * Fetch approved books shared on a community shelf.
+ * Only returns books that were explicitly submitted to this community's shelf
+ * and approved by the admin with active listings.
  */
 export async function getCommunityBooks(
   communityId: string,
@@ -792,7 +834,7 @@ export async function getCommunityBooks(
     const { data, error } = await supabase
       .from('community_books')
       .select(
-        'id, listing_id, status, added_by, community_id, listing:book_listings(*, book:books(*), images:book_images(*), seller:profiles(id, full_name, full_name_ar, avatar_url, rating_average))'
+        'id, listing_id, status, added_by, community_id, note, listing:book_listings(*, book:books(*), images:book_images(*), seller:profiles(id, full_name, full_name_ar, avatar_url, rating_average))'
       )
       .eq('community_id', communityId)
       .order('created_at', { ascending: false })
@@ -802,70 +844,12 @@ export async function getCommunityBooks(
     if (!error && data && data.length > 0) {
       for (const row of data) {
         if (!row.status || row.status === 'APPROVED') {
-          const mapped = mapListingToShelfBook(row)
-          if (mapped && mapped.listing_id) {
-            booksMap.set(mapped.listing_id, mapped)
-          }
-        }
-      }
-    }
-
-    // Discover active listings posted by the community's approved members or admin
-    // so books created by members are automatically accessible on the bookshelf
-    const { data: members } = await supabase
-      .from('community_members')
-      .select('user_id')
-      .eq('community_id', communityId)
-      .eq('status', 'APPROVED')
-
-    const memberIds: string[] = (members ?? []).map((m: any) => m.user_id)
-
-    // Also include community admin ID
-    const { data: comm } = await supabase
-      .from('communities')
-      .select('admin_id')
-      .eq('id', communityId)
-      .maybeSingle()
-    if (comm?.admin_id && !memberIds.includes(comm.admin_id)) {
-      memberIds.push(comm.admin_id)
-    }
-
-    if (memberIds.length > 0) {
-      const { data: memberListings } = await supabase
-        .from('book_listings')
-        .select(
-          'id, listing_type, condition, price, seller_id, created_at, book:books(*), images:book_images(*), seller:profiles(id, full_name, full_name_ar, avatar_url, rating_average)'
-        )
-        .in('seller_id', memberIds)
-        .eq('status', 'ACTIVE')
-        .order('created_at', { ascending: false })
-
-      if (memberListings && memberListings.length > 0) {
-        for (const l of memberListings) {
-          if (!booksMap.has(l.id)) {
-            const cover =
-              l.images?.find((img: any) => img.is_primary)?.url ||
-              l.images?.[0]?.url ||
-              l.book?.cover_image_url ||
-              'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80'
-
-            booksMap.set(l.id, {
-              id: `comm-member-${l.id}`,
-              listing_id: l.id,
-              listing_type: l.listing_type,
-              title: l.book?.title_ar || l.book?.title || 'كتاب',
-              author: l.book?.author_ar || l.book?.author,
-              cover_image_url: cover,
-              owner_name: l.seller?.full_name_ar || l.seller?.full_name,
-              owner_id: l.seller?.id || l.seller_id,
-              owner_rating: l.seller?.rating_average,
-              price: l.price ?? null,
-              listing_slug: l.id,
-              status: 'APPROVED',
-              added_by: l.seller_id,
-              condition: l.condition,
-              community_id: communityId,
-            })
+          // Check that listing exists and is ACTIVE
+          if (row.listing && (row.listing.status === 'ACTIVE' || !row.listing.status)) {
+            const mapped = mapListingToShelfBook(row)
+            if (mapped && mapped.listing_id) {
+              booksMap.set(mapped.listing_id, mapped)
+            }
           }
         }
       }
@@ -880,16 +864,18 @@ export async function getCommunityBooks(
 
 /**
  * Fetch pending books submitted to a community shelf for admin review
+ * (or for submitter to review their own submissions)
  */
 export async function getPendingCommunityBooks(
   communityId: string,
-  _client?: SupabaseClient
+  _client?: SupabaseClient,
+  userId?: string
 ): Promise<CommunityShelfBook[]> {
   if (isDemoCommunityId(communityId)) return []
 
   try {
     const supabase = _client ?? createClient()
-    const { data, error } = await supabase
+    let query = supabase
       .from('community_books')
       .select(
         'id, listing_id, status, added_by, community_id, note, listing:book_listings(*, book:books(*), images:book_images(*), seller:profiles(id, full_name, full_name_ar, avatar_url, rating_average))'
@@ -897,6 +883,12 @@ export async function getPendingCommunityBooks(
       .eq('community_id', communityId)
       .eq('status', 'PENDING')
       .order('created_at', { ascending: false })
+
+    if (userId) {
+      query = query.eq('added_by', userId)
+    }
+
+    const { data, error } = await query
 
     if (error) throw error
     return (data ?? [])
@@ -937,6 +929,148 @@ export async function updateCommunityBookApproval(params: {
   } catch (err) {
     console.error('[updateCommunityBookApproval] error:', err)
     return false
+  }
+}
+
+/**
+ * Verify and approve a community book intake using QR payload or manual PIN code
+ */
+export async function verifyCommunityBookIntakeQr(params: {
+  communityId: string
+  adminId: string
+  inputCodeOrPayload: string
+}): Promise<{
+  success: boolean
+  messageAr: string
+  messageEn: string
+  book?: CommunityShelfBook
+}> {
+  const supabase = createClient()
+  try {
+    const raw = (params.inputCodeOrPayload || '').trim()
+    if (!raw) {
+      return {
+        success: false,
+        messageAr: 'الرجاء إدخال أو مسح رمز QR صالح',
+        messageEn: 'Please scan or enter a valid QR code',
+      }
+    }
+
+    let parsedPayload: any = null
+    try {
+      parsedPayload = JSON.parse(raw)
+    } catch {
+      parsedPayload = null
+    }
+
+    // If QR payload contains a specific communityId, verify it matches
+    if (parsedPayload?.communityId && parsedPayload.communityId !== params.communityId) {
+      return {
+        success: false,
+        messageAr: 'رمز QR هذا ينتمي إلى مجتمع قراءة آخر!',
+        messageEn: 'This QR code belongs to a different reading community!',
+      }
+    }
+
+    // Extract potential search identifiers
+    const targetBookId = parsedPayload?.communityBookId || parsedPayload?.id
+    const targetListingId = parsedPayload?.listingId
+    const targetCode = (parsedPayload?.code || raw).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+
+    // Fetch all pending books for this community
+    const { data: pendingList, error: fetchErr } = await supabase
+      .from('community_books')
+      .select(
+        'id, listing_id, status, added_by, community_id, note, listing:book_listings(*, book:books(*), images:book_images(*), seller:profiles(id, full_name, full_name_ar, avatar_url, rating_average))'
+      )
+      .eq('community_id', params.communityId)
+      .eq('status', 'PENDING')
+
+    if (fetchErr) {
+      console.error('[verifyCommunityBookIntakeQr] Fetch error:', fetchErr)
+      return {
+        success: false,
+        messageAr: 'حدث خطأ أثناء البحث عن الكتب المعلقة في قاعدة البيانات.',
+        messageEn: 'Database error searching for pending community books.',
+      }
+    }
+
+    if (!pendingList || pendingList.length === 0) {
+      return {
+        success: false,
+        messageAr: 'لا توجد كتب معلقة بانتظار الاعتماد مطابقة لهذا الرمز. قد يكون الكتاب معتمداً بالفعل!',
+        messageEn: 'No pending books found matching this code. It may already be approved!',
+      }
+    }
+
+    // Find the matching book record
+    const matched = pendingList.find(row => {
+      // Direct ID match
+      if (targetBookId && (row.id === targetBookId || row.listing_id === targetBookId)) return true
+      if (targetListingId && row.listing_id === targetListingId) return true
+
+      // Cleaned ID matches
+      const cleanRowId = row.id.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+      const cleanListingId = (row.listing_id || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+
+      // Generated PIN matches
+      const expectedPin = generateCommunityIntakePin(row.id).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+      const expectedPinListing = generateCommunityIntakePin(row.listing_id).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+
+      if (targetCode) {
+        if (expectedPin === targetCode || expectedPin.endsWith(targetCode) || targetCode.endsWith(expectedPin)) return true
+        if (expectedPinListing === targetCode || expectedPinListing.endsWith(targetCode) || targetCode.endsWith(expectedPinListing)) return true
+        if (cleanRowId.endsWith(targetCode) || targetCode.endsWith(cleanRowId.slice(-6))) return true
+        if (cleanListingId.endsWith(targetCode) || targetCode.endsWith(cleanListingId.slice(-6))) return true
+      }
+
+      return false
+    })
+
+    if (!matched) {
+      return {
+        success: false,
+        messageAr: 'لم يتم العثور على كتاب معلق يطابق هذا الرمز أو الباركود في هذا المجتمع.',
+        messageEn: 'No pending book in this community matches this QR code or PIN.',
+      }
+    }
+
+    // Update status to APPROVED
+    const { error: updateErr } = await supabase
+      .from('community_books')
+      .update({
+        status: 'APPROVED',
+        approved_by: params.adminId,
+        approved_at: new Date().toISOString(),
+        admin_note: 'تم الاستلام والاعتماد الفعلي عبر مسح رمز QR',
+      })
+      .eq('id', matched.id)
+
+    if (updateErr) {
+      console.error('[verifyCommunityBookIntakeQr] Update error:', updateErr)
+      return {
+        success: false,
+        messageAr: 'فشل اعتماد الكتاب في قاعدة البيانات.',
+        messageEn: 'Failed to update approval status in database.',
+      }
+    }
+
+    const mappedBook = mapListingToShelfBook(matched)
+    const bookTitle = mappedBook?.title || 'الكتاب'
+
+    return {
+      success: true,
+      messageAr: `تم اعتماد واستلام كتاب "${bookTitle}" بنجاح وإدراجه في رف المجتمع! 📚✅`,
+      messageEn: `Book "${bookTitle}" has been verified and added to the community shelf! 📚✅`,
+      book: mappedBook || undefined,
+    }
+  } catch (err: any) {
+    console.error('[verifyCommunityBookIntakeQr] Exception:', err)
+    return {
+      success: false,
+      messageAr: err?.message || 'حدث خطأ غير متوقع أثناء التحقق',
+      messageEn: err?.message || 'An unexpected error occurred during verification',
+    }
   }
 }
 

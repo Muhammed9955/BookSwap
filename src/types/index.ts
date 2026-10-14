@@ -574,6 +574,7 @@ export interface CommunityShelfBook {
   deposit?: number
   condition?: string
   community_id?: string
+  note?: string
 }
 
 export interface CommunityPost {

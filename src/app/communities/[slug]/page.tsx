@@ -56,7 +56,9 @@ export default async function CommunityPage({ params }: CommunityPageProps) {
   const [posts, books, pendingBooks] = await Promise.all([
     getCommunityPosts(community.id, supabase),
     getCommunityBooks(community.id, supabase),
-    isAdmin ? getPendingCommunityBooks(community.id, supabase) : Promise.resolve([]),
+    user?.id
+      ? getPendingCommunityBooks(community.id, supabase, isAdmin ? undefined : user.id)
+      : Promise.resolve([]),
   ])
 
   return (

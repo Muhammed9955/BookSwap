@@ -68,7 +68,9 @@ import {
   updateCommunityDetails,
   deleteCommunity,
   updateCommunityBookApproval,
+  generateCommunityIntakePin,
 } from '@/lib/communities/community-service'
+import { CommunityIntakeQrModal } from './community-intake-qr-modal'
 import { ImageUploadDropzone } from '@/components/common/image-upload-dropzone'
 import { DEFAULT_EGYPT_CITIES } from './communities-list-client'
 import {
@@ -248,6 +250,14 @@ export function CommunityDetailClient({
   const [addingListingId, setAddingListingId] = useState<string | null>(null)
   const [addBookSuccess, setAddBookSuccess] = useState<string | null>(null)
 
+  // Intake QR Voucher & Scanning Modal state
+  const [intakeQrModal, setIntakeQrModal] = useState<{
+    isOpen: boolean
+    mode: 'VOUCHER' | 'SCAN_AND_VERIFY'
+    book?: any
+    intakePin?: string
+  }>({ isOpen: false, mode: 'VOUCHER' })
+
   // Extended Community Details Edit State (Admin)
   const router = useRouter()
   const [currentComm, setCurrentComm] = useState<Community>(community)
@@ -425,12 +435,12 @@ export function CommunityDetailClient({
         addedBy: currentUserId,
       })
       if (res.success) {
+        const found = userBooks.find(b => b.id === listingId)
         if (res.status === 'APPROVED') {
-          const found = userBooks.find(b => b.id === listingId)
           if (found) {
             setShelfBooks(prev => [
               {
-                id: `comm-book-${Date.now()}`,
+                id: res.communityBookId || `comm-book-${Date.now()}`,
                 listing_id: found.id,
                 listing_type: found.listing_type,
                 title: found.book?.title_ar || found.book?.title || bookTitle,
@@ -450,10 +460,33 @@ export function CommunityDetailClient({
               : `"${bookTitle}" added to community shelf! 📚`
           )
         } else {
+          const pendingItem = {
+            id: res.communityBookId || `pending-${Date.now()}`,
+            listing_id: listingId,
+            title: found?.book?.title_ar || found?.book?.title || bookTitle,
+            author: found?.book?.author,
+            cover_image_url: found?.images?.[0]?.url || found?.book?.cover_image_url,
+            owner_name: lang === 'ar' ? 'أنت' : 'You',
+            owner_id: currentUserId,
+            added_by: currentUserId,
+            price: found?.price,
+            listing_type: found?.listing_type,
+            status: 'PENDING',
+          }
+          setPendingBooks(prev => [pendingItem, ...prev])
+          setShowAddBookModal(false)
+
+          setIntakeQrModal({
+            isOpen: true,
+            mode: 'VOUCHER',
+            book: pendingItem,
+            intakePin: res.intakePin,
+          })
+
           setAddBookSuccess(
             lang === 'ar'
-              ? `تم إرسال "${bookTitle}" بنجاح! سيظهر في الرف فور موافقة مسؤول المجتمع. ⏳`
-              : `"${bookTitle}" submitted! It will appear once approved by the admin. ⏳`
+              ? `تم تقديم "${bookTitle}" بنجاح! احتفظ برمز QR لتسليم الكتاب لمسؤول المجتمع في النقطة. 📦`
+              : `"${bookTitle}" submitted! Present your QR voucher to the admin at the hub. 📦`
           )
         }
       } else {
@@ -479,8 +512,8 @@ export function CommunityDetailClient({
         sellerId: book.owner_id || book.added_by,
       })
       if (ok) {
-        setPendingBooks(prev => prev.filter(b => b.id !== book.id))
-        setShelfBooks(prev => [book, ...prev])
+        setPendingBooks(prev => prev.filter(b => b.id !== book.id && b.listing_id !== book.listing_id))
+        setShelfBooks(prev => [{ ...book, status: 'APPROVED' }, ...prev.filter(b => b.listing_id !== book.listing_id)])
         setApprovalToast(
           lang === 'ar'
             ? `تمت الموافقة على كتاب "${book.title}" وإضافته لرف المجتمع بنجاح! ✅`
@@ -506,7 +539,7 @@ export function CommunityDetailClient({
         sellerId: book.owner_id || book.added_by,
       })
       if (ok) {
-        setPendingBooks(prev => prev.filter(b => b.id !== book.id))
+        setPendingBooks(prev => prev.filter(b => b.id !== book.id && b.listing_id !== book.listing_id))
         setApprovalToast(
           lang === 'ar'
             ? `تم رفض إضافة كتاب "${book.title}".`
@@ -848,6 +881,11 @@ export function CommunityDetailClient({
     }
     return true
   })
+
+  const myPendingBooks = useMemo(() => {
+    if (!currentUserId) return []
+    return pendingBooks.filter(b => b.added_by === currentUserId || b.owner_id === currentUserId)
+  }, [pendingBooks, currentUserId])
 
   return (
     <MainLayout>
@@ -1230,6 +1268,55 @@ export function CommunityDetailClient({
                 </div>
               </div>
             </div>
+
+            {/* Submitter's Pending Drop-off Books Banner */}
+            {myPendingBooks.length > 0 && (
+              <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-2 border-emerald-500/30 shadow-xs space-y-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-600 border border-emerald-500/30">
+                      <QrCode className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-black text-foreground">
+                        {lang === 'ar'
+                          ? `لديك ${myPendingBooks.length} كتب بانتظار التسليم الفعلي لمسؤول المجتمع 📦`
+                          : `You have ${myPendingBooks.length} book(s) awaiting physical drop-off 📦`}
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        {lang === 'ar'
+                          ? `توجه إلى "${currentComm.hub_name || 'نقطة المجتمع'}" وأظهر رمز الـ QR لمسؤول المجتمع لاعتماد الكتاب فوراً وإدراجه على الرف`
+                          : `Visit "${currentComm.hub_name || 'Community Hub'}" and present your QR code to the admin.`}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1">
+                  {myPendingBooks.map(pb => (
+                    <Button
+                      key={pb.id}
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setIntakeQrModal({
+                          isOpen: true,
+                          mode: 'VOUCHER',
+                          book: pb,
+                        })
+                      }
+                      className="text-xs font-bold rounded-2xl border-emerald-500/40 hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 gap-2 shrink-0 py-4 px-3.5 cursor-pointer shadow-xs"
+                    >
+                      <QrCode className="h-4 w-4 text-emerald-600" />
+                      <span className="truncate max-w-[150px] font-black">{pb.title}</span>
+                      <span className="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded-lg font-mono font-bold">
+                        {lang === 'ar' ? 'عرض رمز QR' : 'View QR'}
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Bookshelf Grid, List or Empty State */}
             {shelfBooks.length === 0 ? (
@@ -1854,16 +1941,30 @@ export function CommunityDetailClient({
 
             {/* Section 0: Community Books Approvals */}
             <div className="rounded-3xl border-2 border-border/80 bg-card p-6 sm:p-8 space-y-6 shadow-xs">
-              <div className="flex items-center justify-between border-b border-border/60 pb-4">
+              <div className="flex items-center justify-between border-b border-border/60 pb-4 flex-wrap gap-3">
                 <div className="flex items-center gap-2">
                   <BookMarked className="h-5 w-5 text-emerald-600" />
                   <h3 className="text-base sm:text-lg font-black text-foreground">
                     {lang === 'ar' ? 'الكتب المقدمة بانتظار الاعتماد لرف المجتمع' : 'Books Awaiting Shelf Approval'}
                   </h3>
+                  <Badge variant={pendingBooks.length > 0 ? 'warning' : 'outline'} className="font-bold text-xs ms-1">
+                    {pendingBooks.length} {lang === 'ar' ? 'كتاب معلق' : 'pending'}
+                  </Badge>
                 </div>
-                <Badge variant={pendingBooks.length > 0 ? 'warning' : 'outline'} className="font-bold text-xs">
-                  {pendingBooks.length} {lang === 'ar' ? 'كتاب معلق' : 'pending'}
-                </Badge>
+
+                {/* Scan QR Button */}
+                <Button
+                  onClick={() =>
+                    setIntakeQrModal({
+                      isOpen: true,
+                      mode: 'SCAN_AND_VERIFY',
+                    })
+                  }
+                  className="rounded-2xl font-black text-xs bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-600/20 gap-2 px-4 py-2.5 cursor-pointer"
+                >
+                  <QrCode className="h-4 w-4" />
+                  <span>{lang === 'ar' ? 'مسح رمز QR لاعتماد واستلام كتاب 📷' : 'Scan QR to Accept Book 📷'}</span>
+                </Button>
               </div>
 
               {pendingBooks.length === 0 ? (
@@ -1877,7 +1978,7 @@ export function CommunityDetailClient({
                   {pendingBooks.map((book: any) => (
                     <div
                       key={book.id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-muted/30 border border-border/60 hover:border-primary/30 transition-all"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-muted/30 border border-border/60 hover:border-emerald-500/30 transition-all"
                     >
                       <div className="flex items-start sm:items-center gap-3.5 min-w-0 flex-1">
                         <div className="relative h-16 w-12 rounded-xl overflow-hidden bg-muted border border-border/60 shrink-0">
@@ -1893,6 +1994,9 @@ export function CommunityDetailClient({
                             <Badge variant="outline" className="text-[10px] font-bold">
                               {book.listing_type || book.type}
                             </Badge>
+                            <Badge variant="secondary" className="font-mono text-[10px] bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 font-bold">
+                              {generateCommunityIntakePin(book.id)}
+                            </Badge>
                           </div>
                           <p className="text-xs text-muted-foreground truncate">{book.author}</p>
                           <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -1907,7 +2011,22 @@ export function CommunityDetailClient({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
+                      <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50 flex-wrap">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            setIntakeQrModal({
+                              isOpen: true,
+                              mode: 'VOUCHER',
+                              book,
+                            })
+                          }
+                          className="text-xs font-bold rounded-xl border-border/80 text-muted-foreground hover:text-foreground cursor-pointer gap-1"
+                        >
+                          <QrCode className="h-3.5 w-3.5" />
+                          <span>{lang === 'ar' ? 'عرض الرمز' : 'View QR'}</span>
+                        </Button>
                         <Button
                           size="sm"
                           variant="ghost"
@@ -3165,6 +3284,30 @@ export function CommunityDetailClient({
           </div>
         </div>
       )}
+
+      {/* Community Book Intake QR & Scanner Modal */}
+      <CommunityIntakeQrModal
+        isOpen={intakeQrModal.isOpen}
+        onClose={() => setIntakeQrModal(prev => ({ ...prev, isOpen: false }))}
+        mode={intakeQrModal.mode}
+        communityId={community.id}
+        communityName={commName}
+        communityHubName={currentComm.hub_name || community.hub_name}
+        currentUserId={currentUserId || undefined}
+        book={intakeQrModal.book}
+        intakePin={intakeQrModal.intakePin}
+        pendingBooks={pendingBooks}
+        onVerifiedSuccess={(approvedBook) => {
+          setPendingBooks(prev => prev.filter(b => b.id !== approvedBook.id && b.listing_id !== approvedBook.listing_id))
+          setShelfBooks(prev => [approvedBook, ...prev.filter(b => b.listing_id !== approvedBook.listing_id)])
+          setApprovalToast(
+            lang === 'ar'
+              ? `تم اعتماد واستلام كتاب "${approvedBook.title}" بنجاح وإدراجه في رف المجتمع! 📚✅`
+              : `Book "${approvedBook.title}" approved and added to shelf! 📚✅`
+          )
+          setTimeout(() => setApprovalToast(null), 4500)
+        }}
+      />
     </MainLayout>
   )
 }
