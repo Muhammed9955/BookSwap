@@ -8,8 +8,10 @@ import {
   Heart, Share2, Flag, MapPin, Star, Shield, ArrowRightLeft,
   ShoppingBag, MessageCircle, Check, ChevronLeft, Clock, Eye, Users,
   ShieldCheck, Calendar, AlertCircle, Edit3, Tag, Sparkles, CheckCircle2,
-  Lock, PlusCircle, ExternalLink, Copy, AlertTriangle, ArrowRight, BookOpen, RefreshCw, Search
+  Lock, PlusCircle, ExternalLink, Copy, AlertTriangle, ArrowRight, BookOpen, RefreshCw, Search,
+  Trash2, Loader2
 } from 'lucide-react'
+import { deleteBookListing } from '@/lib/books/listing-actions'
 import { BookListing, Profile } from '@/types'
 import { BookCard } from '@/components/books/book-card'
 import { MainLayout } from '@/components/layout/main-layout'
@@ -111,6 +113,9 @@ export function BookDetailClient({
   const [actionError, setActionError] = useState<string | null>(null)
   const [modalValidationError, setModalValidationError] = useState<string | null>(null)
   const [currentExistingRequest, setCurrentExistingRequest] = useState<ExistingRequestInfo | null>(initialExistingRequest)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   // Shared meetup proposal — same picker for Buy, Borrow, and Swap
   const defaultMeetup: MeetupProposal = { preferred_delivery: 'MEETUP' }
@@ -509,6 +514,22 @@ export function BookDetailClient({
     router.refresh()
   }
 
+  const handleDeleteListing = async () => {
+    setIsDeleting(true)
+    setDeleteError(null)
+    try {
+      await deleteBookListing(listing.id)
+      setShowDeleteModal(false)
+      router.push('/profile?tab=books')
+      router.refresh()
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : (lang === 'ar' ? 'فشل حذف الكتاب، يرجى المحاولة مرة أخرى.' : 'Failed to delete listing, please try again.')
+      setDeleteError(msg)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   const handleSendOffer = async () => {
     if (!user) { setShowAuthModal(true); return }
     const numOffer = Number(offerAmount)
@@ -831,6 +852,17 @@ export function BookDetailClient({
                   </Link>
                 </div>
 
+                {/* Remove from My List Button */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowDeleteModal(true)}
+                  className="w-full gap-2 font-bold text-xs rounded-xl py-4 border-red-500/30 text-red-600 hover:text-red-700 hover:bg-red-500/10 cursor-pointer transition-colors"
+                >
+                  <Trash2 className="h-4 w-4 text-red-500" />
+                  {lang === 'ar' ? 'حذف الكتاب من قائمتي' : 'Remove Book from My List'}
+                </Button>
+
                 {/* Developer / Testing quick simulate block */}
                 <div className="mt-3 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-primary/10 to-emerald-500/5 border-2 border-emerald-500/30 space-y-2.5">
                   <div className="flex items-center justify-between">
@@ -928,6 +960,28 @@ export function BookDetailClient({
                     )}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Admin / Moderator Listing Control */}
+            {!isSeller && isAdminOrMod && (
+              <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-amber-600" />
+                  <span className="text-xs font-bold text-foreground">
+                    {lang === 'ar' ? 'صلاحيات المشرف / الإدارة' : 'Moderator / Admin Controls'}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDeleteModal(true)}
+                  className="border-red-500/30 text-red-600 hover:bg-red-500/10 text-xs font-bold gap-1.5 cursor-pointer"
+                >
+                  <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                  {lang === 'ar' ? 'حذف الإعلان' : 'Delete Listing'}
+                </Button>
               </div>
             )}
 
@@ -1841,6 +1895,100 @@ export function BookDetailClient({
                 >
                   {lang === 'ar' ? 'إلغاء' : 'Cancel'}
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-card border border-border w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-red-500/10 text-red-600 flex items-center justify-center flex-shrink-0">
+                  <Trash2 className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-foreground">
+                    {lang === 'ar' ? 'حذف الكتاب من قائمتك' : 'Remove Book from Your List'}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {lang === 'ar' ? 'هذا الإجراء سيقوم بإزالة هذا الإعلان نهائياً' : 'This action will permanently remove this listing'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-muted/60 border border-border/60 flex items-center gap-3">
+                {primaryImage && (
+                  <div className="relative w-12 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                    <Image
+                      src={primaryImage}
+                      alt={book?.title ?? ''}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-xs font-black line-clamp-1 text-foreground">
+                    {lang === 'ar' && book?.title_ar ? book.title_ar : book?.title}
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                    {lang === 'ar' && book?.author_ar ? book.author_ar : book?.author}
+                  </p>
+                  <Badge variant="outline" className="mt-1 text-[10px] font-bold">
+                    {listing.listing_type}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <span>
+                  {lang === 'ar'
+                    ? 'تنبيه: لن يظهر الكتاب للآخرين في المتجر أو البحث، ولن يتمكن القراء من إرسال طلبات جديدة له.'
+                    : 'Warning: This book will disappear from search and explore, and readers will no longer be able to send requests for it.'}
+                </span>
+              </div>
+
+              {deleteError && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 text-xs flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                  <span>{deleteError}</span>
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isDeleting}
+                  onClick={() => {
+                    setShowDeleteModal(false)
+                    setDeleteError(null)
+                  }}
+                  className="flex-1 rounded-xl py-5 font-bold text-xs cursor-pointer"
+                >
+                  {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                </Button>
+                <Button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={handleDeleteListing}
+                  className="flex-1 rounded-xl py-5 font-black text-xs bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/20 cursor-pointer"
+                >
+                  {isDeleting ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {lang === 'ar' ? 'جاري الحذف...' : 'Removing...'}
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Trash2 className="h-4 w-4" />
+                      {lang === 'ar' ? 'نعم، احذف الكتاب' : 'Yes, Remove Book'}
+                    </span>
+                  )}
+                </Button>
               </div>
             </div>
           </div>

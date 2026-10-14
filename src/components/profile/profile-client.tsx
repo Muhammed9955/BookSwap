@@ -6,8 +6,9 @@ import Link from 'next/link'
 import {
   MapPin, Star, Shield, BookOpen, ArrowRightLeft, Gift, MessageCircle,
   UserPlus, UserMinus, Settings, Clock, CheckCircle2, XCircle, ShoppingBag,
-  ExternalLink, Calendar, ShieldCheck, Sparkles
+  ExternalLink, Calendar, ShieldCheck, Sparkles, Trash2, Edit3, AlertTriangle, Loader2
 } from 'lucide-react'
+import { deleteBookListing } from '@/lib/books/listing-actions'
 import { BookCard } from '@/components/books/book-card'
 import { MainLayout } from '@/components/layout/main-layout'
 import { Button } from '@/components/ui/button'
@@ -70,6 +71,30 @@ export function ProfileClient({
         follower_id: currentUserId,
         following_id: profile.id,
       })
+    }
+  }
+
+  const [userListings, setUserListings] = useState<BookListing[]>(listings)
+  const [listingToDelete, setListingToDelete] = useState<BookListing | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleDeleteListing = async () => {
+    if (!listingToDelete) return
+    setIsDeleting(true)
+    try {
+      await deleteBookListing(listingToDelete.id)
+      setUserListings(prev => prev.filter(l => l.id !== listingToDelete.id))
+      showFeedback(
+        lang === 'ar'
+          ? 'تمت إزالة الكتاب من قائمتك بنجاح 🗑️'
+          : 'Book removed from your list successfully 🗑️'
+      )
+      setListingToDelete(null)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : (lang === 'ar' ? 'فشل حذف الكتاب، يرجى المحاولة لاحقاً' : 'Failed to delete book')
+      showFeedback(msg, 'error')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -389,7 +414,7 @@ export function ProfileClient({
               )}
             >
               <span>{lang === 'ar' ? TabLabels[tab].ar : TabLabels[tab].en}</span>
-              {tab === 'books' && ` (${listings.length})`}
+              {tab === 'books' && ` (${userListings.length})`}
               {tab === 'requests' && (
                 <span className={cn(
                   'px-1.5 py-0.5 rounded-full text-[10px] font-black',
@@ -405,9 +430,38 @@ export function ProfileClient({
 
         {/* Books Tab */}
         {activeTab === 'books' && (
-          listings.length > 0 ? (
+          userListings.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-              {listings.map(listing => <BookCard key={listing.id} listing={listing} />)}
+              {userListings.map(listing => (
+                <div key={listing.id} className="relative group flex flex-col">
+                  <BookCard listing={listing} />
+                  {isOwnProfile && (
+                    <div className="mt-2 flex items-center gap-1.5 px-0.5">
+                      <Link href={`/books/${listing.id}/edit`} className="flex-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full h-8 text-[11px] font-bold rounded-lg border-primary/30 text-primary hover:bg-primary/10 gap-1 px-2 cursor-pointer"
+                        >
+                          <Edit3 className="h-3 w-3" />
+                          <span>{lang === 'ar' ? 'تعديل' : 'Edit'}</span>
+                        </Button>
+                      </Link>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setListingToDelete(listing)}
+                        className="h-8 px-2.5 text-[11px] font-bold rounded-lg border-red-500/30 text-red-600 hover:text-red-700 hover:bg-red-500/10 gap-1 cursor-pointer"
+                        title={lang === 'ar' ? 'حذف من قائمتي' : 'Remove from my list'}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                        <span className="hidden sm:inline">{lang === 'ar' ? 'حذف' : 'Delete'}</span>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           ) : (
             <div className="empty-state">
@@ -911,6 +965,90 @@ export function ProfileClient({
               <div>
                 <p className="text-muted-foreground text-xs">{lang === 'ar' ? 'معدل الاستجابة' : 'Response rate'}</p>
                 <p className="font-medium">{profile.response_rate > 0 ? `${profile.response_rate}%` : (lang === 'ar' ? 'غير متاح' : 'N/A')}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Book Confirmation Modal */}
+        {listingToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-card border border-border w-full max-w-md rounded-3xl p-6 shadow-2xl space-y-5 animate-in zoom-in-95">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-red-500/10 text-red-600 flex items-center justify-center flex-shrink-0">
+                  <Trash2 className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-foreground">
+                    {lang === 'ar' ? 'حذف الكتاب من قائمتك' : 'Remove Book from Your List'}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {lang === 'ar' ? 'هل أنت متأكد من حذف هذا الكتاب من رفوفك؟' : 'Are you sure you want to remove this book from your shelf?'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-muted/60 border border-border/60 flex items-center gap-3">
+                {(listingToDelete.images?.[0]?.url || listingToDelete.book?.cover_image_url) && (
+                  <div className="relative w-12 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                    <Image
+                      src={listingToDelete.images?.[0]?.url || listingToDelete.book?.cover_image_url || ''}
+                      alt={listingToDelete.book?.title ?? ''}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-xs font-black line-clamp-1 text-foreground">
+                    {lang === 'ar' && listingToDelete.book?.title_ar ? listingToDelete.book.title_ar : listingToDelete.book?.title}
+                  </h4>
+                  <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                    {lang === 'ar' && listingToDelete.book?.author_ar ? listingToDelete.book.author_ar : listingToDelete.book?.author}
+                  </p>
+                  <Badge variant="outline" className="mt-1 text-[10px] font-bold">
+                    {listingToDelete.listing_type}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <span>
+                  {lang === 'ar'
+                    ? 'تنبيه: لن يظهر الكتاب للآخرين في المتجر أو البحث، وسيتم إلغاء أي طلبات جديدة عليه.'
+                    : 'Warning: This book will disappear from search and explore, and readers will no longer be able to send requests for it.'}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isDeleting}
+                  onClick={() => setListingToDelete(null)}
+                  className="flex-1 rounded-xl py-5 font-bold text-xs cursor-pointer"
+                >
+                  {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                </Button>
+                <Button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={handleDeleteListing}
+                  className="flex-1 rounded-xl py-5 font-black text-xs bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/20 cursor-pointer"
+                >
+                  {isDeleting ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {lang === 'ar' ? 'جاري الحذف...' : 'Removing...'}
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <Trash2 className="h-4 w-4" />
+                      {lang === 'ar' ? 'نعم، احذف الكتاب' : 'Yes, Remove Book'}
+                    </span>
+                  )}
+                </Button>
               </div>
             </div>
           </div>
