@@ -502,7 +502,7 @@ export function HomePageClient({
                 <Link href="/books/add">
                   <Button
                     size="lg"
-                    className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black shadow-xl shadow-amber-400/25 px-6 py-6 rounded-2xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-sm flex items-center gap-2"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-xl shadow-primary/30 px-6 py-6 rounded-2xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-sm flex items-center gap-2 border border-white/20"
                   >
                     <PlusCircle className="h-5 w-5" />
                     <span>{lang === 'ar' ? 'أضف كتابك مجاناً' : 'Add Your Book Free'}</span>
@@ -1420,7 +1420,7 @@ export function HomePageClient({
               <Link href="/books/add">
                 <Button
                   size="lg"
-                  className="bg-amber-400 hover:bg-amber-300 text-slate-950 font-black shadow-xl shadow-amber-400/30 px-8 py-6 rounded-2xl text-sm cursor-pointer hover:scale-105 active:scale-95 transition-all"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-xl shadow-primary/30 px-8 py-6 rounded-2xl text-sm cursor-pointer hover:scale-105 active:scale-95 transition-all border border-white/20"
                 >
                   <PlusCircle className="h-5 w-5 me-2" />
                   <span>{lang === 'ar' ? 'أضف أول كتاب الآن' : 'List Your First Book Now'}</span>

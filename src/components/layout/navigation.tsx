@@ -497,7 +497,7 @@ export function TopNav({
                 {/* Add Book Button — Desktop CTA (Guaranteed no wrap with whitespace-nowrap and shrink-0) */}
                 <Link
                   href="/books/add"
-                  className="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/95 hover:to-indigo-500 text-white text-xs font-black shadow-md shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap shrink-0"
+                  className="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-black shadow-xs hover:scale-105 active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0"
                 >
                   <PlusCircle className="h-4 w-4 shrink-0" />
                   <span className="whitespace-nowrap font-black">{t('nav_add', lang)}</span>
@@ -706,7 +706,7 @@ export function TopNav({
                 </Link>
                 <Link
                   href="/register"
-                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-indigo-600 text-white text-xs font-black hover:brightness-105 active:scale-[0.98] transition-all shadow-sm cursor-pointer"
+                  className="px-4 py-2 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-black active:scale-[0.98] transition-all shadow-xs cursor-pointer"
                 >
                   {t('nav_register', lang)}
                 </Link>
