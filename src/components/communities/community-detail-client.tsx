@@ -69,6 +69,7 @@ import {
   deleteCommunity,
   updateCommunityBookApproval,
   generateCommunityIntakePin,
+  removeBookFromCommunityShelf,
 } from '@/lib/communities/community-service'
 import { CommunityIntakeQrModal } from './community-intake-qr-modal'
 import { ImageUploadDropzone } from '@/components/common/image-upload-dropzone'
@@ -257,6 +258,11 @@ export function CommunityDetailClient({
     book?: any
     intakePin?: string
   }>({ isOpen: false, mode: 'VOUCHER' })
+
+  // Remove Book from Shelf state
+  const [bookToRemove, setBookToRemove] = useState<any | null>(null)
+  const [removingBookId, setRemovingBookId] = useState<string | null>(null)
+  const [adminShelfSearch, setAdminShelfSearch] = useState('')
 
   // Extended Community Details Edit State (Admin)
   const router = useRouter()
@@ -549,6 +555,37 @@ export function CommunityDetailClient({
       }
     } finally {
       setBookApprovalLoading(null)
+    }
+  }
+
+  // Remove Book from Community Shelf Handler (Admin or Owner)
+  const handleConfirmRemoveBook = async () => {
+    if (!bookToRemove || !currentUserId) return
+    const targetKey = bookToRemove.id || bookToRemove.listing_id
+    setRemovingBookId(targetKey)
+    try {
+      const res = await removeBookFromCommunityShelf({
+        communityId: community.id,
+        communityBookId: bookToRemove.id,
+        listingId: bookToRemove.listing_id,
+        userId: currentUserId,
+      })
+      if (res.success) {
+        setShelfBooks(prev =>
+          prev.filter(b => b.id !== bookToRemove.id && b.listing_id !== bookToRemove.listing_id)
+        )
+        setApprovalToast(
+          lang === 'ar'
+            ? `تمت إزالة كتاب "${bookToRemove.title}" من رف المجتمع بنجاح.`
+            : `"${bookToRemove.title}" removed from community shelf.`
+        )
+        setTimeout(() => setApprovalToast(null), 4000)
+        setBookToRemove(null)
+      } else {
+        alert(res.error || (lang === 'ar' ? 'فشل إزالة الكتاب من الرف' : 'Failed to remove book'))
+      }
+    } finally {
+      setRemovingBookId(null)
     }
   }
 
@@ -1531,6 +1568,20 @@ export function CommunityDetailClient({
                                 </Button>
                               </Link>
                             )}
+                            {(isAdmin || isMyBook) && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setBookToRemove(book)
+                                }}
+                                className="rounded-xl font-bold text-xs h-9 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer shrink-0"
+                                title={lang === 'ar' ? 'إزالة من رف المجتمع' : 'Remove from shelf'}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
@@ -1554,6 +1605,20 @@ export function CommunityDetailClient({
                               <ArrowRightLeft className="h-4 w-4 shrink-0" />
                               <span className="truncate">{lang === 'ar' ? 'طلب استلام من الفرع' : 'Request & Pickup'}</span>
                             </Button>
+                            {isAdmin && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setBookToRemove(book)
+                                }}
+                                className="rounded-xl font-bold text-xs h-10 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 cursor-pointer shrink-0"
+                                title={lang === 'ar' ? 'إزالة الكتاب من رف المجتمع' : 'Remove book from community shelf'}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1644,7 +1709,7 @@ export function CommunityDetailClient({
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             {book.listing_id && (
                               <Link href={`/books/${book.listing_id}`}>
                                 <Button size="sm" variant="outline" className="rounded-xl font-bold text-xs h-10 px-4 cursor-pointer gap-1.5">
@@ -1661,6 +1726,18 @@ export function CommunityDetailClient({
                               >
                                 <ArrowRightLeft className="h-4 w-4" />
                                 <span>{lang === 'ar' ? 'طلب استلام من الفرع' : 'Request & Pickup'}</span>
+                              </Button>
+                            )}
+                            {(isAdmin || isMyBook) && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setBookToRemove(book)}
+                                className="rounded-xl font-bold text-xs h-10 px-3 cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 gap-1.5 transition-colors"
+                                title={lang === 'ar' ? 'إزالة من رف المجتمع' : 'Remove from shelf'}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span>{lang === 'ar' ? 'إزالة من الرف' : 'Remove'}</span>
                               </Button>
                             )}
                           </div>
@@ -2049,6 +2126,114 @@ export function CommunityDetailClient({
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+
+            {/* Section 0.5: Manage Active Live Books on Community Shelf */}
+            <div className="rounded-3xl border-2 border-border/80 bg-card p-6 sm:p-8 space-y-6 shadow-xs">
+              <div className="flex items-center justify-between border-b border-border/60 pb-4 flex-wrap gap-3">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-primary" />
+                  <h3 className="text-base sm:text-lg font-black text-foreground">
+                    {lang === 'ar' ? 'الكتب المعروضة حالياً على رف المجتمع' : 'Current Books on Community Shelf'}
+                  </h3>
+                  <Badge variant="outline" className="font-bold text-xs ms-1">
+                    {shelfBooks.length} {lang === 'ar' ? 'كتاب معروض' : 'live books'}
+                  </Badge>
+                </div>
+
+                {/* Quick Shelf Search */}
+                {shelfBooks.length > 0 && (
+                  <div className="relative w-full sm:w-64">
+                    <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <input
+                      type="text"
+                      placeholder={lang === 'ar' ? 'بحث في كتب الرف...' : 'Search shelf books...'}
+                      value={adminShelfSearch}
+                      onChange={e => setAdminShelfSearch(e.target.value)}
+                      className="w-full ps-8 pe-3 py-1.5 rounded-xl border border-border bg-background text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {shelfBooks.length === 0 ? (
+                <div className="text-center py-8 rounded-2xl border border-dashed text-xs text-muted-foreground bg-muted/20">
+                  {lang === 'ar'
+                    ? 'لا توجد كتب معروضة حالياً على رف هذا المجتمع.'
+                    : 'No books currently on this community shelf.'}
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-96 overflow-y-auto pe-1">
+                  {shelfBooks
+                    .filter(b => {
+                      if (!adminShelfSearch.trim()) return true
+                      const q = adminShelfSearch.toLowerCase().trim()
+                      return (
+                        (b.title || '').toLowerCase().includes(q) ||
+                        (b.author || '').toLowerCase().includes(q) ||
+                        (b.owner_name || '').toLowerCase().includes(q)
+                      )
+                    })
+                    .map((book: any) => (
+                      <div
+                        key={book.id || book.listing_id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-muted/20 border border-border/60 hover:border-primary/30 transition-all"
+                      >
+                        <div className="flex items-start sm:items-center gap-3.5 min-w-0 flex-1">
+                          <div className="relative h-14 w-10 rounded-xl overflow-hidden bg-muted border border-border/60 shrink-0">
+                            {book.cover_image_url ? (
+                              <Image src={book.cover_image_url} alt="" fill className="object-cover" />
+                            ) : (
+                              <div className="h-full w-full flex items-center justify-center text-xs">📖</div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="text-sm font-black text-foreground truncate">{book.title}</h4>
+                              <Badge variant="outline" className="text-[10px] font-bold">
+                                {book.listing_type || book.type}
+                              </Badge>
+                              <Badge variant="secondary" className="text-[10px] font-bold text-emerald-600 bg-emerald-500/10 border-emerald-500/20">
+                                {lang === 'ar' ? 'معتمد على الرف ✅' : 'Live on Shelf ✅'}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">{book.author}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                              {lang === 'ar' ? 'المودع / المالك:' : 'Owner:'}{' '}
+                              <span className="font-bold text-foreground">{book.owner_name || 'عضو بالمجتمع'}</span>
+                              {book.price && ` • ${book.price} ج.م`}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
+                          {book.listing_id && (
+                            <Link href={`/books/${book.listing_id}`}>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs font-bold rounded-xl border-border/80 text-muted-foreground hover:text-foreground cursor-pointer h-9 px-3"
+                              >
+                                <Eye className="h-3.5 w-3.5 me-1" />
+                                <span>{lang === 'ar' ? 'عرض' : 'View'}</span>
+                              </Button>
+                            </Link>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setBookToRemove(book)}
+                            disabled={removingBookId === (book.id || book.listing_id)}
+                            className="text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl cursor-pointer h-9 px-3 gap-1"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span>{lang === 'ar' ? 'إزالة من الرف' : 'Remove from Shelf'}</span>
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                 </div>
               )}
             </div>
@@ -3280,6 +3465,68 @@ export function CommunityDetailClient({
                   </Button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Remove Book from Shelf Confirmation Modal */}
+      {bookToRemove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-md rounded-3xl bg-card border-2 border-border shadow-2xl overflow-hidden p-6 space-y-5 text-foreground text-center animate-in zoom-in-95">
+            <div className="w-14 h-14 mx-auto rounded-full bg-red-500/10 border-2 border-red-500/20 flex items-center justify-center text-red-600">
+              <Trash2 className="h-7 w-7" />
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-base font-black text-foreground">
+                {lang === 'ar' ? 'إزالة الكتاب من رف المجتمع' : 'Remove Book from Shelf'}
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {lang === 'ar'
+                  ? `هل أنت متأكد من رغبتك في إزالة كتاب "${bookToRemove.title}" من رف المجتمع؟ لن يظهر لباقي الأعضاء بعد الآن.`
+                  : `Are you sure you want to remove "${bookToRemove.title}" from the community shelf? It will no longer be visible to members.`}
+              </p>
+            </div>
+
+            {/* Book Preview */}
+            <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-muted/40 border border-border/70 text-start">
+              <div className="relative h-14 w-10 rounded-xl overflow-hidden bg-muted border border-border/60 shrink-0">
+                {bookToRemove.cover_image_url ? (
+                  <Image src={bookToRemove.cover_image_url} alt="" fill className="object-cover" />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center text-xs">📖</div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h4 className="text-xs font-black text-foreground truncate">{bookToRemove.title}</h4>
+                <p className="text-[11px] text-muted-foreground truncate">{bookToRemove.author}</p>
+                {bookToRemove.owner_name && (
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {lang === 'ar' ? 'المالك:' : 'Owner:'} {bookToRemove.owner_name}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <Button
+                variant="outline"
+                disabled={Boolean(removingBookId)}
+                onClick={() => setBookToRemove(null)}
+                className="flex-1 rounded-2xl font-bold text-xs py-5 cursor-pointer"
+              >
+                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+              </Button>
+              <Button
+                disabled={Boolean(removingBookId)}
+                loading={Boolean(removingBookId)}
+                onClick={handleConfirmRemoveBook}
+                className="flex-1 rounded-2xl font-black text-xs py-5 bg-red-600 hover:bg-red-700 text-white cursor-pointer shadow-md shadow-red-600/20"
+              >
+                <Trash2 className="h-4 w-4 me-1.5" />
+                <span>{lang === 'ar' ? 'تأكيد الإزالة' : 'Confirm Remove'}</span>
+              </Button>
             </div>
           </div>
         </div>

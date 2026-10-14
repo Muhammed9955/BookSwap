@@ -715,6 +715,16 @@ export async function addBookToCommunity(params: {
 }> {
   const supabase = createClient()
   try {
+    if (isDemoCommunityId(params.communityId)) {
+      const demoId = `cb-${Date.now()}`
+      return {
+        success: true,
+        status: 'PENDING',
+        communityBookId: demoId,
+        intakePin: generateCommunityIntakePin(demoId),
+      }
+    }
+
     // Check if submitter is the community admin or if community does not require approval
     const { data: comm } = await supabase
       .from('communities')
@@ -933,6 +943,55 @@ export async function updateCommunityBookApproval(params: {
 }
 
 /**
+ * Remove a book from the community shelf (by admin or the book owner)
+ */
+export async function removeBookFromCommunityShelf(params: {
+  communityId: string
+  communityBookId?: string
+  listingId?: string
+  userId?: string
+}): Promise<{ success: boolean; error?: string }> {
+  if (isDemoCommunityId(params.communityId)) {
+    return { success: true }
+  }
+
+  const supabase = createClient()
+  try {
+    let query = supabase.from('community_books').delete().eq('community_id', params.communityId)
+
+    if (params.communityBookId && !params.communityBookId.startsWith('comm-book-') && !params.communityBookId.startsWith('temp-')) {
+      query = query.eq('id', params.communityBookId)
+    } else if (params.listingId) {
+      query = query.eq('listing_id', params.listingId)
+    } else if (params.communityBookId) {
+      query = query.eq('id', params.communityBookId)
+    } else {
+      return { success: false, error: 'No book identifier provided' }
+    }
+
+    const { error } = await query
+    if (error) {
+      // Fallback by listingId if community_books id failed
+      if (params.listingId) {
+        const { error: fbErr } = await supabase
+          .from('community_books')
+          .delete()
+          .eq('community_id', params.communityId)
+          .eq('listing_id', params.listingId)
+        if (fbErr) throw fbErr
+      } else {
+        throw error
+      }
+    }
+
+    return { success: true }
+  } catch (err: any) {
+    console.error('[removeBookFromCommunityShelf] error:', err)
+    return { success: false, error: err?.message || 'Failed to remove book from shelf' }
+  }
+}
+
+/**
  * Verify and approve a community book intake using QR payload or manual PIN code
  */
 export async function verifyCommunityBookIntakeQr(params: {
@@ -969,6 +1028,27 @@ export async function verifyCommunityBookIntakeQr(params: {
         success: false,
         messageAr: 'رمز QR هذا ينتمي إلى مجتمع قراءة آخر!',
         messageEn: 'This QR code belongs to a different reading community!',
+      }
+    }
+
+    if (isDemoCommunityId(params.communityId)) {
+      const demoTitle = parsedPayload?.title || 'كتاب رف المجتمع'
+      const demoId = parsedPayload?.communityBookId || `cb-${Date.now()}`
+      return {
+        success: true,
+        messageAr: `تم اعتماد واستلام كتاب "${demoTitle}" بنجاح وإدراجه في رف المجتمع! 📚✅`,
+        messageEn: `Book "${demoTitle}" has been verified and added to the community shelf! 📚✅`,
+        book: {
+          id: demoId,
+          listing_id: parsedPayload?.listingId || demoId,
+          listing_type: 'SWAP',
+          title: demoTitle,
+          author: 'كاتب',
+          cover_image_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
+          owner_name: 'عضو بالمجتمع',
+          status: 'APPROVED',
+          community_id: params.communityId,
+        },
       }
     }
 
