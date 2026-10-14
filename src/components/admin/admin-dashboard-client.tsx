@@ -15,6 +15,7 @@ import { useLanguage } from '@/i18n/language-context'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatRelativeTime } from '@/lib/utils'
 import { updateCommunityDetails, deleteCommunity } from '@/lib/communities/community-service'
+import { WaraqLogo } from '@/components/ui/waraq-logo'
 
 interface AdminDashboardClientProps {
   stats: DashboardStats
@@ -214,11 +215,8 @@ export function AdminDashboardClient({
       <aside className="w-64 flex-shrink-0 border-r bg-card hidden md:flex flex-col">
         <div className="p-5 border-b">
           <Link href="/" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center text-sm">📚</div>
-            <div>
-              <p className="font-bold text-sm">BookSwap</p>
-              <p className="text-[10px] text-muted-foreground">Admin Dashboard</p>
-            </div>
+            <WaraqLogo size="sm" showText={true} />
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-muted px-1.5 py-0.5 rounded">Admin</span>
           </Link>
         </div>
         <nav className="p-3 flex-1">

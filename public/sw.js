@@ -1,9 +1,10 @@
-// BookSwap Egypt — Lightweight Service Worker for PWA
-const CACHE_NAME = 'bookswap-cache-v1'
+// WARAQ — Lightweight Service Worker for PWA
+const CACHE_NAME = 'waraq-cache-v1'
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
   '/favicon.ico',
+  '/images/logo.png',
 ]
 
 self.addEventListener('install', (event) => {

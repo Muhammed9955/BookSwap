@@ -7,9 +7,9 @@ import { Search, Sparkles, BookCheck, Bell, PlusCircle } from 'lucide-react'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'محرك بحث الكتب والـ ISBN — هل كتابك متوفر في مصر؟ | BookSwap',
+  title: 'محرك بحث الكتب والـ ISBN — هل كتابك متوفر في مصر؟ | WARAQ | ورق',
   description:
-    'ابحث عن أي كتاب بالاسم أو المؤلف أو رقم الـ ISBN، وتأكد فوراً هل هو متوفر للبيع أو المبادلة على بدّلها، أو اطلبه ليصلك إشعار فور توفره.',
+    'ابحث عن أي كتاب بالاسم أو المؤلف أو رقم الـ ISBN، وتأكد فوراً هل هو متوفر للبيع أو المبادلة على منصة وَرَق، أو اطلبه ليصلك إشعار فور توفره.',
 }
 
 interface SearchPageProps {
@@ -38,7 +38,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           </div>
 
           <h1 className="text-3xl sm:text-4xl md:text-6xl font-black text-foreground tracking-tight leading-tight">
-            هل كتابك <span className="gradient-text-gold">متوفر على بدّلها؟</span>
+            هل كتابك <span className="gradient-text-gold">متوفر على وَرَق؟</span>
           </h1>
 
           <p className="text-muted-foreground text-sm md:text-base max-w-2xl mx-auto leading-relaxed font-medium">

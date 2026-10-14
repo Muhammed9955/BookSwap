@@ -1,27 +1,28 @@
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { WaraqLogo } from '@/components/ui/waraq-logo'
 
 export const metadata: Metadata = {
-  title: '404 Not Found | BookSwap',
-  description: 'Page not found.',
+  title: '404 Not Found | WARAQ | ورق',
+  description: 'الصفحة غير موجودة — WARAQ',
 }
 
 export default function NotFound() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 text-center">
-      <div className="relative mb-8">
-        <div className="h-28 w-28 rounded-3xl bg-gradient-to-tr from-primary via-indigo-600 to-violet-500 flex items-center justify-center text-5xl shadow-2xl shadow-primary/30 animate-bounce">
-          <span role="img" aria-label="books">📚</span>
+      <div className="relative mb-6">
+        <div className="p-4 rounded-3xl bg-card border border-border shadow-xl">
+          <WaraqLogo size="xl" showText={false} />
         </div>
-        <span className="absolute -top-2 -right-2 flex h-7 w-7 items-center justify-center rounded-full bg-red-500 text-white text-xs font-black shadow-lg">
+        <span className="absolute -top-2 -right-2 flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-black shadow-lg">
           404
         </span>
       </div>
-      <h1 className="text-4xl md:text-5xl font-black text-foreground mb-3 tracking-tight">
-        Page Not Found
+      <h1 className="text-3xl md:text-4xl font-black text-foreground mb-2 tracking-tight">
+        الصفحة غير موجودة | Page Not Found
       </h1>
-      <p className="text-base text-muted-foreground font-semibold mb-4">
-        This page does not exist or has been moved.
+      <p className="text-sm md:text-base text-muted-foreground font-semibold mb-4">
+        عالم جديد بين كل صفحة والتانية — لكن هذه الصفحة غير موجودة حالياً.
       </p>
       <div className="flex flex-col sm:flex-row gap-3 mt-4">
         <Link

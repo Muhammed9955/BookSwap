@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: EditBookPageProps): Promise<M
 
   const title = (listing?.book as any)?.title || 'تعديل الكتاب'
   return {
-    title: `تعديل: ${title} — BookSwap`,
+    title: `تعديل: ${title} — WARAQ | ورق`,
   }
 }
 

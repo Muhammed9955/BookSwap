@@ -5,7 +5,7 @@ import { OffersHubClient } from '@/components/stores/offers-hub-client'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'باقات وحزم عروض الكتب في مصر — BookSwap Egypt',
+  title: 'باقات وحزم عروض الكتب في مصر — WARAQ | ورق',
   description: 'عروض حزم الكتب (10، 20، 25 كتاب) بخصومات ضخمة مع فواصل وهدايا قراءة مجانية وتوصيل لكافة المحافظات.',
 }
 

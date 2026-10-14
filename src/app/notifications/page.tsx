@@ -6,7 +6,7 @@ import { NotificationsClient } from '@/components/notifications/notifications-cl
 
 export const dynamic = 'force-dynamic'
 
-export const metadata: Metadata = { title: 'الإشعارات — BookSwap' }
+export const metadata: Metadata = { title: 'الإشعارات — WARAQ | ورق' }
 
 export default async function NotificationsPage() {
   const supabase = await createClient()

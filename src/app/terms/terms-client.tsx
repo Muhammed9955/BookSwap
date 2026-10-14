@@ -24,22 +24,22 @@ export function TermsClient({ user }: TermsClientProps) {
 
   const sections = [
     {
-      icon: <Sparkles className="h-5 w-5 text-amber-500" />,
+      icon: <Sparkles className="h-5 w-5 text-emerald-500" />,
       titleAr: '1. ميثاق المجتمع ورسالة المنصة',
       titleEn: '1. Community Charter & Mission',
       contentAr:
-        'منصة BookSwap (بدّلها) هي مجتمع غير ربحي مبني على الثقة بين القراء لمشاركة شغف القراءة وتسهيل وصول الكتب للجميع في أحيائهم ومدنهم. باستخدامك للمنصة، فإنك تتعهد بالتعامل باحترام وأمانة مع أعضاء المجتمع والمحافظة على سلامة الكتب المعارة.',
+        'منصة وَرَق (WARAQ) هي مجتمع غير ربحي مبني على الثقة بين القراء لمشاركة شغف القراءة وتسهيل وصول الكتب للجميع في أحيائهم ومدنهم. باستخدامك للمنصة، فإنك تتعهد بالتعامل باحترام وأمانة مع أعضاء المجتمع والمحافظة على سلامة الكتب المعارة.',
       contentEn:
-        'BookSwap is a trust-based community built by and for readers to share books locally within neighborhoods. By using BookSwap, you pledge to treat all community members with honesty and respect, and maintain borrowed books in pristine condition.',
+        'WARAQ is a trust-based community built by and for readers to share books locally within neighborhoods. By using WARAQ, you pledge to treat all community members with honesty and respect, and maintain borrowed books in pristine condition.',
     },
     {
       icon: <ArrowRightLeft className="h-5 w-5 text-blue-500" />,
       titleAr: '2. قواعد التبادل، البيع، والإعارة',
       titleEn: '2. Exchange, Sale & Borrowing Rules',
       contentAr:
-        'يجب على كل مستخدم وصف حالة الكتاب بدقة وصدق (جديد، ممتاز، جيد، مع مقروءات سابقة). في صفقات البيع الرمزي، يكون الدفع مباشراً بين الأطراف أو عبر وسائل الدفع المعتمدة، ولا تفرض BookSwap أي عمولة أو نسبة على عمليات المبادلة بين القراء.',
+        'يجب على كل مستخدم وصف حالة الكتاب بدقة وصدق (جديد، ممتاز، جيد، مع مقروءات سابقة). في صفقات البيع الرمزي، يكون الدفع مباشراً بين الأطراف أو عبر وسائل الدفع المعتمدة، ولا تفرض منصة وَرَق أي عمولة أو نسبة على عمليات المبادلة بين القراء.',
       contentEn:
-        'Users must honestly describe book conditions (New, Like New, Good, Fair). In direct sales, pricing must be transparent. BookSwap charges 0% platform commission on reader-to-reader exchanges.',
+        'Users must honestly describe book conditions (New, Like New, Good, Fair). In direct sales, pricing must be transparent. WARAQ charges 0% platform commission on reader-to-reader exchanges.',
     },
     {
       icon: <QrCode className="h-5 w-5 text-emerald-500" />,
@@ -66,16 +66,16 @@ export function TermsClient({ user }: TermsClientProps) {
       contentAr:
         'يُحظر منعاً باتاً عرض نسخ مقرصنة مطبوعة رديئة لغرض التجارة، أو أي محتوى يحث على الكراهية أو العنف أو المواد المخالفة للقوانين المحلية. لإدارة المنصة الحق الكامل في حذف أي إعلان أو إيقاف أي حساب مخالف فوراً.',
       contentEn:
-        'Counterfeit copies sold for commercial fraud, hate speech, defamatory content, or legally restricted materials are strictly prohibited. BookSwap reserves the right to remove non-compliant listings and ban offenders immediately.',
+        'Counterfeit copies sold for commercial fraud, hate speech, defamatory content, or legally restricted materials are strictly prohibited. WARAQ reserves the right to remove non-compliant listings and ban offenders immediately.',
     },
     {
       icon: <Scale className="h-5 w-5 text-purple-500" />,
       titleAr: '6. المسؤولية القانونية وحل النزاعات',
       titleEn: '6. Limitation of Liability & Disputes',
       contentAr:
-        'تعمل BookSwap كمنصة وسيطة لتسهيل التواصل واللقاء بين القراء. على الرغم من أننا نوفر أدوات الأمان والتحقق والتقييمات، فإن سلامة التعامل تقع على عاتق المستخدمين. في حال نشوء أي نزاع، يرجى التواصل مع فريق الدعم للتحقيق والوساطة الودية.',
+        'تعمل منصة وَرَق كوسيط تقني لتسهيل التواصل واللقاء بين القراء. على الرغم من أننا نوفر أدوات الأمان والتحقق والتقييمات، فإن سلامة التعامل تقع على عاتق المستخدمين. في حال نشوء أي نزاع، يرجى التواصل مع فريق الدعم للتحقيق والوساطة الودية.',
       contentEn:
-        'BookSwap connects readers and provides verification safeguards and reputation metrics. In the event of an unresolved dispute, contact support for mediation and community review.',
+        'WARAQ connects readers and provides verification safeguards and reputation metrics. In the event of an unresolved dispute, contact support for mediation and community review.',
     },
   ]
 
@@ -84,7 +84,7 @@ export function TermsClient({ user }: TermsClientProps) {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 lg:py-16">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-bold mb-4 border border-amber-500/20">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold mb-4 border border-emerald-500/20">
             <FileText className="h-4 w-4" />
             <span>{lang === 'ar' ? 'ميثاق وشروط الاستخدام' : 'Terms of Service'}</span>
           </div>
@@ -93,8 +93,8 @@ export function TermsClient({ user }: TermsClientProps) {
           </h1>
           <p className="text-muted-foreground text-sm sm:text-base max-w-xl mx-auto">
             {lang === 'ar'
-              ? 'صُممت هذه القواعد لضمان تجربة آمنة ومريحة وموثوقة لجميع القراء في مجتمع BookSwap.'
-              : 'These rules ensure a safe, trustworthy, and welcoming experience for all readers in the BookSwap community.'}
+              ? 'صُممت هذه القواعد لضمان تجربة آمنة ومريحة وموثوقة لجميع القراء في مجتمع وَرَق (WARAQ).'
+              : 'These rules ensure a safe, trustworthy, and welcoming experience for all readers in the WARAQ community.'}
           </p>
           <div className="text-xs text-muted-foreground/70 mt-3">
             {lang === 'ar' ? 'آخر تحديث: أكتوبر 2026' : 'Last updated: October 2026'}

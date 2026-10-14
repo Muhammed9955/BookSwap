@@ -6,7 +6,7 @@ import { OnboardingClient } from '@/components/onboarding/onboarding-client'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'مرحباً بك — BookSwap',
+  title: 'مرحباً بك في وَرَق — WARAQ | ورق',
 }
 
 export default async function OnboardingPage() {

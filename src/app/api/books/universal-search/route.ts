@@ -379,7 +379,7 @@ export async function GET(request: Request) {
 
       const archiveRes = await fetch(archiveUrl, {
         signal: AbortSignal.timeout(4500),
-        headers: { 'User-Agent': 'BookSwapEgypt/1.0 (contact@bookswap.eg)' },
+        headers: { 'User-Agent': 'WaraqBooks/1.0 (contact@waraq.app)' },
         next: { revalidate: 3600 },
       })
 
@@ -419,7 +419,7 @@ export async function GET(request: Request) {
     const olRes = await fetch(openLibUrl, {
       signal: AbortSignal.timeout(4000),
       headers: {
-        'User-Agent': 'BookSwapEgypt/1.0 (contact@bookswap.eg)',
+        'User-Agent': 'WaraqBooks/1.0 (contact@waraq.app)',
         Accept: 'application/json',
       },
       next: { revalidate: 3600 },

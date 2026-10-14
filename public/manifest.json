@@ -1,11 +1,11 @@
 {
-  "name": "BookSwap — بدّلها",
-  "short_name": "BookSwap",
-  "description": "Marketplace للكتب المستعملة في مصر. اشتري، بيع، بادل، أو تبرع.",
+  "name": "WARAQ — ورق | عالم جديد بين كل صفحة والتانية",
+  "short_name": "WARAQ | ورق",
+  "description": "منصة ورق لتبادل واستعارة وشراء الكتب المستعملة ونوادي القراءة. عالم جديد بين كل صفحة والتانية.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#1e1b4b",
-  "theme_color": "#6366f1",
+  "background_color": "#F8F7F2",
+  "theme_color": "#173F32",
   "orientation": "portrait-primary",
   "lang": "ar",
   "dir": "rtl",
@@ -53,20 +53,27 @@
       "purpose": "any maskable"
     }
   ],
-  "categories": ["shopping", "books", "social"],
+  "categories": ["books", "shopping", "social"],
   "shortcuts": [
     {
-      "name": "أضف كتاب",
-      "short_name": "أضف",
-      "description": "أضف كتاب جديد",
+      "name": "أضف كتاباً",
+      "short_name": "أضف كتاب",
+      "description": "اعرض كتاباً للتبادل أو البيع",
       "url": "/books/add",
       "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     },
     {
-      "name": "استكشف",
-      "short_name": "اكتشف",
-      "description": "استكشف الكتب",
+      "name": "استكشف رفوف الكتب",
+      "short_name": "استكشف",
+      "description": "تصفح أحدث الكتب المعروضة",
       "url": "/explore",
+      "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "نوادي القراءة",
+      "short_name": "المجتمعات",
+      "description": "انضم لنادي قراءة في حيك ومدينتك",
+      "url": "/communities",
       "icons": [{ "src": "/icons/icon-96x96.png", "sizes": "96x96" }]
     }
   ],

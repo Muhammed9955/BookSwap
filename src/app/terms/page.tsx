@@ -3,9 +3,9 @@ import { TermsClient } from './terms-client'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
-  title: 'شروط الخدمة والتبادل — BookSwap | بادِل كتبك في مدينتك',
+  title: 'شروط الخدمة والتبادل — WARAQ | ورق',
   description:
-    'تعرف على شروط وقواعد استخدام منصة BookSwap، ميثاق مجتمع القراء، إرشادات التبادل العادل، وحماية الودائع واللقاءات الآمنة.',
+    'تعرف على شروط وقواعد استخدام منصة وَرَق (WARAQ)، ميثاق مجتمع القراء، إرشادات التبادل العادل، وحماية الودائع واللقاءات الآمنة.',
 }
 
 export default async function TermsPage() {

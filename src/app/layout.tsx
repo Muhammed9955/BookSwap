@@ -9,42 +9,55 @@ import { PwaRegister } from '@/components/pwa/pwa-register'
 
 export const metadata: Metadata = {
   title: {
-    default: 'BookSwap — بدّلها | منصة تبادل الكتب العالمية',
-    template: '%s | BookSwap',
+    default: 'WARAQ — ورق | عالم جديد بين كل صفحة والتانية',
+    template: '%s | WARAQ — ورق',
   },
-  description: 'اشترِ، بِع، بادِل، أو استعر الكتب المستعملة مع القراء حول العالم. كتابك القديم كنز ينتظر قارئه القادم.',
-  keywords: ['books', 'كتب', 'مبادلة كتب', 'بيع كتب', 'تبادل كتب عالمي', 'BookSwap', 'بدّلها'],
-  authors: [{ name: 'BookSwap Global' }],
-  creator: 'BookSwap Global',
-  publisher: 'BookSwap Global',
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://bookswap.eg'),
+  description:
+    'عالم جديد بين كل صفحة والتانية. منصة ورق لتبادل وشراء واستعارة الكتب المستعملة ونوادي القراءة في مدينتك. قراءة مستدامة وبدون أي عمولات.',
+  keywords: [
+    'WARAQ',
+    'ورق',
+    'كتب',
+    'تبادل كتب',
+    'بيع كتب مستعملة',
+    'نوادي قراءة',
+    'استعارة كتب',
+    'WARAQ',
+    'ورق',
+    'مصر',
+  ],
+  authors: [{ name: 'WARAQ Team' }],
+  creator: 'WARAQ',
+  publisher: 'WARAQ',
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'https://waraq.app'),
   openGraph: {
     type: 'website',
     locale: 'ar_EG',
     alternateLocale: 'en_US',
-    url: process.env.NEXT_PUBLIC_APP_URL ?? 'https://bookswap.eg',
-    siteName: 'BookSwap Global',
-    title: 'BookSwap — بدّلها | منصة تبادل الكتب العالمية',
-    description: 'اشترِ، بِع، بادِل، أو استعر الكتب مع القراء حول العالم.',
+    url: process.env.NEXT_PUBLIC_APP_URL ?? 'https://waraq.app',
+    siteName: 'WARAQ | ورق',
+    title: 'WARAQ — ورق | عالم جديد بين كل صفحة والتانية',
+    description:
+      'عالم جديد بين كل صفحة والتانية. بادِل واشترِ واستعر الكتب مع مجتمع القراء في مدينتك.',
     images: [
       {
-        url: '/og-image.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'BookSwap Egypt',
+        url: '/images/logo.png',
+        width: 1024,
+        height: 1024,
+        alt: 'WARAQ | ورق Logo',
       },
     ],
   },
   twitter: {
-    card: 'summary_large_image',
-    title: 'BookSwap Egypt',
-    description: 'Marketplace للكتب المستعملة في مصر',
+    card: 'summary',
+    title: 'WARAQ — ورق | عالم جديد بين كل صفحة والتانية',
+    description: 'عالم جديد بين كل صفحة والتانية. منصة القراء لتبادل واستعارة وشراء الكتب.',
   },
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'BookSwap',
+    title: 'WARAQ',
   },
   robots: {
     index: true,
@@ -68,8 +81,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#6366f1' },
-    { media: '(prefers-color-scheme: dark)', color: '#1e1b4b' },
+    { media: '(prefers-color-scheme: light)', color: '#173F32' },
+    { media: '(prefers-color-scheme: dark)', color: '#0D1512' },
   ],
   width: 'device-width',
   initialScale: 1,

@@ -26,6 +26,7 @@ import { useLanguage } from '@/i18n/language-context'
 import { t } from '@/i18n/translations'
 import { useAuth } from '@/lib/auth/auth-context'
 import { ThemeToggle } from './theme-toggle'
+import { WaraqLogo } from '@/components/ui/waraq-logo'
 
 const POPULAR_CATEGORIES = [
   { slug: 'novels', icon: '📚', nameAr: 'روايات وأدب', nameEn: 'Novels & Fiction' },
@@ -209,24 +210,8 @@ export function TopNav({
     <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-white dark:bg-slate-900 shadow-sm transition-colors">
       <div className="page-container">
         <div className="flex h-16 items-center justify-between gap-2 sm:gap-4">
-          {/* Logo & Brand with Graphic Icon */}
-          <Link href="/" className="flex items-center gap-2.5 flex-shrink-0 cursor-pointer group">
-            <div className="relative flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary via-indigo-600 to-violet-500 text-white font-extrabold text-xl shadow-md shadow-primary/25 group-hover:scale-105 group-hover:shadow-primary/40 transition-all">
-              📖
-              <span className="absolute -top-1 -end-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-background"></span>
-              </span>
-            </div>
-            <div>
-              <span className="text-xl font-black tracking-tight text-foreground flex items-center gap-1">
-                BookSwap
-              </span>
-              <span className="text-[11px] font-bold text-primary block leading-none">
-                {lang === 'ar' ? 'بادِل كتبك في مدينتك 📍' : 'Swap Books in Your City 📍'}
-              </span>
-            </div>
-          </Link>
+          {/* Official WARAQ Logo */}
+          <WaraqLogo size="md" priority />
 
           {/* Udemy-style Centered Prominent Search Bar */}
           <div className="hidden md:flex flex-1 min-w-0 max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-2 sm:mx-4 lg:mx-6 items-center relative" ref={searchContainerRef}>
@@ -568,7 +553,7 @@ export function TopNav({
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-black text-foreground truncate">
-                            {effectiveName || (lang === 'ar' ? 'قارئ بدّلها' : 'BookSwap Reader')}
+                            {effectiveName || (lang === 'ar' ? 'قارئ وَرَق' : 'WARAQ Reader')}
                           </p>
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
                             <span>⭐</span>
@@ -649,7 +634,7 @@ export function TopNav({
                           <div className="p-1 rounded-lg bg-indigo-500/10 text-indigo-500 group-hover:scale-110 transition-transform">
                             <BookOpen className="h-4 w-4" />
                           </div>
-                          <span>{lang === 'ar' ? 'من نحن' : 'About BookSwap'}</span>
+                          <span>{lang === 'ar' ? 'عن منصة وَرَق' : 'About WARAQ'}</span>
                         </Link>
 
                         <Link

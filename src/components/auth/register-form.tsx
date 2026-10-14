@@ -450,8 +450,8 @@ export function RegisterForm() {
 
       <p className="text-center text-xs text-muted-foreground/80 leading-relaxed">
         {lang === 'ar'
-          ? 'بإنشائك الحساب، أنت موافق على شروط الاستخدام وسياسة الخصوصية الخاصة بمنصة بدّلها.'
-          : 'By creating an account, you agree to BookSwap Terms of Service and Privacy Policy.'
+          ? 'بإنشائك الحساب، أنت موافق على شروط الاستخدام وسياسة الخصوصية الخاصة بمنصة وَرَق.'
+          : 'By creating an account, you agree to WARAQ Terms of Service and Privacy Policy.'
         }
       </p>
     </div>

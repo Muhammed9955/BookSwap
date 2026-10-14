@@ -41,10 +41,10 @@ export async function generateMetadata({ params }: BookPageProps): Promise<Metad
   } catch {}
 
   const book = Array.isArray(listing?.book) ? listing.book[0] : listing?.book
-  if (!book) return { title: 'كتاب — BookSwap' }
+  if (!book) return { title: 'كتاب — WARAQ | ورق' }
 
   return {
-    title: `${book.title} — BookSwap`,
+    title: `${book.title} — WARAQ | ورق`,
     description: book.description ?? `${book.title} بقلم ${book.author}`,
     openGraph: {
       title: book.title,

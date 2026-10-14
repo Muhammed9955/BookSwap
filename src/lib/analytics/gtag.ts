@@ -36,7 +36,7 @@ export const event = ({ action, category, label, value, ...rest }: GTagEvent) =>
 }
 
 // Pre-defined marketplace tracking events
-export const trackBookSwapEvent = {
+export const trackWaraqEvent = {
   viewBook: (bookId: string, title: string) =>
     event({ action: 'view_item', category: 'Book', label: title, book_id: bookId }),
 
@@ -58,3 +58,6 @@ export const trackBookSwapEvent = {
   searchQuery: (query: string, resultsCount: number) =>
     event({ action: 'search', category: 'Search', label: query, results: resultsCount }),
 }
+
+// Backwards-compatible alias
+export const trackBookSwapEvent = trackWaraqEvent

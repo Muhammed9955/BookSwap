@@ -1302,7 +1302,7 @@ export function CommunityDetailClient({
                           ) : (
                             <div className="h-full w-full flex flex-col justify-between p-6 bg-gradient-to-br from-indigo-950 via-slate-900 to-primary/80 text-white select-none">
                               <div className="space-y-1">
-                                <span className="text-[10px] uppercase tracking-widest text-indigo-300 font-bold">BookSwap Shelf</span>
+                                <span className="text-[10px] uppercase tracking-widest text-emerald-300 font-bold">WARAQ Shelf</span>
                                 <div className="text-2xl">📚</div>
                               </div>
                               <div className="space-y-1">

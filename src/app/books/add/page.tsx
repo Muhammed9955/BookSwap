@@ -8,8 +8,8 @@ import { MainLayout } from '@/components/layout/main-layout'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'أضف كتاب — BookSwap',
-  description: 'أضف كتابك وابدأ رحلة المبادلة',
+  title: 'أضف كتاب — WARAQ | ورق',
+  description: 'أضف كتابك وابدأ رحلة المبادلة على منصة وَرَق',
 }
 
 interface AddBookPageProps {

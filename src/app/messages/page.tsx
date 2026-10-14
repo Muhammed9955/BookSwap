@@ -6,7 +6,7 @@ import { MessagesClient } from '@/components/messages/messages-client'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'الرسائل — BookSwap',
+  title: 'الرسائل — WARAQ | ورق',
 }
 
 export default async function MessagesPage() {

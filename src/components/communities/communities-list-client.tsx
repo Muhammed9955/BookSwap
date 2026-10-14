@@ -1621,7 +1621,7 @@ export function CommunitiesListClient({
                 <Field label={lang === 'ar' ? 'البريد الإلكتروني للتواصل' : 'Contact Email'}>
                   <div className="relative">
                     <Mail className={cn('absolute top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground', isRTL ? 'right-3' : 'left-3')} />
-                    <input type="email" value={contactEmail} onChange={e => setContactEmail(e.target.value)} placeholder="club@bookswap.eg" className={cn(inputCls, isRTL ? 'pr-8' : 'pl-8')} />
+                    <input type="email" value={contactEmail} onChange={e => setContactEmail(e.target.value)} placeholder="club@waraq.app" className={cn(inputCls, isRTL ? 'pr-8' : 'pl-8')} />
                   </div>
                 </Field>
                 <Field label={lang === 'ar' ? 'رقم الهاتف / واتساب' : 'Contact Phone / WhatsApp'}>

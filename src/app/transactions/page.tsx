@@ -7,7 +7,7 @@ import { TransactionsHubClient } from '@/components/transactions/transactions-hu
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'معاملاتي وطلبات التبادل — BookSwap',
+  title: 'معاملاتي وطلبات التبادل — WARAQ | ورق',
   description: 'إدارة طلبات المبادلة والشراء والاستعارة النشطة وتتبع تواريخ الإرجاع',
 }
 

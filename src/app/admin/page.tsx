@@ -7,7 +7,7 @@ import { getCommunities } from '@/lib/communities/community-service'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'لوحة التحكم — BookSwap Admin',
+  title: 'لوحة التحكم — WARAQ Admin | إدارة وَرَق',
 }
 
 export default async function AdminPage() {

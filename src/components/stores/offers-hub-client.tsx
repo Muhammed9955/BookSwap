@@ -268,8 +268,8 @@ export function OffersHubClient({ initialOffers }: OffersHubClientProps) {
                     <a
                       href={`https://wa.me/${store.social_links.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
                         lang === 'ar'
-                          ? `مرحباً، أود طلب "${offerTitle}" من منصة BookSwap بسعر ${offer.bundle_price ? `${offer.bundle_price} ج.م` : ''}`
-                          : `Hello! I would like to order the "${offerTitle}" offer from BookSwap.`
+                          ? `مرحباً، أود طلب "${offerTitle}" من منصة وَرَق بسعر ${offer.bundle_price ? `${offer.bundle_price} ج.م` : ''}`
+                          : `Hello! I would like to order the "${offerTitle}" offer from WARAQ.`
                       )}`}
                       target="_blank"
                       rel="noreferrer"

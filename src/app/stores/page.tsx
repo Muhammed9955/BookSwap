@@ -6,7 +6,7 @@ import { StoresListClient } from '@/components/stores/stores-list-client'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'مكتبات مصر الشريكة وعروض الكتب — BookSwap Egypt',
+  title: 'مكتبات مصر الشريكة وعروض الكتب — WARAQ | ورق',
   description: 'دليل كبرى المكتبات التراثية والحديثة في مصر: ديوان، دار الشروق، سور الأزبكية، مع باقات الكتب المخفضة وفعاليات توقيع الكتب.',
 }
 

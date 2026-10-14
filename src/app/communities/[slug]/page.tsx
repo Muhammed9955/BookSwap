@@ -15,10 +15,10 @@ export async function generateMetadata({ params }: CommunityPageProps): Promise<
   const supabase = await createClient()
   const { community } = await getCommunityBySlug(slug, null, supabase)
   if (!community) {
-    return { title: 'المجتمع غير موجود — BookSwap' }
+    return { title: 'المجتمع غير موجود — WARAQ | ورق' }
   }
   return {
-    title: `${community.name_ar || community.name} — مجتمع القراء ونقطة اللقاء الآمنة | BookSwap`,
+    title: `${community.name_ar || community.name} — مجتمع القراء ونقطة اللقاء الآمنة | WARAQ | ورق`,
     description: community.description_ar || community.description,
   }
 }

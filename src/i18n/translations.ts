@@ -4,9 +4,9 @@
 export const translations = {
   ar: {
     // App
-    app_name: 'BookSwap',
-    app_name_ar: 'بدّلها',
-    tagline: 'اقرأ أكتر، بدّل أذكى.',
+    app_name: 'WARAQ',
+    app_name_ar: 'ورق',
+    tagline: 'عالم جديد بين كل صفحة والتانية.',
     
     // Navigation
     nav_home: 'الرئيسية',
@@ -212,9 +212,9 @@ export const translations = {
   },
   en: {
     // App
-    app_name: 'BookSwap',
-    app_name_ar: 'بدّلها',
-    tagline: 'Read more, swap smarter.',
+    app_name: 'WARAQ',
+    app_name_ar: 'ورق',
+    tagline: 'A World Between Every Page.',
     
     // Navigation
     nav_home: 'Home',

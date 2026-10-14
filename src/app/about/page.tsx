@@ -3,9 +3,9 @@ import { AboutPageClient } from '@/components/about/about-page-client'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
-  title: 'من نحن — BookSwap | منصة تبادل الكتب',
+  title: 'من نحن — WARAQ | ورق',
   description:
-    'تعرّف على قصة BookSwap ورؤيتنا لبناء أكبر مجتمع عربي لتبادل واستعارة وشراء الكتب. تواصل معنا مباشرة.',
+    'عالم جديد بين كل صفحة والتانية. تعرّف على قصة منصة وَرَق ورؤيتنا لبناء أكبر مجتمع عربي لتبادل واستعارة وشراء الكتب المستعملة.',
 }
 
 export default async function AboutPage() {

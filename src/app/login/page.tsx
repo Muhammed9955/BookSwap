@@ -1,38 +1,49 @@
 import { Suspense } from 'react'
 import { Metadata } from 'next'
 import { LoginForm } from '@/components/auth/login-form'
+import { WaraqLogo } from '@/components/ui/waraq-logo'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'تسجيل الدخول — BookSwap',
-  description: 'ادخل حسابك على BookSwap',
+  title: 'تسجيل الدخول — WARAQ | ورق',
+  description: 'ادخل إلى حسابك في منصة ورق — عالم جديد بين كل صفحة والتانية.',
 }
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex">
-      {/* Left side — Decorative */}
+    <div className="min-h-screen flex bg-background">
+      {/* Left side — Decorative WARAQ Showcase */}
       <div className="hidden lg:flex lg:w-1/2 hero-gradient items-center justify-center p-12 relative overflow-hidden">
-        <div className="absolute inset-0">
-          <div className="absolute top-20 start-20 h-64 w-64 rounded-full bg-purple-600/20 blur-3xl" />
-          <div className="absolute bottom-20 end-20 h-48 w-48 rounded-full bg-amber-500/20 blur-2xl" />
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-20 start-20 h-64 w-64 rounded-full bg-emerald-500/20 blur-3xl" />
+          <div className="absolute bottom-20 end-20 h-48 w-48 rounded-full bg-amber-500/15 blur-2xl" />
         </div>
-        <div className="relative text-center text-white">
-          <div className="text-7xl mb-6">📚</div>
-          <h1 className="text-3xl font-bold mb-3">BookSwap</h1>
-          <p className="text-xl text-white/80 mb-2">بدّلها</p>
-          <p className="text-base text-white/60">
-            اقرأ أكتر، بدّل أذكى.
+        <div className="relative text-center text-white max-w-sm">
+          <div className="mb-6 flex justify-center">
+            <div className="w-24 h-24 rounded-3xl bg-white/10 backdrop-blur-md p-3.5 flex items-center justify-center border border-white/20 shadow-2xl">
+              <img
+                src="/images/logo.png"
+                alt="WARAQ Logo"
+                className="w-full h-full object-contain filter brightness-125"
+              />
+            </div>
+          </div>
+          <h1 className="text-3xl font-black mb-2 text-white">وَرَق | WARAQ</h1>
+          <p className="text-lg text-emerald-200 font-semibold mb-3">
+            عالم جديد بين كل صفحة والتانية.
           </p>
-          <div className="mt-10 space-y-3">
+          <p className="text-sm text-white/75 leading-relaxed">
+            مجتمع القراء لتبادل واستعارة وشراء الكتب المستعملة في مدينتك بكل أمان و0% عمولة.
+          </p>
+          <div className="mt-8 space-y-3">
             {[
-              'كتابك القديم ممكن يبقى الكتاب اللي نفسك تقرأه',
-              'ابحث عن كتب قريبة منك',
-              'بادل وابيع بأمان وسهولة',
+              'كتابك القديم، كنز ينتظر قارئاً قريباً منك',
+              'نوادي قراءة ولقاءات آمنة في كافيهات ومكتبات مدينتك',
+              'مبادلة واستعارة مجانية بدون أي عمولات 100%',
             ].map((text, i) => (
-              <div key={i} className="flex items-start gap-3 text-start text-white/70 text-sm">
-                <span className="mt-1 flex-shrink-0">✅</span>
+              <div key={i} className="flex items-start gap-3 text-start text-white/80 text-sm">
+                <span className="mt-0.5 flex-shrink-0 text-emerald-300">✓</span>
                 <span>{text}</span>
               </div>
             ))}
@@ -44,11 +55,8 @@ export default function LoginPage() {
       <div className="flex-1 flex items-center justify-center p-6 bg-background">
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
-          <div className="text-center mb-8 lg:hidden">
-            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-white text-2xl shadow-lg mb-3">
-              📚
-            </div>
-            <h1 className="text-2xl font-bold">BookSwap</h1>
+          <div className="text-center mb-8 lg:hidden flex justify-center">
+            <WaraqLogo size="lg" showSlogan={true} />
           </div>
           <Suspense fallback={<div className="h-64 flex items-center justify-center"><div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" /></div>}>
             <LoginForm />

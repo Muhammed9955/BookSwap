@@ -6,7 +6,7 @@ import { WishlistClient } from '@/components/wishlist/wishlist-client'
 
 export const dynamic = 'force-dynamic'
 
-export const metadata: Metadata = { title: 'قائمة الأمنيات — BookSwap' }
+export const metadata: Metadata = { title: 'قائمة الأمنيات — WARAQ | ورق' }
 
 export default async function WishlistPage() {
   const supabase = await createClient()

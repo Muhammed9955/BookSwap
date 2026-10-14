@@ -32,85 +32,86 @@
 
 @layer base {
   :root {
-    /* BookSwap Brand Colors - Light Mode (High Contrast & Clean) */
-    --background: 0 0% 100%;
-    --foreground: 222 47% 11%;
+    /* WARAQ Brand Colors - Light Mode (Deep Forest Green & Warm Ivory) */
+    --background: 45 25% 96.5%; /* Warm Ivory #F8F7F2 */
+    --foreground: 156 9% 12%; /* Dark Charcoal #1A1F1D */
     
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card: 0 0% 100%; /* Pure white / subtle warm neutral */
+    --card-foreground: 156 9% 12%;
     
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 156 9% 12%;
     
-    /* Primary: Deep Indigo */
-    --primary: 243 75% 59%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary: Deep Forest Green #173F32 */
+    --primary: 161 47% 17%;
+    --primary-foreground: 45 25% 98%;
     
-    /* Secondary: Warm Amber */
-    --secondary: 38 92% 50%;
-    --secondary-foreground: 0 0% 100%;
+    /* Secondary: Warm Amber / Terracotta */
+    --secondary: 38 85% 50%;
+    --secondary-foreground: 156 9% 12%;
     
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 44%;
+    --muted: 150 12% 92%;
+    --muted-foreground: 153 10% 39%; /* Muted Gray-Green #5A6E65 */
     
-    --accent: 220 14% 96%;
-    --accent-foreground: 222 47% 11%;
+    --accent: 150 15% 93%;
+    --accent-foreground: 161 47% 17%;
     
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
     
-    --border: 220 13% 88%;
-    --input: 220 13% 88%;
-    --ring: 243 75% 59%;
+    --border: 150 10% 87%;
+    --input: 150 10% 87%;
+    --ring: 161 47% 22%;
     
     --radius: 0.75rem;
     
-    /* BookSwap custom tokens */
-    --brand-primary: 243 75% 59%;
-    --brand-secondary: 38 92% 50%;
-    --brand-success: 142 72% 44%;
+    /* WARAQ custom tokens */
+    --brand-primary: 161 47% 17%;
+    --brand-secondary: 38 85% 50%;
+    --brand-success: 152 65% 35%;
     --brand-danger: 0 84% 60%;
-    --brand-swap: 271 91% 65%;
-    --brand-sell: 210 100% 56%;
-    --brand-giveaway: 142 72% 44%;
+    --brand-swap: 161 47% 24%;
+    --brand-sell: 210 80% 48%;
+    --brand-giveaway: 142 60% 40%;
     
-    /* Book card */
-    --card-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
-    --card-shadow-hover: 0 10px 25px rgba(99,102,241,0.12), 0 4px 6px rgba(99,102,241,0.08);
+    /* Card Shadow */
+    --card-shadow: 0 1px 3px rgba(23,63,50,0.06), 0 1px 2px rgba(23,63,50,0.04);
+    --card-shadow-hover: 0 10px 25px rgba(23,63,50,0.1), 0 4px 6px rgba(23,63,50,0.06);
   }
 
   .dark {
-    /* BookSwap Brand Colors - Dark Mode (Sleek, High Contrast & Non-glare) */
-    --background: 222 47% 8%;
-    --foreground: 210 40% 98%;
+    /* WARAQ Brand Colors - Dark Mode (Deep Obsidian Forest) */
+    --background: 158 24% 7%;
+    --foreground: 150 10% 96%;
     
-    --card: 222 47% 12%;
-    --card-foreground: 210 40% 98%;
+    --card: 158 20% 10%;
+    --card-foreground: 150 10% 96%;
     
-    --popover: 222 47% 12%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 158 20% 10%;
+    --popover-foreground: 150 10% 96%;
     
-    --primary: 243 75% 65%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary in Dark: Accessible Leaf Green */
+    --primary: 161 47% 41%;
+    --primary-foreground: 158 24% 7%;
     
-    --secondary: 38 92% 55%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary: 38 85% 54%;
+    --secondary-foreground: 158 24% 7%;
     
-    --muted: 222 40% 16%;
-    --muted-foreground: 215 20% 72%;
+    --muted: 158 18% 14%;
+    --muted-foreground: 154 12% 64%;
     
-    --accent: 222 40% 16%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 158 18% 14%;
+    --accent-foreground: 150 10% 96%;
     
     --destructive: 0 62% 55%;
     --destructive-foreground: 0 0% 100%;
     
-    --border: 222 35% 24%;
-    --input: 222 35% 24%;
-    --ring: 243 75% 65%;
+    --border: 158 16% 18%;
+    --input: 158 16% 18%;
+    --ring: 161 47% 41%;
     
     --card-shadow: 0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.3);
-    --card-shadow-hover: 0 10px 25px rgba(99,102,241,0.25), 0 4px 6px rgba(99,102,241,0.15);
+    --card-shadow-hover: 0 10px 25px rgba(23,63,50,0.25), 0 4px 6px rgba(23,63,50,0.15);
   }
 }
 
@@ -429,13 +430,13 @@
     padding-bottom: env(safe-area-inset-bottom, 0.5rem);
   }
 
-  /* ---- Hero Gradient ---- */
+  /* ---- WARAQ Hero Gradient ---- */
   .hero-gradient {
     background: linear-gradient(
       135deg,
-      hsl(243 75% 15%) 0%,
-      hsl(243 75% 20%) 40%,
-      hsl(271 60% 20%) 100%
+      #0F2820 0%,
+      #173F32 50%,
+      #1F4C3E 100%
     );
   }
 

@@ -6,7 +6,7 @@ import { EventsHubClient } from '@/components/stores/events-hub-client'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'فعاليات القراءة وحفلات التوقيع وملتقيات الكتب — BookSwap Egypt',
+  title: 'فعاليات القراءة وحفلات التوقيع وملتقيات الكتب — WARAQ | ورق',
   description: 'دليل فعاليات ومجتمعات القراءة في مصر: حفلات توقيع الكتّاب، ملتقيات مقاهي القراءة وسيلانترو، ومناقشات الروايات الأسبوعية مع إمكانية تأكيد الحضور RSVP.',
 }
 

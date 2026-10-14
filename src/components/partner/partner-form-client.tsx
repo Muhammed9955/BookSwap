@@ -40,7 +40,7 @@ export function PartnerFormClient({ user }: PartnerFormClientProps) {
         ? lang === 'ar' ? 'منظم فعاليات' : 'Event Organizer'
         : lang === 'ar' ? 'مكتبة + فعاليات' : 'Bookstore + Events'
 
-    const message = `🤝 *طلب شراكة جديد — BookSwap*\n\n` +
+    const message = `🤝 *طلب شراكة جديد — WARAQ | ورق*\n\n` +
       `👤 الاسم: ${name}\n` +
       `🏪 اسم المشروع: ${businessName}\n` +
       `📞 رقم التواصل: ${phone}\n` +
@@ -70,8 +70,8 @@ export function PartnerFormClient({ user }: PartnerFormClientProps) {
             </h1>
             <p className="text-muted-foreground">
               {lang === 'ar'
-                ? 'تم فتح واتساب لإرسال تفاصيل طلبك مباشرة إلى فريق BookSwap. سنتواصل معك في أقرب وقت!'
-                : 'WhatsApp opened to send your request directly to the BookSwap team. We will be in touch soon!'}
+                ? 'تم فتح واتساب لإرسال تفاصيل طلبك مباشرة إلى فريق وَرَق. سنتواصل معك في أقرب وقت!'
+                : 'WhatsApp opened to send your request directly to the WARAQ team. We will be in touch soon!'}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 w-full">
@@ -94,17 +94,17 @@ export function PartnerFormClient({ user }: PartnerFormClientProps) {
   return (
     <MainLayout user={user}>
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary via-indigo-700 to-violet-800 text-white py-16 md:py-20">
-        <div className="absolute -top-32 -start-32 h-96 w-96 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+      <section className="relative overflow-hidden hero-gradient text-white py-16 md:py-20">
+        <div className="absolute -top-32 -start-32 h-96 w-96 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
         <div className="page-container relative z-10 max-w-2xl text-center mx-auto space-y-4">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold text-amber-300">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold text-emerald-300">
             <Star className="h-4 w-4" />
             <span>{lang === 'ar' ? 'برنامج الشراكة المبكرة' : 'Early Partner Program'}</span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-black text-white">
-            {lang === 'ar' ? 'انضم كشريك مميز في BookSwap 🤝' : 'Become a Featured BookSwap Partner 🤝'}
+            {lang === 'ar' ? 'انضم كشريك مميز في وَرَق 🤝' : 'Become a Featured WARAQ Partner 🤝'}
           </h1>
-          <p className="text-white/80 text-sm sm:text-base leading-relaxed">
+          <p className="text-white/85 text-sm sm:text-base leading-relaxed">
             {lang === 'ar'
               ? 'سواء كنت تمتلك مكتبة أو بوكستور أو تنظم فعاليات ثقافية — تواصل معنا وسيتم نشر تفاصيلك مجاناً لآلاف القراء النشطين على المنصة.'
               : 'Whether you own a bookstore or organize cultural events — reach out and we\'ll feature your details to thousands of active readers on the platform.'}
@@ -117,7 +117,7 @@ export function PartnerFormClient({ user }: PartnerFormClientProps) {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
           {[
             { emoji: '📣', ar: 'وصول لآلاف القراء مجاناً', en: 'Free reach to thousands of readers' },
-            { emoji: '🌟', ar: 'بروفايل مميز على المنصة', en: 'Featured profile on BookSwap' },
+            { emoji: '🌟', ar: 'بروفايل مميز على المنصة', en: 'Featured profile on WARAQ' },
             { emoji: '🤝', ar: 'شراكة مدى الحياة', en: 'Lifetime partnership' },
           ].map((b, i) => (
             <div key={i} className="flex items-center gap-2 p-3 rounded-xl bg-card border border-border text-xs font-semibold">
@@ -244,8 +244,8 @@ export function PartnerFormClient({ user }: PartnerFormClientProps) {
             <MessageCircle className="h-4 w-4 shrink-0 mt-0.5 text-emerald-600" />
             <span>
               {lang === 'ar'
-                ? 'سيفتح واتساب تلقائياً برسالتك الكاملة مرسلة مباشرة لفريق BookSwap. ردنا عادةً خلال 24 ساعة.'
-                : 'WhatsApp will open automatically with your complete message sent directly to the BookSwap team. We usually reply within 24 hours.'}
+                ? 'سيفتح واتساب تلقائياً برسالتك الكاملة مرسلة مباشرة لفريق وَرَق. ردنا عادةً خلال 24 ساعة.'
+                : 'WhatsApp will open automatically with your complete message sent directly to the WARAQ team. We usually reply within 24 hours.'}
             </span>
           </div>
 
@@ -289,8 +289,8 @@ export function PartnerFormClient({ user }: PartnerFormClientProps) {
               <h3 className="font-black text-sm">{lang === 'ar' ? 'منظمو الفعاليات' : 'Event Organizers'}</h3>
               <p className="text-xs text-muted-foreground mt-1">
                 {lang === 'ar'
-                  ? 'أضف فعالياتك وملتقياتك وحفلات التوقيع مباشرة على منصة BookSwap.'
-                  : 'Add your events, meetups, and signing sessions directly on the BookSwap platform.'}
+                  ? 'أضف فعالياتك وملتقياتك وحفلات التوقيع مباشرة على منصة وَرَق.'
+                  : 'Add your events, meetups, and signing sessions directly on the WARAQ platform.'}
               </p>
             </div>
           </div>

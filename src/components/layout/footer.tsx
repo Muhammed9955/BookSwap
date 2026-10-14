@@ -17,6 +17,9 @@ import {
   Lock,
 } from 'lucide-react'
 
+import { WaraqLogo } from '@/components/ui/waraq-logo'
+import { BRAND } from '@/lib/brand'
+
 export function SiteFooter() {
   const { lang, isRTL } = useLanguage()
 
@@ -24,8 +27,8 @@ export function SiteFooter() {
   const email = 'muhamed.dev.95@gmail.com'
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
     lang === 'ar'
-      ? 'مرحباً بفريق BookSwap! لدي استفسار.'
-      : 'Hello BookSwap team! I have an inquiry.'
+      ? 'مرحباً بفريق WARAQ | ورق! لدي استفسار.'
+      : 'Hello WARAQ team! I have an inquiry.'
   )}`
 
   return (
@@ -34,25 +37,12 @@ export function SiteFooter() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-12">
           {/* Brand Column */}
           <div className="lg:col-span-2 space-y-4">
-            <Link href="/" className="inline-flex items-center gap-2.5 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-amber-400 flex items-center justify-center text-slate-950 font-black shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform">
-                <BookOpen className="h-5 w-5" />
-              </div>
-              <div className="flex flex-col">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-black text-xl tracking-tight text-foreground">BookSwap</span>
-                  <span className="text-amber-500 font-black text-lg">بدّلها</span>
-                </div>
-                <span className="text-xs text-muted-foreground font-medium">
-                  {lang === 'ar' ? 'بادِل كتبك في مدينتك 📍' : 'Swap books in your city 📍'}
-                </span>
-              </div>
-            </Link>
+            <WaraqLogo size="lg" showSlogan={true} />
 
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-sm pt-1">
               {lang === 'ar'
-                ? 'أول منصة عربية محلية لتبادل واستعارة وشراء الكتب بين قراء الحي والمدينة. قراءة لا تنتهي، بدون أي عمولات أو تكاليف شحن مرتفعة.'
-                : 'The premier local platform for swapping, borrowing, and buying books among neighborhood readers. Infinite reading with 0% commissions.'}
+                ? 'منصة وَرَق لتبادل واستعارة وشراء الكتب المستعملة ونوادي القراءة في مدينتك. عالم جديد بين كل صفحة والتانية، بدون أي عمولات أو تكاليف شحن مرهقة.'
+                : 'WARAQ — A World Between Every Page. The modern platform for swapping, borrowing, and discovering books with readers in your neighborhood.'}
             </p>
 
             <div className="flex items-center gap-3 pt-2">
@@ -119,7 +109,7 @@ export function SiteFooter() {
               <li>
                 <Link href="/about" className="hover:text-foreground transition-colors flex items-center gap-1.5">
                   <Heart className="h-3.5 w-3.5 opacity-60 text-rose-500" />
-                  <span>{lang === 'ar' ? 'قصتنا ورؤيتنا' : 'About BookSwap'}</span>
+                  <span>{lang === 'ar' ? 'قصتنا ورؤيتنا' : 'About WARAQ'}</span>
                 </Link>
               </li>
               <li>
@@ -174,7 +164,7 @@ export function SiteFooter() {
         {/* Bottom Bar */}
         <div className="mt-12 pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
           <p className="flex items-center gap-1">
-            <span>© {new Date().getFullYear()} BookSwap.</span>
+            <span>© {new Date().getFullYear()} WARAQ | ورق.</span>
             <span>{lang === 'ar' ? 'صُنع بحب لكل عشاق القراءة في مصر والعالم العربي.' : 'Crafted with passion for readers across Egypt & the Arab World.'}</span>
           </p>
           <div className="flex items-center gap-4">

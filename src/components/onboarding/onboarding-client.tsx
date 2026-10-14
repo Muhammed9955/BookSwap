@@ -396,7 +396,7 @@ export function OnboardingClient({
                 {lang === 'ar' ? 'عندك كتب عايز تبيعها أو تبدلها؟' : 'Have books to sell or swap?'}
               </h2>
               <p className="text-muted-foreground mt-1 text-sm font-medium">
-                {lang === 'ar' ? 'أضف أول كتاب وابدأ رحلتك على BookSwap' : 'Add your first book and start your journey'}
+                {lang === 'ar' ? 'أضف أول كتاب وابدأ رحلتك على وَرَق' : 'Add your first book and start your journey on WARAQ'}
               </p>
             </div>
 

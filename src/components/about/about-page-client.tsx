@@ -21,8 +21,8 @@ export function AboutPageClient({ user }: AboutPageClientProps) {
   const email = 'muhamed.dev.95@gmail.com'
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
     lang === 'ar'
-      ? 'مرحباً بفريق BookSwap! أود التواصل معكم.'
-      : 'Hello BookSwap team! I would like to get in touch.'
+      ? 'مرحباً بفريق WARAQ | ورق! أود التواصل معكم.'
+      : 'Hello WARAQ team! I would like to get in touch.'
   )}`
 
   const values = [
@@ -87,39 +87,39 @@ export function AboutPageClient({ user }: AboutPageClientProps) {
   return (
     <MainLayout user={user}>
       {/* ── HERO ── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary via-indigo-700 to-violet-800 text-white py-20 md:py-28">
+      <section className="relative overflow-hidden hero-gradient text-white py-20 md:py-28">
         {/* Glows */}
-        <div className="absolute -top-32 -start-32 h-96 w-96 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+        <div className="absolute -top-32 -start-32 h-96 w-96 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 end-0 h-80 w-80 rounded-full bg-amber-400/15 blur-3xl pointer-events-none" />
 
         <div className="page-container relative z-10 text-center space-y-6 max-w-3xl mx-auto">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold text-amber-300">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs font-bold text-emerald-300">
             <BookOpen className="h-4 w-4" />
-            <span>{lang === 'ar' ? 'قصة BookSwap' : 'The BookSwap Story'}</span>
+            <span>{lang === 'ar' ? 'قصة وَرَق | WARAQ Story' : 'The WARAQ Story'}</span>
           </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black leading-tight text-white">
             {lang === 'ar' ? (
               <>
-                نؤمن أن الكتاب الجيد{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-orange-400">
-                  يستحق أن يُقرأ أكثر من مرة
+                عالم جديد..{' '}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-amber-200 to-emerald-300">
+                  بين كل صفحة والتانية
                 </span>
               </>
             ) : (
               <>
-                Every great book{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-orange-400">
-                  deserves more than one reader
+                A World..{' '}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-amber-200 to-emerald-300">
+                  Between Every Page
                 </span>
               </>
             )}
           </h1>
 
-          <p className="text-base sm:text-lg text-white/80 leading-relaxed font-medium">
+          <p className="text-base sm:text-lg text-white/85 leading-relaxed font-medium">
             {lang === 'ar'
-              ? 'BookSwap منصة عربية لتبادل الكتب بين القراء — اشترِ، بادِل، استعِر، أو تبرّع بكتبك مع مجتمع القراء حول العالم بأقل تكلفة وبدون وسطاء.'
-              : 'BookSwap is an Arabic platform connecting readers worldwide — buy, swap, borrow, or donate books with zero broker fees and maximum trust.'}
+              ? 'وَرَق — منصة عربية لتبادل واستعارة وشراء الكتب المستعملة ونوادي القراءة في مدينتك. نؤمن أن الكتاب الجيد يستحق أن يُقرأ أكثر من مرة، وبدون أي عمولات أو تكاليف شحن مرتفعة.'
+              : 'WARAQ — A World Between Every Page. The modern platform connecting readers to swap, borrow, and buy secondhand books locally with zero broker fees.'}
           </p>
 
           <div className="flex flex-wrap justify-center gap-4 pt-2">
@@ -216,7 +216,7 @@ export function AboutPageClient({ user }: AboutPageClientProps) {
         {/* ── HOW IT WORKS ── */}
         <section className="space-y-4">
           <h2 className="text-2xl sm:text-3xl font-black text-foreground">
-            {lang === 'ar' ? '🔄 كيف تعمل المنصة؟' : '🔄 How Does BookSwap Work?'}
+            {lang === 'ar' ? '🔄 كيف تعمل المنصة؟' : '🔄 How Does WARAQ Work?'}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[

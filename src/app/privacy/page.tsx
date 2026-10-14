@@ -3,9 +3,9 @@ import { PrivacyClient } from './privacy-client'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
-  title: 'سياسة الخصوصية — BookSwap | خصوصيتك أولويتنا',
+  title: 'سياسة الخصوصية — WARAQ | ورق',
   description:
-    'تعرف على كيفية جمع واستخدام وحماية بياناتك في منصة BookSwap، التزامنا بعدم بيع البيانات الشخصية، وأمان حسابك وتسجيل الدخول عبر Google.',
+    'تعرف على كيفية جمع واستخدام وحماية بياناتك في منصة وَرَق (WARAQ)، التزامنا بعدم بيع البيانات الشخصية، وأمان حسابك وتسجيل الدخول عبر Google.',
 }
 
 export default async function PrivacyPage() {

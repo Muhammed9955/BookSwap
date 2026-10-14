@@ -15,10 +15,10 @@ export async function generateMetadata({ params }: StorePageProps): Promise<Meta
   const supabase = await createClient()
   const { store } = await getStoreBySlug(slug, supabase)
   if (!store) {
-    return { title: 'المكتبة غير موجودة — BookSwap' }
+    return { title: 'المكتبة غير موجودة — WARAQ | ورق' }
   }
   return {
-    title: `${store.name_ar || store.name} — عروض الكتب والفعاليات | BookSwap Egypt`,
+    title: `${store.name_ar || store.name} — عروض الكتب والفعاليات | WARAQ | ورق`,
     description: store.description_ar || store.description,
   }
 }

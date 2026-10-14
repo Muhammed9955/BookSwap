@@ -5,8 +5,8 @@ import { ExplorePageClient } from '@/components/explore/explore-page-client'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'استكشف الكتب — BookSwap',
-  description: 'اكتشف آلاف الكتب المستعملة للتبادل والشراء والاستعارة حول العالم',
+  title: 'استكشف الكتب — WARAQ | ورق',
+  description: 'اكتشف آلاف الكتب المستعملة للتبادل والشراء والاستعارة بين يديك في مصر',
 }
 
 interface ExplorePageProps {

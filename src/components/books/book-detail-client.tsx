@@ -490,7 +490,7 @@ export function BookDetailClient({
       try {
         await navigator.share({
           title: book.title,
-          text: `${book.title} - ${book.author} | BookSwap`,
+          text: `${book.title} - ${book.author} | WARAQ — ورق`,
           url: window.location.href,
         })
         return

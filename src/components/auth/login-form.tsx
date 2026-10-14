@@ -222,7 +222,7 @@ export function LoginForm() {
           {lang === 'ar' ? 'أهلاً بعودتك 👋' : 'Welcome Back 👋'}
         </h2>
         <p className="text-muted-foreground text-sm mt-1">
-          {lang === 'ar' ? 'ادخل حسابك على BookSwap مصر' : 'Sign in to your BookSwap Egypt account'}
+          {lang === 'ar' ? 'ادخل حسابك في منصة وَرَق' : 'Sign in to your WARAQ account'}
         </p>
       </div>
 

@@ -137,8 +137,8 @@ export function StoresListClient({ initialStores, currentUserId }: StoresListCli
             </div>
             <p className="text-xs sm:text-sm text-foreground/85 font-medium leading-relaxed max-w-2xl">
               {lang === 'ar'
-                ? 'تركيزنا الأساسي حالياً في منصة BookSwap ينصب على نجاح وتسهيل صفقات المبادلة والاستعارة والشراء المباشر بين القراء يداً بيد. سوق المكتبات الشريكة قيد التجهيز مع المكتبات وسيُطلق رسمياً قريباً.'
-                : 'Our core focus right now is perfecting peer-to-peer book swaps, lending, and direct purchases between readers. The Bookstore Marketplace is in preparation and launching soon.'}
+                ? 'تركيزنا الأساسي حالياً في منصة وَرَق ينصب على نجاح وتسهيل صفقات المبادلة والاستعارة والشراء المباشر بين القراء يداً بيد. سوق المكتبات الشريكة قيد التجهيز مع المكتبات وسيُطلق رسمياً قريباً.'
+                : 'Our core focus right now in WARAQ is perfecting peer-to-peer book swaps, lending, and direct purchases between readers. The Bookstore Marketplace is in preparation and launching soon.'}
             </p>
           </div>
           <Link href="/explore" className="shrink-0">
@@ -350,7 +350,7 @@ export function StoresListClient({ initialStores, currentUserId }: StoresListCli
         <div className="rounded-3xl border-2 border-primary/20 bg-gradient-to-r from-primary/10 via-indigo-500/10 to-violet-500/10 p-6 sm:p-10 relative overflow-hidden">
           <div className="max-w-2xl space-y-3 relative z-10">
             <Badge className="bg-primary text-primary-foreground font-bold text-xs">
-              {lang === 'ar' ? 'شركاء BookSwap 🤝' : 'BookSwap Partners 🤝'}
+              {lang === 'ar' ? 'شركاء وَرَق 🤝' : 'WARAQ Partners 🤝'}
             </Badge>
             <h2 className="text-2xl sm:text-3xl font-black text-foreground">
               {lang === 'ar'
@@ -359,12 +359,12 @@ export function StoresListClient({ initialStores, currentUserId }: StoresListCli
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
               {lang === 'ar'
-                ? 'انضم إلى شبكة BookSwap واعرض عروض الحزم (10، 20، 25 كتاب مع هدايا)، وفعاليات توقيع الكتب أمام أكثر من 50,000 قارئ نشط في كافة المحافظات مع شارة توثيق رسمية.'
-                : 'Join BookSwap Egypt to promote your bundle packages, in-store signings, and literary sales directly to thousands of active book lovers nationwide.'}
+                ? 'انضم إلى شبكة وَرَق واعرض عروض الحزم (10، 20، 25 كتاب مع هدايا)، وفعاليات توقيع الكتب أمام أكثر من 50,000 قارئ نشط في كافة المحافظات مع شارة توثيق رسمية.'
+                : 'Join WARAQ to promote your bundle packages, in-store signings, and literary sales directly to thousands of active book lovers nationwide.'}
             </p>
             <div className="pt-2">
               <a
-                href="https://wa.me/201000000000?text=مرحباً، أود تسجيل مكتبتي على منصة BookSwap"
+                href="https://wa.me/201556252658?text=مرحباً، أود تسجيل مكتبتي على منصة وَرَق"
                 target="_blank"
                 rel="noreferrer"
               >

@@ -331,43 +331,60 @@ export function HomePageClient({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
             {/* Left/Main Column: Headings, Quick Actions & Search Box */}
             <div className="lg:col-span-7 space-y-6">
-              {/* Local Community Pill */}
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md px-4 py-1.5 text-xs font-bold text-amber-300 border border-white/15 shadow-sm">
+              {/* WARAQ Brand Pill */}
+              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md px-4 py-1.5 text-xs font-bold text-emerald-300 border border-white/15 shadow-sm">
                 <span className="flex h-2 w-2 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
                 </span>
                 <span>
                   {lang === 'ar'
-                    ? '📍 بادِل كتبك في مدينتك • مجتمع قراء حقيقي 0% عمولة'
-                    : '📍 Swap Books in Your City • 0% Commission Reader Community'}
+                    ? '🌱 منصة وَرَق • عالم جديد بين كل صفحة والتانية'
+                    : '🌱 WARAQ • A World Between Every Page'}
                 </span>
               </div>
 
-              {/* Bold Catchy Headline */}
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight text-white">
-                {lang === 'ar' ? (
-                  <>
-                    بادِل كتبك في مدينتك.. <br className="hidden sm:inline" />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-400 to-orange-400">
-                      كتابك القديم، كنز ينتظر قارئاً قريباً منك
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    Swap Books in Your City.. <br className="hidden sm:inline" />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-400 to-orange-400">
-                      Your Read Books Are Treasures for Readers Nearby
-                    </span>
-                  </>
-                )}
-              </h1>
+              {/* Bold Catchy Headline with Official WARAQ Slogan */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-md p-1.5 flex items-center justify-center border border-white/20 shadow-md">
+                    <Image
+                      src="/images/logo.png"
+                      alt="WARAQ Logo"
+                      width={32}
+                      height={32}
+                      className="w-full h-full object-contain filter brightness-125"
+                    />
+                  </div>
+                  <span className="text-xl sm:text-2xl font-black text-emerald-300 tracking-wider">
+                    {lang === 'ar' ? 'وَرَق | WARAQ' : 'WARAQ | وَرَق'}
+                  </span>
+                </div>
+
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight text-white">
+                  {lang === 'ar' ? (
+                    <>
+                      عالم جديد.. <br className="hidden sm:inline" />
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-amber-200 to-emerald-300">
+                        بين كل صفحة والتانية
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      A World.. <br className="hidden sm:inline" />
+                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-amber-200 to-emerald-300">
+                        Between Every Page
+                      </span>
+                    </>
+                  )}
+                </h1>
+              </div>
 
               {/* Engaging Subtitle */}
-              <p className="text-base sm:text-lg text-white/80 max-w-xl leading-relaxed font-medium">
+              <p className="text-base sm:text-lg text-white/85 max-w-xl leading-relaxed font-medium">
                 {lang === 'ar'
-                  ? 'بادِل كتبك، اشترِ بأسعار رمزية، أو استعر مع قراء حيك ومدينتك. القراءة مش لازم تكون مكلفة — التقي بأمان في كافيهات ومكتبات معتمدة وبدون أي عمولات أو وسطاء.'
-                  : 'Swap books, buy at bargain prices, or borrow from readers in your neighborhood. Reading shouldn\'t be expensive — meet safely at verified cafe hubs with zero broker fees.'}
+                  ? 'منصة وَرَق لتبادل وشراء واستعارة الكتب المستعملة مع قراء حيك ومدينتك. كتابك المقروء كنز ينتظر قارئاً قريباً منك — التقي بأمان في كافيهات ومكتبات معتمدة وبدون أي عمولات.'
+                  : 'WARAQ connects readers to swap, borrow, and buy secondhand books locally. Your read books are treasures waiting for the next reader nearby — 100% commission free.'}
               </p>
 
               {/* Competitor-Style Mode Pills: Swap, Buy, Borrow, Free */}
@@ -797,7 +814,7 @@ export function HomePageClient({
             <SectionHeader
               titleAr="⭐ إعلانات مميزة مختارة"
               titleEn="⭐ Curated Featured Books"
-              subtitleAr="كتب مميزة يوصي بها مجتمع بدّلها هذا الأسبوع"
+              subtitleAr="كتب مميزة يوصي بها مجتمع وَرَق هذا الأسبوع"
               subtitleEn="Hand-picked listings recommended by the community this week"
               href="/explore?featured=true"
             />
@@ -1059,8 +1076,8 @@ export function HomePageClient({
               </h2>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                 {lang === 'ar'
-                  ? 'مع ارتفاع أسعار الكتب المطبوعة، صممنا «بدّلها» لتمكين القراء من تدوير مكتباتهم الشخصية بدون أي عمولات خفية وبأمان كامل في نقاط تسليم معتمدة.'
-                  : 'With rising paper book prices, BookSwap empowers readers to recirculate physical books with zero broker commissions and verified safe pickup points.'}
+                  ? 'مع ارتفاع أسعار الكتب المطبوعة، صممنا «وَرَق» لتمكين القراء من تدوير مكتباتهم الشخصية بدون أي عمولات خفية وبأمان كامل في نقاط تسليم معتمدة.'
+                  : 'With rising paper book prices, WARAQ empowers readers to recirculate physical books with zero broker commissions and verified safe pickup points.'}
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
@@ -1111,7 +1128,7 @@ export function HomePageClient({
                   <span>~4,200 ج.م</span>
                 </div>
                 <div className="flex items-center justify-between text-foreground font-black text-sm">
-                  <span>{lang === 'ar' ? 'تكلفة التبادل في بدّلها:' : 'Cost on BookSwap:'}</span>
+                  <span>{lang === 'ar' ? 'تكلفة التبادل في وَرَق:' : 'Cost on WARAQ:'}</span>
                   <span className="text-emerald-500 text-base">0 ج.م (مجاناً)</span>
                 </div>
               </div>
@@ -1200,8 +1217,8 @@ export function HomePageClient({
                 <Sparkles className="h-4 w-4 text-amber-500 animate-pulse" />
                 <span>
                   {lang === 'ar'
-                    ? 'قريباً في بدّلها • ميزات قيد التطوير'
-                    : 'Coming Soon to BookSwap • In The Pipeline'}
+                    ? 'قريباً في وَرَق • ميزات قيد التطوير'
+                    : 'Coming Soon to WARAQ • In The Pipeline'}
                 </span>
                 <span className="flex h-2 w-2 relative">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
@@ -1216,7 +1233,7 @@ export function HomePageClient({
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
                 {lang === 'ar'
                   ? 'نعمل على توسيع تجربة تبادل الكتب لتشمل شراكات رسمية مع كبرى المكتبات، حزم توفير مخفضة، وأجندة لأهم الفعاليات الثقافية وحفلات التوقيع.'
-                  : 'We are expanding BookSwap beyond individual trades to include verified bookstore partnerships, bulk discount bundles, and a literary events calendar.'}
+                  : 'We are expanding WARAQ beyond individual trades to include verified bookstore partnerships, bulk discount bundles, and a literary events calendar.'}
               </p>
             </div>
 

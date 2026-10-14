@@ -6,7 +6,7 @@ import { CommunitiesListClient } from '@/components/communities/communities-list
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'نوادي القراءة ومجموعات التبادل الآمن في مصر — BookSwap Egypt',
+  title: 'نوادي القراءة ومجموعات التبادل الآمن في مصر — WARAQ | ورق',
   description: 'انضم إلى مجتمعات القراءة في حيك أو جامعتك (المعادي، الجامعة الأمريكية، الإسكندرية، الزمالك) مع نقاط لقاء آمنة معتمدة لتبادل واستعارة الكتب.',
 }
 

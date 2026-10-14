@@ -18,10 +18,10 @@ export async function generateMetadata({ params }: ProfilePageProps): Promise<Me
     .or(`username.eq.${username},id.eq.${username}`)
     .single()
 
-  if (!profile) return { title: 'ملف شخصي — BookSwap' }
+  if (!profile) return { title: 'ملف شخصي — WARAQ | ورق' }
   return {
-    title: `${profile.full_name ?? 'مستخدم'} — BookSwap`,
-    description: profile.bio ?? 'ملف شخصي على BookSwap',
+    title: `${profile.full_name ?? 'مستخدم'} — WARAQ | ورق`,
+    description: profile.bio ?? 'ملف شخصي على WARAQ',
   }
 }
 

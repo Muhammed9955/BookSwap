@@ -173,8 +173,8 @@ export function StoreDetailClient({
                   <a
                     href={`https://wa.me/${store.social_links.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
                       lang === 'ar'
-                        ? `مرحباً، أود الاستفسار عن عروض الكتب من ${storeName} عبر منصة BookSwap`
-                        : `Hello, I'd like to ask about book offers from ${storeName} via BookSwap`
+                        ? `مرحباً، أود الاستفسار عن عروض الكتب من ${storeName} عبر منصة وَرَق (WARAQ)`
+                        : `Hello, I'd like to ask about book offers from ${storeName} via WARAQ`
                     )}`}
                     target="_blank"
                     rel="noreferrer"
@@ -356,8 +356,8 @@ export function StoreDetailClient({
                         <a
                           href={`https://wa.me/${store.social_links.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
                             lang === 'ar'
-                              ? `مرحباً، أود طلب "${offerTitle}" المعروض على منصة BookSwap بسعر ${offer.bundle_price ? `${offer.bundle_price} ج.م` : ''}`
-                              : `Hello! I would like to order the "${offerTitle}" offer from BookSwap.`
+                              ? `مرحباً، أود طلب "${offerTitle}" المعروض على منصة وَرَق بسعر ${offer.bundle_price ? `${offer.bundle_price} ج.م` : ''}`
+                              : `Hello! I would like to order the "${offerTitle}" offer from WARAQ.`
                           )}`}
                           target="_blank"
                           rel="noreferrer"
