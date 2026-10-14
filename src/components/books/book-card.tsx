@@ -143,7 +143,7 @@ export function BookCard({
             }}
             aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
             className={cn(
-              'absolute bottom-2.5 end-2.5 flex h-8 w-8 items-center justify-center rounded-full shadow-md transition-all duration-200 cursor-pointer z-20',
+              'absolute bottom-2.5 end-2.5 flex h-8 w-8 items-center justify-center rounded-full shadow-md transition-all duration-200 cursor-pointer z-20 touch-manipulation select-none active:scale-90',
               isWishlisted
                 ? 'bg-red-500 text-white scale-110'
                 : 'bg-card/90 text-muted-foreground hover:bg-card hover:text-red-500 hover:scale-110 backdrop-blur-md'
@@ -155,18 +155,18 @@ export function BookCard({
       </div>
 
       {/* Content */}
-      <div className="flex flex-col gap-1.5 p-3.5 sm:p-4">
-        <h3 className="text-sm sm:text-base font-black leading-snug line-clamp-2 text-foreground group-hover:text-primary transition-colors">
+      <div className="flex flex-col gap-1 p-3 sm:p-4">
+        <h3 className="text-xs sm:text-base font-black leading-snug line-clamp-2 text-foreground group-hover:text-primary transition-colors">
           {lang === 'ar' && book?.title_ar ? book.title_ar : book?.title}
         </h3>
-        <p className="text-xs text-muted-foreground font-semibold line-clamp-1">
+        <p className="text-[11px] sm:text-xs text-muted-foreground font-semibold line-clamp-1">
           {lang === 'ar' && book?.author_ar ? book.author_ar : book?.author}
         </p>
 
         {/* Price & Condition Row */}
         <div className="flex items-center justify-between mt-1 pt-1">
           <span className={cn(
-            'text-sm sm:text-base font-black',
+            'text-xs sm:text-base font-black',
             listing.listing_type === 'GIVEAWAY' ? 'text-green-600 dark:text-green-400' : 'text-foreground'
           )}>
             {listing.listing_type === 'GIVEAWAY'
@@ -180,7 +180,7 @@ export function BookCard({
               listing.condition === 'VERY_GOOD' ? 'very-good' :
               listing.condition === 'GOOD' ? 'good' : 'acceptable'
             }
-            className="text-[10px] font-bold px-2 py-0.5"
+            className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5"
           >
             {getConditionLabel(listing.condition, lang)}
           </Badge>

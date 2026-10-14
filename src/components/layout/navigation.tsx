@@ -59,6 +59,7 @@ const navItems = [
 export function BottomNav() {
   const pathname = usePathname()
   const { lang } = useLanguage()
+  const { unreadMessages } = useAuth()
 
   return (
     <nav className="bottom-nav md:hidden" aria-label="Mobile navigation">
@@ -72,11 +73,14 @@ export function BottomNav() {
               key={item.key}
               href={item.href}
               aria-label={t(item.labelKey, lang)}
-              className="flex flex-col items-center justify-center cursor-pointer"
+              className="relative -mt-6 flex flex-col items-center justify-center cursor-pointer group"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform active:scale-95 cursor-pointer">
-                <Icon className="h-6 w-6" />
+              <div className="flex h-13 w-13 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/35 ring-4 ring-background transition-all duration-200 group-hover:scale-105 group-active:scale-95 cursor-pointer">
+                <Icon className="h-6 w-6 stroke-[2.5]" />
               </div>
+              <span className="text-[10px] font-black text-primary mt-0.5 leading-none">
+                {t(item.labelKey, lang)}
+              </span>
             </Link>
           )
         }
@@ -87,16 +91,26 @@ export function BottomNav() {
             href={item.href}
             aria-label={t(item.labelKey, lang)}
             className={cn(
-              'flex flex-col items-center justify-center gap-0.5 px-3 py-1 rounded-lg transition-colors cursor-pointer',
+              'relative flex flex-col items-center justify-center gap-0.5 px-3 py-1 rounded-xl transition-all duration-200 cursor-pointer min-w-[56px]',
               isActive
-                ? 'text-primary'
+                ? 'text-primary font-bold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <Icon className={cn('h-5 w-5 transition-transform', isActive && 'scale-110')} />
-            <span className="text-[10px] font-medium leading-tight">
+            <div className="relative">
+              <Icon className={cn('h-5 w-5 transition-transform duration-200', isActive && 'scale-115')} />
+              {item.key === 'messages' && unreadMessages > 0 && (
+                <span className="absolute -top-1.5 -end-2 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white shadow-xs animate-pulse">
+                  {unreadMessages > 9 ? '9+' : unreadMessages}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] leading-tight">
               {item.key === 'search' ? (lang === 'ar' ? 'بحث' : 'Search') : t(item.labelKey, lang)}
             </span>
+            {isActive && (
+              <span className="h-1 w-1 rounded-full bg-primary mt-0.5" />
+            )}
           </Link>
         )
       })}
@@ -209,9 +223,12 @@ export function TopNav({
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-white dark:bg-slate-900 shadow-sm transition-colors">
       <div className="page-container">
-        <div className="flex h-16 items-center justify-between gap-2 sm:gap-4">
-          {/* Official WARAQ Logo */}
-          <WaraqLogo size="md" priority />
+        <div className="flex h-16 items-center justify-between gap-1.5 sm:gap-4 px-1 sm:px-0">
+          {/* Official WARAQ Logo — compact on small mobile screens to keep space balanced */}
+          <div className="shrink-0">
+            <WaraqLogo size="md" priority className="hidden sm:inline-flex" />
+            <WaraqLogo size="sm" priority className="sm:hidden" />
+          </div>
 
           {/* Udemy-style Centered Prominent Search Bar */}
           <div className="hidden md:flex flex-1 min-w-0 max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-2 sm:mx-4 lg:mx-6 items-center relative" ref={searchContainerRef}>
@@ -700,13 +717,13 @@ export function TopNav({
               <div className="flex items-center gap-1.5">
                 <Link
                   href="/login"
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                  className="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-bold text-foreground bg-muted/60 hover:bg-muted border border-border/60 transition-colors cursor-pointer shrink-0"
                 >
                   {t('nav_login', lang)}
                 </Link>
                 <Link
                   href="/register"
-                  className="px-4 py-2 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-black active:scale-[0.98] transition-all shadow-xs cursor-pointer"
+                  className="hidden sm:inline-flex px-4 py-2 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-black active:scale-[0.98] transition-all shadow-xs cursor-pointer whitespace-nowrap shrink-0"
                 >
                   {t('nav_register', lang)}
                 </Link>
@@ -731,7 +748,7 @@ export function TopNav({
               onChange={e => setSearchQuery(e.target.value)}
               placeholder={lang === 'ar' ? 'ابحث عن أي كتاب، مؤلف، أو تصنيف في أي مكان...' : 'Search for any book, author, or genre worldwide...'}
               className={cn(
-                'w-full bg-muted/60 border border-border/90 focus:border-primary rounded-xl py-2.5 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20',
+                'w-full bg-muted/60 border border-border/90 focus:border-primary rounded-xl py-2.5 text-base sm:text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20',
                 isRTL ? 'pr-10 pl-20' : 'pl-10 pr-20'
               )}
             />

@@ -139,30 +139,30 @@ export function ExplorePageClient({
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
             placeholder={lang === 'ar' ? 'ابحث عن كتاب، مؤلف، ISBN...' : 'Search books, author, ISBN...'}
-            className={cn('h-10', isRTL ? 'pr-9 pl-20' : 'pl-9 pr-20')}
+            className={cn('h-11 text-base sm:text-sm', isRTL ? 'pr-9 pl-20' : 'pl-9 pr-20')}
           />
           <Button type="submit" size="sm" className={cn('absolute top-1/2 -translate-y-1/2', isRTL ? 'left-2' : 'right-2')}>
             {lang === 'ar' ? 'بحث' : 'Search'}
           </Button>
         </form>
 
-        {/* Active Filters */}
+        {/* Active Filters — smooth scroll on mobile */}
         {activeFilters.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-4 overflow-x-auto scrollbar-none max-w-full pb-1">
             {activeFilters.map(([key, value]) => (
               <div
                 key={key}
-                className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium"
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold whitespace-nowrap shrink-0"
               >
-                {value}
-                <button onClick={() => clearFilter(key)} aria-label="Remove filter">
+                <span>{value}</span>
+                <button onClick={() => clearFilter(key)} aria-label="Remove filter" className="p-0.5 hover:text-red-500">
                   <X className="h-3 w-3" />
                 </button>
               </div>
             ))}
             <button
               onClick={() => router.push('/explore')}
-              className="px-2.5 py-1 rounded-full text-xs font-medium text-muted-foreground hover:text-foreground"
+              className="px-3 py-1 rounded-full text-xs font-bold text-muted-foreground hover:text-foreground whitespace-nowrap shrink-0"
             >
               {lang === 'ar' ? 'مسح الكل' : 'Clear All'}
             </button>

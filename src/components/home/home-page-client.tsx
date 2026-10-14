@@ -327,10 +327,10 @@ export function HomePageClient({
           <div className="absolute -bottom-24 start-1/3 h-[320px] w-[320px] rounded-full bg-amber-500/15 blur-[110px]" />
         </div>
 
-        <div className="page-container max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 relative py-12 md:py-20">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+        <div className="page-container max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 relative py-8 sm:py-12 md:py-20">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 items-center">
             {/* Left/Main Column: Headings, Quick Actions & Search Box */}
-            <div className="lg:col-span-7 space-y-6">
+            <div className="lg:col-span-7 space-y-5 sm:space-y-6">
               {/* WARAQ Brand Pill */}
               <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md px-4 py-1.5 text-xs font-bold text-emerald-300 border border-white/15 shadow-sm">
                 <span className="flex h-2 w-2 relative">
@@ -388,7 +388,7 @@ export function HomePageClient({
               </p>
 
               {/* Competitor-Style Mode Pills: Swap, Buy, Borrow, Free */}
-              <div className="flex flex-wrap items-center gap-2 pt-1">
+              <div className="flex items-center gap-2 pt-1 overflow-x-auto scrollbar-none max-w-full pb-1 sm:flex-wrap">
                 {[
                   {
                     id: 'SWAP',
@@ -419,7 +419,7 @@ export function HomePageClient({
                         ?.scrollIntoView({ behavior: 'smooth' })
                     }}
                     className={cn(
-                      'px-3.5 py-1.5 rounded-full text-xs font-black backdrop-blur-md transition-all cursor-pointer border',
+                      'px-3.5 py-1.5 rounded-full text-xs font-black backdrop-blur-md transition-all cursor-pointer border whitespace-nowrap shrink-0',
                       activeTab === item.tab
                         ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-lg shadow-amber-400/20 scale-105'
                         : 'bg-white/10 text-white/90 border-white/20 hover:bg-white/20'
@@ -453,7 +453,7 @@ export function HomePageClient({
                           : 'Search any book, author, or genre in your city...'
                       }
                       className={cn(
-                        'w-full bg-muted/40 hover:bg-muted/60 focus:bg-background border border-border/80 focus:border-primary rounded-xl sm:rounded-2xl py-3 text-sm font-semibold text-foreground placeholder:text-muted-foreground/75 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all',
+                        'w-full bg-muted/40 hover:bg-muted/60 focus:bg-background border border-border/80 focus:border-primary rounded-xl sm:rounded-2xl py-3 text-base sm:text-sm font-semibold text-foreground placeholder:text-muted-foreground/75 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all',
                         isRTL ? 'pr-11 pl-4' : 'pl-11 pr-4'
                       )}
                     />
@@ -462,7 +462,7 @@ export function HomePageClient({
                   <Button
                     type="submit"
                     size="lg"
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-black px-6 py-3 rounded-xl sm:rounded-2xl shadow-md shadow-primary/25 cursor-pointer shrink-0 transition-transform active:scale-95 flex items-center justify-center gap-2"
+                    className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-black px-6 py-3 rounded-xl sm:rounded-2xl shadow-md shadow-primary/25 cursor-pointer shrink-0 transition-transform active:scale-95 flex items-center justify-center gap-2"
                   >
                     <Sparkles className="h-4 w-4" />
                     <span>{lang === 'ar' ? 'ابحث الآن' : 'Search Now'}</span>
@@ -498,21 +498,21 @@ export function HomePageClient({
               </div>
 
               {/* Action Buttons & Quick Stats */}
-              <div className="pt-2 flex flex-wrap items-center gap-3 sm:gap-4">
-                <Link href="/books/add">
+              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+                <Link href="/books/add" className="w-full sm:w-auto">
                   <Button
                     size="lg"
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-xl shadow-primary/30 px-6 py-6 rounded-2xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-sm flex items-center gap-2 border border-white/20"
+                    className="w-full sm:w-auto justify-center bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-xl shadow-primary/30 px-6 py-5 sm:py-6 rounded-2xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-sm flex items-center gap-2 border border-white/20"
                   >
                     <PlusCircle className="h-5 w-5" />
                     <span>{lang === 'ar' ? 'أضف كتابك مجاناً' : 'Add Your Book Free'}</span>
                   </Button>
                 </Link>
-                <Link href="/explore">
+                <Link href="/explore" className="w-full sm:w-auto">
                   <Button
                     size="lg"
                     variant="ghost"
-                    className="border-2 border-white/30 hover:border-white/60 bg-white/10 hover:bg-white/20 text-white backdrop-blur-md px-6 py-6 rounded-2xl text-sm font-bold cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-md"
+                    className="w-full sm:w-auto justify-center border-2 border-white/30 hover:border-white/60 bg-white/10 hover:bg-white/20 text-white backdrop-blur-md px-6 py-5 sm:py-6 rounded-2xl text-sm font-bold cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-md"
                   >
                     <span>{lang === 'ar' ? 'تصفح كل الكتب' : 'Explore All Books'}</span>
                     <ArrowRight className={cn('h-4 w-4 ms-1.5', isRTL && 'rotate-180')} />
@@ -521,17 +521,17 @@ export function HomePageClient({
               </div>
 
               {/* Trust Metric Chips */}
-              <div className="pt-2 flex flex-wrap items-center gap-5 sm:gap-8 text-white/90 text-xs sm:text-sm font-semibold">
-                <div className="flex items-center gap-2">
-                  <ArrowRightLeft className="h-4 w-4 text-amber-400" />
+              <div className="pt-2 grid grid-cols-1 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-8 text-white/90 text-xs sm:text-sm font-semibold">
+                <div className="flex items-center gap-2 p-2.5 sm:p-0 rounded-xl bg-white/10 sm:bg-transparent border border-white/15 sm:border-transparent">
+                  <ArrowRightLeft className="h-4 w-4 text-amber-400 shrink-0" />
                   <span>{lang === 'ar' ? '0% عمولات على التبادل' : '0% Commission on Swaps'}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Coffee className="h-4 w-4 text-emerald-400" />
+                <div className="flex items-center gap-2 p-2.5 sm:p-0 rounded-xl bg-white/10 sm:bg-transparent border border-white/15 sm:border-transparent">
+                  <Coffee className="h-4 w-4 text-emerald-400 shrink-0" />
                   <span>{lang === 'ar' ? 'نقاط تبادل آمنة في الكافيهات' : 'Safe Cafe Meetup Hubs'}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-violet-400" />
+                <div className="flex items-center gap-2 p-2.5 sm:p-0 rounded-xl bg-white/10 sm:bg-transparent border border-white/15 sm:border-transparent">
+                  <ShieldCheck className="h-4 w-4 text-violet-400 shrink-0" />
                   <span>{lang === 'ar' ? 'تأمين مسترد 100% للإعارة' : '100% Refundable Deposit'}</span>
                 </div>
               </div>
@@ -637,8 +637,8 @@ export function HomePageClient({
               </p>
             </div>
 
-            {/* Filter Tabs */}
-            <div className="flex items-center gap-1.5 bg-muted/80 p-1 rounded-xl border border-border/80">
+            {/* Filter Tabs — Smooth horizontal scroll on mobile */}
+            <div className="flex items-center gap-1.5 bg-muted/80 p-1 rounded-xl border border-border/80 overflow-x-auto scrollbar-none max-w-full pb-0.5">
               {[
                 { id: 'ALL', labelAr: 'الكل', labelEn: 'All', count: recentListings.length },
                 {
@@ -665,14 +665,14 @@ export function HomePageClient({
                   type="button"
                   onClick={() => setActiveTab(tab.id as typeof activeTab)}
                   className={cn(
-                    'px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer',
+                    'px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center',
                     activeTab === tab.id
                       ? 'bg-background text-foreground shadow-xs'
                       : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
                   <span>{lang === 'ar' ? tab.labelAr : tab.labelEn}</span>
-                  <span className="ms-1.5 text-[10px] opacity-70">({tab.count})</span>
+                  <span className="ms-1.5 text-[10px] opacity-75">({tab.count})</span>
                 </button>
               ))}
             </div>
