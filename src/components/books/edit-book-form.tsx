@@ -27,19 +27,19 @@ import { compressImageForAi } from '@/lib/image-utils'
 const editBookSchema = z.object({
   title: z.string().min(1, 'عنوان الكتاب مطلوب'),
   author: z.string().min(1, 'اسم المؤلف مطلوب'),
-  isbn: z.string().optional(),
-  publisher: z.string().optional(),
-  edition: z.string().optional(),
-  language: z.enum(['ARABIC', 'ENGLISH', 'FRENCH', 'GERMAN', 'OTHER']),
-  category_id: z.string().optional(),
-  description: z.string().optional(),
-  condition: z.enum(['NEW', 'LIKE_NEW', 'VERY_GOOD', 'GOOD', 'ACCEPTABLE']),
-  listing_type: z.enum(['SELL', 'SWAP', 'SELL_OR_SWAP', 'GIVEAWAY']),
-  price: z.coerce.number().min(0).optional(),
+  isbn: z.string().optional().nullable(),
+  publisher: z.string().optional().nullable(),
+  edition: z.string().optional().nullable(),
+  language: z.enum(['ARABIC', 'ENGLISH', 'FRENCH', 'GERMAN', 'OTHER']).default('ARABIC').optional(),
+  category_id: z.string().optional().nullable(),
+  description: z.string().optional().nullable(),
+  condition: z.enum(['NEW', 'LIKE_NEW', 'VERY_GOOD', 'GOOD', 'ACCEPTABLE']).default('GOOD'),
+  listing_type: z.enum(['SELL', 'SWAP', 'SELL_OR_SWAP', 'GIVEAWAY']).default('SELL'),
+  price: z.coerce.number().min(0).optional().nullable(),
   is_negotiable: z.boolean().default(false),
   status: z.enum(['ACTIVE', 'RESERVED', 'SOLD', 'HIDDEN', 'DELETED']).default('ACTIVE'),
-  city_id: z.string().optional(),
-  area_id: z.string().optional(),
+  city_id: z.string().optional().nullable(),
+  area_id: z.string().optional().nullable(),
 })
 
 type EditBookData = z.infer<typeof editBookSchema>
@@ -302,14 +302,27 @@ export function EditBookForm({ listing, userId, categories, cities }: EditBookFo
     }
   }
 
+  const onInvalid = (fieldErrors: any) => {
+    console.error('Validation errors on edit book form:', fieldErrors)
+    const errValues = Object.values(fieldErrors) as Array<{ message?: string }>
+    const firstMsg = errValues.find(e => e?.message)?.message || (lang === 'ar' ? 'يرجى مراجعة الحقول المطلوبة والتأكد من صحتها' : 'Please verify all required fields')
+    setError(firstMsg)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   // Submit Handler
   const onSubmit = async (data: EditBookData) => {
     setUploading(true)
     setError(null)
 
     try {
+      let bookId = book?.id || listing.book_id
+      const finalCategoryId = selectedCategoryId || data.category_id || null
+      const finalCityId = selectedCityId || data.city_id || null
+      const finalAreaId = selectedAreaId || data.area_id || null
+
       // 1. Update book metadata
-      if (book?.id) {
+      if (bookId) {
         const { error: bookUpdateErr } = await supabase
           .from('books')
           .update({
@@ -318,15 +331,46 @@ export function EditBookForm({ listing, userId, categories, cities }: EditBookFo
             isbn: data.isbn || null,
             publisher: data.publisher || null,
             edition: data.edition || null,
-            language: data.language,
-            category_id: data.category_id || null,
+            language: data.language || 'ARABIC',
+            category_id: finalCategoryId,
             description: data.description || null,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', book.id)
+          .eq('id', bookId)
 
         if (bookUpdateErr) {
-          console.warn('Could not update books table:', bookUpdateErr)
+          console.warn('Direct book update failed (RLS check), finding or inserting book record:', bookUpdateErr)
+          // Find or create matching book
+          const { data: existingBook } = await supabase
+            .from('books')
+            .select('id')
+            .ilike('title', data.title)
+            .ilike('author', data.author)
+            .maybeSingle()
+
+          if (existingBook) {
+            bookId = existingBook.id
+          } else {
+            const { data: newBook, error: newBookErr } = await supabase
+              .from('books')
+              .insert({
+                title: data.title,
+                author: data.author,
+                isbn: data.isbn || null,
+                publisher: data.publisher || null,
+                edition: data.edition || null,
+                language: data.language || 'ARABIC',
+                category_id: finalCategoryId,
+                description: data.description || null,
+                created_by: userId,
+              })
+              .select('id')
+              .single()
+
+            if (!newBookErr && newBook) {
+              bookId = newBook.id
+            }
+          }
         }
       }
 
@@ -346,19 +390,20 @@ export function EditBookForm({ listing, userId, categories, cities }: EditBookFo
       const { error: listingErr } = await supabase
         .from('book_listings')
         .update({
+          book_id: bookId,
           listing_type: data.listing_type,
           condition: data.condition,
-          price: data.listing_type === 'GIVEAWAY' ? 0 : (data.price || null),
+          price: data.listing_type === 'GIVEAWAY' ? 0 : (data.price !== undefined && data.price !== null ? data.price : null),
           is_negotiable: data.is_negotiable,
           status: data.status,
-          city_id: data.city_id || null,
-          area_id: data.area_id || null,
+          city_id: finalCityId,
+          area_id: finalAreaId,
           description: finalDescription || null,
           updated_at: new Date().toISOString(),
         })
         .eq('id', listing.id)
 
-      if (listingErr) throw new Error(lang === 'ar' ? 'فشل في تحديث بيانات الكتاب' : 'Failed to update listing')
+      if (listingErr) throw new Error(listingErr.message || (lang === 'ar' ? 'فشل في تحديث بيانات الكتاب' : 'Failed to update listing'))
 
       // 4. Handle deleted images
       if (deletedImageIds.length > 0) {
@@ -368,9 +413,11 @@ export function EditBookForm({ listing, userId, categories, cities }: EditBookFo
           .in('id', deletedImageIds)
       }
 
+      const remainingExisting = existingImages.filter(img => !deletedImageIds.includes(img.id))
+
       // 5. Upload any newly added images
       if (newImages.length > 0) {
-        let currentSort = existingImages.length
+        const currentSort = remainingExisting.length
         for (let i = 0; i < newImages.length; i++) {
           const img = newImages[i]
           const ext = img.file.name.split('.').pop()
@@ -389,11 +436,16 @@ export function EditBookForm({ listing, userId, categories, cities }: EditBookFo
               listing_id: listing.id,
               url: publicUrl,
               storage_path: path,
-              is_primary: existingImages.length === 0 && i === 0,
+              is_primary: remainingExisting.length === 0 && i === 0,
               sort_order: currentSort + i,
             })
           }
         }
+      } else if (remainingExisting.length > 0) {
+        await supabase
+          .from('book_images')
+          .update({ is_primary: true })
+          .eq('id', remainingExisting[0].id)
       }
 
       setSuccess(true)
@@ -449,7 +501,7 @@ export function EditBookForm({ listing, userId, categories, cities }: EditBookFo
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-8">
         
         {/* Listing Status Controls */}
         <div className="p-4 rounded-2xl border border-border/80 bg-card/60 backdrop-blur-sm space-y-3">
@@ -698,6 +750,28 @@ export function EditBookForm({ listing, userId, categories, cities }: EditBookFo
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Language Selection */}
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>{lang === 'ar' ? 'لغة الكتاب' : 'Language'}</Label>
+              <div className="flex flex-wrap gap-2">
+                {LANGUAGES.map(l => (
+                  <button
+                    key={l.value}
+                    type="button"
+                    onClick={() => setValue('language', l.value as any)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer',
+                      (watch('language') || 'ARABIC') === l.value
+                        ? 'border-primary bg-primary/10 text-primary font-bold shadow-xs ring-1 ring-primary/20'
+                        : 'border-border/60 bg-card text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {lang === 'ar' ? l.labelAr : l.labelEn}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

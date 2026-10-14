@@ -95,9 +95,9 @@ export function BookCard({
   }
 
   return (
-    <Link href={`/books/${bookSlug}`} className={cn('book-card group flex flex-col', className)}>
+    <Link href={`/books/${bookSlug}`} className={cn('book-card group flex flex-col h-full justify-between', className)}>
       {/* Cover Image */}
-      <div className="relative aspect-[2/3] overflow-hidden bg-muted">
+      <div className="relative aspect-[2/3] w-full overflow-hidden bg-muted shrink-0">
         {primaryImage ? (
           <Image
             src={primaryImage}
@@ -155,67 +155,78 @@ export function BookCard({
       </div>
 
       {/* Content */}
-      <div className="flex flex-col gap-1 p-3 sm:p-4">
-        <h3 className="text-xs sm:text-base font-black leading-snug line-clamp-2 text-foreground group-hover:text-primary transition-colors">
-          {lang === 'ar' && book?.title_ar ? book.title_ar : book?.title}
-        </h3>
-        <p className="text-[11px] sm:text-xs text-muted-foreground font-semibold line-clamp-1">
-          {lang === 'ar' && book?.author_ar ? book.author_ar : book?.author}
-        </p>
-
-        {/* Price & Condition Row */}
-        <div className="flex items-center justify-between mt-1 pt-1">
-          <span className={cn(
-            'text-xs sm:text-base font-black',
-            listing.listing_type === 'GIVEAWAY' ? 'text-green-600 dark:text-green-400' : 'text-foreground'
-          )}>
-            {listing.listing_type === 'GIVEAWAY'
-              ? (lang === 'ar' ? '🎁 مجاني' : '🎁 Free')
-              : formatPrice(listing.price)}
-          </span>
-          <Badge
-            variant={
-              listing.condition === 'NEW' ? 'new' :
-              listing.condition === 'LIKE_NEW' ? 'like-new' :
-              listing.condition === 'VERY_GOOD' ? 'very-good' :
-              listing.condition === 'GOOD' ? 'good' : 'acceptable'
-            }
-            className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5"
-          >
-            {getConditionLabel(listing.condition, lang)}
-          </Badge>
+      <div className="flex flex-col flex-1 justify-between p-3 sm:p-4">
+        <div className="space-y-1">
+          {/* Standardized Title Container Height */}
+          <div className="h-[2.5rem] sm:h-[2.85rem] overflow-hidden flex items-start">
+            <h3 className="text-xs sm:text-sm md:text-base font-black leading-snug line-clamp-2 text-foreground group-hover:text-primary transition-colors">
+              {lang === 'ar' && book?.title_ar ? book.title_ar : book?.title}
+            </h3>
+          </div>
+          {/* Standardized Author Container Height */}
+          <div className="h-4 sm:h-5 overflow-hidden">
+            <p className="text-[11px] sm:text-xs text-muted-foreground font-semibold line-clamp-1">
+              {lang === 'ar' && book?.author_ar ? book.author_ar : book?.author}
+            </p>
+          </div>
         </div>
 
-        {/* Seller & Location */}
-        <div className="flex items-center justify-between mt-1 pt-1.5 border-t border-border/50">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <span className="text-[10px] font-black text-primary">
-                {seller?.full_name?.charAt(0) ?? 'U'}
-              </span>
-            </div>
-            <span className="text-xs font-semibold text-muted-foreground truncate">
-              {seller?.full_name ?? (lang === 'ar' ? 'مجهول' : 'Unknown')}
+        {/* Price & Location Bottom Section */}
+        <div className="mt-auto pt-2 space-y-1.5">
+          {/* Price & Condition Row */}
+          <div className="flex items-center justify-between">
+            <span className={cn(
+              'text-xs sm:text-base font-black',
+              listing.listing_type === 'GIVEAWAY' ? 'text-green-600 dark:text-green-400' : 'text-foreground'
+            )}>
+              {listing.listing_type === 'GIVEAWAY'
+                ? (lang === 'ar' ? '🎁 مجاني' : '🎁 Free')
+                : formatPrice(listing.price)}
             </span>
-            {seller?.rating_average && seller.rating_average > 0 && (
-              <span className="flex items-center gap-0.5 text-[10px] text-amber-500 font-bold">
-                <Star className="h-3 w-3 fill-current" />
-                {seller.rating_average.toFixed(1)}
-              </span>
-            )}
+            <Badge
+              variant={
+                listing.condition === 'NEW' ? 'new' :
+                listing.condition === 'LIKE_NEW' ? 'like-new' :
+                listing.condition === 'VERY_GOOD' ? 'very-good' :
+                listing.condition === 'GOOD' ? 'good' : 'acceptable'
+              }
+              className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5"
+            >
+              {getConditionLabel(listing.condition, lang)}
+            </Badge>
           </div>
 
-          {(showDistance && distance !== undefined) ? (
-            <span className="flex items-center gap-0.5 text-[10px] font-semibold text-muted-foreground flex-shrink-0">
-              <MapPin className="h-3 w-3" />
-              {`${distance.toFixed(1)} ${lang === 'ar' ? 'كم' : 'km'}`}
-            </span>
-          ) : listing.area ? (
-            <span className="flex items-center gap-0.5 text-[10px] font-semibold text-muted-foreground flex-shrink-0 truncate max-w-[90px]">
-              <MapPin className="h-3 w-3" />
-              {lang === 'ar' ? listing.area.name_ar : listing.area.name_en}
-            </span>
-          ) : null}
+          {/* Seller & Location */}
+          <div className="flex items-center justify-between pt-1.5 border-t border-border/50">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <span className="text-[10px] font-black text-primary">
+                  {seller?.full_name?.charAt(0) ?? 'U'}
+                </span>
+              </div>
+              <span className="text-xs font-semibold text-muted-foreground truncate">
+                {seller?.full_name ?? (lang === 'ar' ? 'مجهول' : 'Unknown')}
+              </span>
+              {seller?.rating_average && seller.rating_average > 0 && (
+                <span className="flex items-center gap-0.5 text-[10px] text-amber-500 font-bold">
+                  <Star className="h-3 w-3 fill-current" />
+                  {seller.rating_average.toFixed(1)}
+                </span>
+              )}
+            </div>
+
+            {(showDistance && distance !== undefined) ? (
+              <span className="flex items-center gap-0.5 text-[10px] font-semibold text-muted-foreground flex-shrink-0">
+                <MapPin className="h-3 w-3" />
+                {`${distance.toFixed(1)} ${lang === 'ar' ? 'كم' : 'km'}`}
+              </span>
+            ) : listing.area ? (
+              <span className="flex items-center gap-0.5 text-[10px] font-semibold text-muted-foreground flex-shrink-0 truncate max-w-[90px]">
+                <MapPin className="h-3 w-3" />
+                {lang === 'ar' ? listing.area.name_ar : listing.area.name_en}
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
     </Link>
