@@ -503,6 +503,9 @@ export function BookDetailClient({
         deposit: currentDeposit,
       })
       setShowBorrowModal(false)
+      if (res.conversationId) {
+        setTimeout(() => router.push(`/messages/${res.conversationId}`), 1200)
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : (lang === 'ar' ? 'حدث خطأ أثناء إرسال طلب الاستعارة.' : 'Error sending borrow request.')
       setModalValidationError(msg)
@@ -1095,12 +1098,23 @@ export function BookDetailClient({
                           : '💡 You cannot send multiple requests for the same book while one is pending.'}
                       </p>
                     </div>
-                    <Link href={`/transactions?tab=outgoing&id=${currentExistingRequest.id}`} className="block">
-                      <Button className="w-full gap-2 font-black text-xs rounded-xl py-5 shadow-xs cursor-pointer bg-amber-600 hover:bg-amber-700 text-white">
-                        <ArrowRightLeft className="h-4 w-4" />
-                        {lang === 'ar' ? 'عرض ومتابعة تفاصيل طلبك في صفقاتي ↗' : 'View Your Request in Deals Hub ↗'}
+                    <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                      <Button
+                        type="button"
+                        onClick={handleContact}
+                        loading={actionLoading === 'contact'}
+                        className="flex-1 gap-2 font-black text-xs rounded-xl py-5 shadow-xs cursor-pointer bg-primary hover:bg-primary/90 text-primary-foreground"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        {lang === 'ar' ? '💬 فتح المحادثة مع المالك' : '💬 Open Chat with Owner'}
                       </Button>
-                    </Link>
+                      <Link href={`/transactions?tab=outgoing&id=${currentExistingRequest.id}`} className="flex-1">
+                        <Button variant="outline" className="w-full gap-2 font-black text-xs rounded-xl py-5 shadow-xs cursor-pointer border-slate-300 dark:border-slate-700">
+                          <ArrowRightLeft className="h-4 w-4" />
+                          {lang === 'ar' ? 'متابعة الطلب في صفقاتي' : 'View in Deals Hub'}
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 )}
 

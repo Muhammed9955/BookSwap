@@ -27,11 +27,13 @@ interface ConversationWithDetails {
 interface MessagesClientProps {
   userId: string
   conversations: ConversationWithDetails[]
+  initialConversationId?: string | null
 }
 
-export function MessagesClient({ userId, conversations }: MessagesClientProps) {
+export function MessagesClient({ userId, conversations: initialConversations, initialConversationId = null }: MessagesClientProps) {
   const { lang, isRTL } = useLanguage()
-  const [selectedConvId, setSelectedConvId] = useState<string | null>(null)
+  const [conversationsList, setConversationsList] = useState<ConversationWithDetails[]>(initialConversations)
+  const [selectedConvId, setSelectedConvId] = useState<string | null>(initialConversationId ?? null)
   const [messages, setMessages] = useState<Array<{
     id: string; conversation_id: string; sender_id: string; content: string; created_at: string; is_read: boolean
   }>>([])
@@ -40,12 +42,45 @@ export function MessagesClient({ userId, conversations }: MessagesClientProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
 
-  const selectedConv = conversations.find(c => c.id === selectedConvId)
+  // Sync conversations list when prop updates
+  useEffect(() => {
+    setConversationsList(initialConversations)
+  }, [initialConversations])
+
+  // Sync selected conversation when initialConversationId changes
+  useEffect(() => {
+    if (initialConversationId) {
+      setSelectedConvId(initialConversationId)
+    }
+  }, [initialConversationId])
+
+  // On desktop screens, if no conversation is selected and list exists, auto-select first
+  useEffect(() => {
+    if (!selectedConvId && conversationsList.length > 0 && typeof window !== 'undefined' && window.innerWidth >= 768) {
+      setSelectedConvId(conversationsList[0].id)
+    }
+  }, [conversationsList, selectedConvId])
+
+  const selectedConv = conversationsList.find(c => c.id === selectedConvId)
   const otherProfile = selectedConv
     ? (selectedConv.participant_1 === userId
       ? selectedConv.participant_2_profile
       : selectedConv.participant_1_profile)
     : null
+
+  const handleSelectConv = (id: string) => {
+    setSelectedConvId(id)
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', `/messages/${id}`)
+    }
+  }
+
+  const handleBackToList = () => {
+    setSelectedConvId(null)
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', '/messages')
+    }
+  }
 
   // Load messages for selected conversation
   useEffect(() => {
@@ -73,7 +108,11 @@ export function MessagesClient({ userId, conversations }: MessagesClientProps) {
         table: 'messages',
         filter: `conversation_id=eq.${selectedConvId}`,
       }, (payload) => {
-        setMessages(prev => [...prev, payload.new as typeof messages[0]])
+        const newMsg = payload.new as typeof messages[0]
+        setMessages(prev => {
+          if (prev.some(m => m.id === newMsg.id)) return prev
+          return [...prev, newMsg]
+        })
       })
       .subscribe()
 
@@ -90,13 +129,36 @@ export function MessagesClient({ userId, conversations }: MessagesClientProps) {
     const content = newMessage.trim()
     setNewMessage('')
 
-    await supabase.from('messages').insert({
+    const tempId = 'temp-' + Date.now()
+    const optimisticMsg = {
+      id: tempId,
       conversation_id: selectedConvId,
       sender_id: userId,
       content,
-    })
+      created_at: new Date().toISOString(),
+      is_read: false,
+    }
+    setMessages(prev => [...prev, optimisticMsg])
 
-    // Update conversation last message
+    // Update conversation last message in local state
+    setConversationsList(prev => prev.map(c => {
+      if (c.id === selectedConvId) {
+        return { ...c, last_message: content, last_message_at: new Date().toISOString() }
+      }
+      return c
+    }))
+
+    const { data: insertedMsg } = await supabase.from('messages').insert({
+      conversation_id: selectedConvId,
+      sender_id: userId,
+      content,
+    }).select().maybeSingle()
+
+    if (insertedMsg) {
+      setMessages(prev => prev.map(m => m.id === tempId ? insertedMsg : m))
+    }
+
+    // Update conversation last message in DB
     await supabase.from('conversations').update({
       last_message: content,
       last_message_at: new Date().toISOString(),
@@ -131,25 +193,25 @@ export function MessagesClient({ userId, conversations }: MessagesClientProps) {
 
             {/* Conversation List */}
             <div className="flex-1 overflow-y-auto">
-              {conversations.length === 0 ? (
+              {conversationsList.length === 0 ? (
                 <div className="empty-state">
                   <MessageCircle className="h-12 w-12 text-muted-foreground mb-3" />
                   <p className="font-medium">{lang === 'ar' ? 'مفيش محادثات لسه' : 'No conversations yet'}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {lang === 'ar' ? 'ابدأ محادثة من صفحة كتاب' : 'Start a conversation from a book page'}
+                    {lang === 'ar' ? 'ابدأ محادثة من صفحة كتاب أو قدم طلب مبادلة/استعارة' : 'Start a conversation from any book page or swap/borrow request'}
                   </p>
                 </div>
               ) : (
-                conversations.map(conv => {
+                conversationsList.map(conv => {
                   const other = getOtherProfile(conv)
                   const unread = getUnreadCount(conv)
                   const isSelected = conv.id === selectedConvId
                   return (
                     <button
                       key={conv.id}
-                      onClick={() => setSelectedConvId(conv.id)}
+                      onClick={() => handleSelectConv(conv.id)}
                       className={cn(
-                        'w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors text-start border-b',
+                        'w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors text-start border-b cursor-pointer',
                         isSelected && 'bg-primary/5 border-s-2 border-s-primary'
                       )}
                     >
@@ -184,7 +246,7 @@ export function MessagesClient({ userId, conversations }: MessagesClientProps) {
                           )}
                         </div>
                         {conv.listing?.book && (
-                          <span className="text-[10px] text-primary">
+                          <span className="text-[10px] text-primary block truncate mt-0.5">
                             📚 {lang === 'ar' && conv.listing.book.title_ar ? conv.listing.book.title_ar : conv.listing.book.title}
                           </span>
                         )}
@@ -211,30 +273,45 @@ export function MessagesClient({ userId, conversations }: MessagesClientProps) {
             ) : (
               <>
                 {/* Chat Header */}
-                <div className="flex items-center gap-3 p-4 border-b bg-card">
-                  <button
-                    onClick={() => setSelectedConvId(null)}
-                    className="md:hidden flex items-center justify-center h-8 w-8 rounded-lg hover:bg-accent transition-colors"
-                  >
-                    <ArrowLeft className={cn('h-4 w-4', isRTL && 'rotate-180')} />
-                  </button>
-                  <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden">
-                    {otherProfile?.avatar_url ? (
-                      <Image src={otherProfile.avatar_url} alt={otherProfile.full_name ?? ''} width={36} height={36} className="object-cover" />
-                    ) : (
-                      <span className="font-bold text-primary text-sm">{otherProfile?.full_name?.charAt(0) ?? '?'}</span>
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-sm">
-                      {lang === 'ar' && otherProfile?.full_name_ar ? otherProfile.full_name_ar : otherProfile?.full_name}
-                    </p>
-                    {selectedConv?.listing?.book && (
-                      <p className="text-xs text-muted-foreground">
-                        📚 {lang === 'ar' && selectedConv.listing.book.title_ar ? selectedConv.listing.book.title_ar : selectedConv.listing.book.title}
+                <div className="flex items-center justify-between gap-3 p-3.5 sm:p-4 border-b bg-card">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <button
+                      onClick={handleBackToList}
+                      className="md:hidden flex items-center justify-center h-8 w-8 rounded-lg hover:bg-accent transition-colors shrink-0"
+                    >
+                      <ArrowLeft className={cn('h-4 w-4', isRTL && 'rotate-180')} />
+                    </button>
+                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center overflow-hidden shrink-0">
+                      {otherProfile?.avatar_url ? (
+                        <Image src={otherProfile.avatar_url} alt={otherProfile.full_name ?? ''} width={36} height={36} className="object-cover" />
+                      ) : (
+                        <span className="font-bold text-primary text-sm">{otherProfile?.full_name?.charAt(0) ?? '?'}</span>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-sm truncate">
+                        {lang === 'ar' && otherProfile?.full_name_ar ? otherProfile.full_name_ar : otherProfile?.full_name}
                       </p>
-                    )}
+                      {selectedConv?.listing?.book && (
+                        <Link
+                          href={`/books/${selectedConv.listing.id}`}
+                          className="text-xs text-primary hover:underline flex items-center gap-1 font-bold truncate max-w-xs"
+                        >
+                          <span>📚</span>
+                          <span className="truncate">
+                            {lang === 'ar' && selectedConv.listing.book.title_ar ? selectedConv.listing.book.title_ar : selectedConv.listing.book.title}
+                          </span>
+                        </Link>
+                      )}
+                    </div>
                   </div>
+
+                  <Link href="/transactions">
+                    <Button variant="outline" size="sm" className="font-bold text-xs rounded-xl gap-1.5 cursor-pointer shrink-0">
+                      <span>🤝</span>
+                      <span className="hidden sm:inline">{lang === 'ar' ? 'صفقاتي' : 'Deals'}</span>
+                    </Button>
+                  </Link>
                 </div>
 
                 {/* Messages */}

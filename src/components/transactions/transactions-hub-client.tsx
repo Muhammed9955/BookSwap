@@ -357,31 +357,41 @@ export function TransactionsHubClient({
     }
   }
 
+  const [chatLoadingKey, setChatLoadingKey] = useState<string | null>(null)
+
   // Open conversation
-  const handleChatWithUser = async (otherUserId: string, listingId?: string) => {
+  const handleChatWithUser = async (otherUserId?: string | null, listingId?: string, key?: string) => {
     if (!otherUserId) return
-    const p1 = currentUserId < otherUserId ? currentUserId : otherUserId
-    const p2 = currentUserId < otherUserId ? otherUserId : currentUserId
+    if (key) setChatLoadingKey(key)
 
-    const { data: existing } = await supabase
-      .from('conversations')
-      .select('id')
-      .eq('participant_1', p1)
-      .eq('participant_2', p2)
-      .maybeSingle()
+    try {
+      const p1 = currentUserId < otherUserId ? currentUserId : otherUserId
+      const p2 = currentUserId < otherUserId ? otherUserId : currentUserId
 
-    let convId = existing?.id
-
-    if (!convId) {
-      const { data: newConv } = await supabase
+      const { data: existing } = await supabase
         .from('conversations')
-        .insert({ participant_1: p1, participant_2: p2, listing_id: listingId || null })
         .select('id')
-        .single()
-      convId = newConv?.id
-    }
+        .eq('participant_1', p1)
+        .eq('participant_2', p2)
+        .maybeSingle()
 
-    if (convId) router.push(`/messages/${convId}`)
+      let convId = existing?.id
+
+      if (!convId) {
+        const { data: newConv } = await supabase
+          .from('conversations')
+          .insert({ participant_1: p1, participant_2: p2, listing_id: listingId || null })
+          .select('id')
+          .single()
+        convId = newConv?.id
+      }
+
+      if (convId) router.push(`/messages/${convId}`)
+    } catch (err) {
+      console.error('Error opening chat:', err)
+    } finally {
+      if (key) setChatLoadingKey(null)
+    }
   }
 
   // Helper: Parse Loan Note
@@ -629,7 +639,8 @@ export function TransactionsHubClient({
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleChatWithUser(buyer?.id, tx.listing_id)}
+                          onClick={() => handleChatWithUser(buyer?.id || tx.buyer_id, tx.listing_id, `tx-${tx.id}`)}
+                          loading={chatLoadingKey === `tx-${tx.id}`}
                           className="font-bold text-xs gap-1 cursor-pointer"
                         >
                           <MessageCircle className="h-4 w-4" />
@@ -758,7 +769,8 @@ export function TransactionsHubClient({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleChatWithUser(requester.id, swap.listing_id)}
+                      onClick={() => handleChatWithUser(requester?.id || swap.requester_id, swap.listing_id, `swap-${swap.id}`)}
+                      loading={chatLoadingKey === `swap-${swap.id}`}
                       className="font-bold text-xs gap-1.5 cursor-pointer"
                     >
                       <MessageCircle className="h-4 w-4" />
@@ -877,7 +889,8 @@ export function TransactionsHubClient({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleChatWithUser(buyer.id, tx.listing_id)}
+                      onClick={() => handleChatWithUser(buyer?.id || tx.buyer_id, tx.listing_id, `tx-${tx.id}`)}
+                      loading={chatLoadingKey === `tx-${tx.id}`}
                       className="font-bold text-xs gap-1.5 cursor-pointer"
                     >
                       <MessageCircle className="h-4 w-4" />
@@ -1018,11 +1031,12 @@ export function TransactionsHubClient({
                   <MeetupDetailBadge meetup={parseMeetupInfo(swap)} lang={lang} />
 
                   <div className="flex items-center justify-end gap-2.5 pt-1">
-                    {seller && (
+                    {(seller?.id || swap.listing?.seller_id) && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleChatWithUser(seller.id, swap.listing_id)}
+                        onClick={() => handleChatWithUser(seller?.id || swap.listing?.seller_id, swap.listing_id, `swap-${swap.id}`)}
+                        loading={chatLoadingKey === `swap-${swap.id}`}
                         className="font-bold text-xs gap-1.5 cursor-pointer"
                       >
                         <MessageCircle className="h-4 w-4" />
@@ -1136,11 +1150,12 @@ export function TransactionsHubClient({
                   <MeetupDetailBadge meetup={parseMeetupInfo(tx)} lang={lang} />
 
                   <div className="flex items-center justify-end gap-2.5 pt-1">
-                    {seller && (
+                    {(seller?.id || tx.seller_id) && (
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleChatWithUser(seller.id, tx.listing_id)}
+                        onClick={() => handleChatWithUser(seller?.id || tx.seller_id, tx.listing_id, `tx-${tx.id}`)}
+                        loading={chatLoadingKey === `tx-${tx.id}`}
                         className="font-bold text-xs gap-1.5 cursor-pointer"
                       >
                         <MessageCircle className="h-4 w-4" />
@@ -1280,15 +1295,18 @@ export function TransactionsHubClient({
 
                   {/* Complete & Release Deposit */}
                   <div className="flex flex-wrap items-center justify-end gap-2.5 pt-2 border-t border-border/60">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleChatWithUser(counterparty.id, tx.listing_id)}
-                      className="font-bold text-xs gap-1.5 cursor-pointer"
-                    >
-                      <MessageCircle className="h-4 w-4" />
-                      {lang === 'ar' ? 'محادثة' : 'Chat'}
-                    </Button>
+                    {counterparty?.id && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleChatWithUser(counterparty.id, tx.listing_id, `tx-${tx.id}`)}
+                        loading={chatLoadingKey === `tx-${tx.id}`}
+                        className="font-bold text-xs gap-1.5 cursor-pointer"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        {lang === 'ar' ? 'محادثة' : 'Chat'}
+                      </Button>
+                    )}
 
                     <Button
                       size="sm"
