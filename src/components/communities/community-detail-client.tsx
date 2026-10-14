@@ -64,6 +64,7 @@ import {
   getCommunityMembers,
   updateMemberStatus,
   addBookToCommunity,
+  addBooksBatchToCommunity,
   getUserBooksForCommunity,
   updateCommunityDetails,
   deleteCommunity,
@@ -247,8 +248,10 @@ export function CommunityDetailClient({
   // Add Book Modal state
   const [showAddBookModal, setShowAddBookModal] = useState(false)
   const [userBooks, setUserBooks] = useState<BookListing[]>([])
+  const [selectedListingIds, setSelectedListingIds] = useState<string[]>([])
   const [loadingUserBooks, setLoadingUserBooks] = useState(false)
   const [addingListingId, setAddingListingId] = useState<string | null>(null)
+  const [submittingBatchIntake, setSubmittingBatchIntake] = useState(false)
   const [addBookSuccess, setAddBookSuccess] = useState<string | null>(null)
 
   // Intake QR Voucher & Scanning Modal state
@@ -392,12 +395,6 @@ export function CommunityDetailClient({
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
 
-  // Community Drop-off Intake Voucher State
-  const [showDropoffModal, setShowDropoffModal] = useState(false)
-  const [dropoffPackageTitle, setDropoffPackageTitle] = useState('')
-  const [dropoffBookCount, setDropoffBookCount] = useState(1)
-  const [dropoffQrUrl, setDropoffQrUrl] = useState<string | null>(null)
-  const [dropoffPin, setDropoffPin] = useState<string | null>(null)
 
   useEffect(() => {
     if (community.id) {
@@ -421,6 +418,7 @@ export function CommunityDetailClient({
       window.location.href = `/login?redirectTo=/communities/${community.slug}`
       return
     }
+    setSelectedListingIds([])
     setShowAddBookModal(true)
     setLoadingUserBooks(true)
     try {
@@ -428,6 +426,81 @@ export function CommunityDetailClient({
       setUserBooks(b)
     } finally {
       setLoadingUserBooks(false)
+    }
+  }
+
+  const handleToggleSelectListing = (id: string) => {
+    setSelectedListingIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    )
+  }
+
+  const handleSelectAllListings = () => {
+    if (selectedListingIds.length === userBooks.length) {
+      setSelectedListingIds([])
+    } else {
+      setSelectedListingIds(userBooks.map(b => b.id))
+    }
+  }
+
+  const handleBatchSubmitForIntake = async () => {
+    if (!currentUserId || selectedListingIds.length === 0) return
+    setSubmittingBatchIntake(true)
+    try {
+      const res = await addBooksBatchToCommunity({
+        communityId: community.id,
+        listingIds: selectedListingIds,
+        addedBy: currentUserId,
+      })
+
+      if (res.success) {
+        const selectedItems = userBooks
+          .filter(b => selectedListingIds.includes(b.id))
+          .map((b, idx) => ({
+            id: res.communityBookIds?.[idx] || `pending-${Date.now()}-${idx}`,
+            listing_id: b.id,
+            title: b.book?.title_ar || b.book?.title || 'كتاب',
+            author: b.book?.author,
+            cover_image_url: b.images?.[0]?.url || b.book?.cover_image_url,
+            owner_name: lang === 'ar' ? 'أنت' : 'You',
+            owner_id: currentUserId,
+            added_by: currentUserId,
+            price: b.price,
+            listing_type: b.listing_type,
+            status: 'PENDING',
+          }))
+
+        setPendingBooks(prev => [...selectedItems, ...prev])
+        setShowAddBookModal(false)
+        setSelectedListingIds([])
+
+        const primaryItem = selectedItems[0]
+        setIntakeQrModal({
+          isOpen: true,
+          mode: 'VOUCHER',
+          book: {
+            ...primaryItem,
+            title:
+              selectedItems.length > 1
+                ? `${selectedItems.length} ${lang === 'ar' ? 'كتب' : 'books'}`
+                : primaryItem.title,
+            bookCount: selectedItems.length,
+            items: selectedItems,
+          },
+          intakePin: res.intakePin,
+        })
+
+        setAddBookSuccess(
+          lang === 'ar'
+            ? `تم إصدار رمز QR لتسليم (${selectedItems.length}) كتب بنقطة اللقاء! سلّم الكتب لمسؤول المجتمع ليقوم بالمسح. 📦`
+            : `Intake QR generated for (${selectedItems.length}) books! Hand them to the admin at the hub. 📦`
+        )
+        setTimeout(() => setAddBookSuccess(null), 5000)
+      } else {
+        alert(res.error || (lang === 'ar' ? 'فشل إصدار رمز التسليم' : 'Failed to generate intake voucher'))
+      }
+    } finally {
+      setSubmittingBatchIntake(false)
     }
   }
 
@@ -801,24 +874,6 @@ export function CommunityDetailClient({
     }
   }
 
-  const handleGenerateDropoffVoucher = async () => {
-    const code = `HUB-${Math.floor(1000 + Math.random() * 9000)}`
-    setDropoffPin(code)
-    const payload = {
-      v: 1,
-      type: 'COMMUNITY_INTAKE',
-      communityId: community.id,
-      code,
-      title: dropoffPackageTitle || (lang === 'ar' ? 'حزمة كتب مهداة لرف المجتمع' : 'Donated books package'),
-      count: dropoffBookCount,
-    }
-    try {
-      const dataUrl = await QRCode.toDataURL(JSON.stringify(payload), { width: 300, margin: 2 })
-      setDropoffQrUrl(dataUrl)
-    } catch (err) {
-      console.error(err)
-    }
-  }
 
   const commName = lang === 'ar' && currentComm.name_ar ? currentComm.name_ar : currentComm.name
   const commDesc = lang === 'ar' && currentComm.description_ar ? currentComm.description_ar : currentComm.description
@@ -1568,7 +1623,7 @@ export function CommunityDetailClient({
                                 </Button>
                               </Link>
                             )}
-                            {(isAdmin || isMyBook) && (
+                            {isAdmin && (
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -1728,7 +1783,7 @@ export function CommunityDetailClient({
                                 <span>{lang === 'ar' ? 'طلب استلام من الفرع' : 'Request & Pickup'}</span>
                               </Button>
                             )}
-                            {(isAdmin || isMyBook) && (
+                            {isAdmin && (
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -2832,56 +2887,63 @@ export function CommunityDetailClient({
                 </div>
               )}
 
-              {/* Action to list a new book or Drop-off Package */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 flex flex-col justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-black text-foreground">{lang === 'ar' ? 'كتابك غير مدرج بعد؟' : 'Book not listed yet?'}</p>
-                    <p className="text-[11px] text-muted-foreground">{lang === 'ar' ? 'أضف كتاباً جديداً للمنصة الآن' : 'List a new book now'}</p>
-                  </div>
-                  <Link
-                    href={`/books/add?communityId=${community.id}&communitySlug=${community.slug}`}
-                    onClick={() => setShowAddBookModal(false)}
-                  >
-                    <Button size="sm" className="w-full rounded-xl font-black text-xs gap-1 shadow-xs cursor-pointer">
-                      <Plus className="h-3.5 w-3.5" />
-                      <span>{lang === 'ar' ? 'إضافة كتاب جديد' : 'New Book'}</span>
-                    </Button>
-                  </Link>
+              {/* Guidance to list a new book on profile first */}
+              <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-black text-foreground">
+                    {lang === 'ar' ? 'كتابك غير معروض بعد في حسابك؟' : 'Book not listed in your profile yet?'}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    {lang === 'ar'
+                      ? 'أضف تفاصيل كتابك إلى حسابك أولاً بالصور والسعر/التبادل، ثم حدده للإيداع بمخزن المجتمع.'
+                      : 'Add your book with photos and details to your profile first, then request to deposit it here.'}
+                  </p>
                 </div>
-
-                {/* Drop-off Package QR Voucher Option */}
-                <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 flex flex-col justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-black text-foreground">{lang === 'ar' ? 'إيداع حزمة كتب برمز QR 📦' : 'Drop-off Package via QR'}</p>
-                    <p className="text-[11px] text-muted-foreground">{lang === 'ar' ? 'سلّم كتاباً أو حزمة لنقطة اللقاء ليقوم المسؤول بمسح الرمز' : 'Drop off at hub for custodian scanning'}</p>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setShowAddBookModal(false)
-                      setShowDropoffModal(true)
-                    }}
-                    className="w-full rounded-xl font-black text-xs gap-1 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10 cursor-pointer"
-                  >
-                    <QrCode className="h-3.5 w-3.5" />
-                    <span>{lang === 'ar' ? 'إصدار بطاقة إيداع QR' : 'Intake QR Voucher'}</span>
+                <Link
+                  href={`/books/add?communityId=${community.id}&communitySlug=${community.slug}`}
+                  onClick={() => setShowAddBookModal(false)}
+                  className="shrink-0"
+                >
+                  <Button size="sm" className="w-full sm:w-auto rounded-xl font-black text-xs gap-1.5 shadow-xs cursor-pointer">
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>{lang === 'ar' ? '+ إضافة إعلان جديد' : '+ List New Book'}</span>
                   </Button>
-                </div>
+                </Link>
               </div>
 
-              {/* User's existing active listings */}
-              <div>
-                <h4 className="text-xs font-black text-foreground mb-3">
-                  {lang === 'ar' ? 'كتبك المعروضة حالياً على المنصة:' : 'Your Active Listings:'}
-                </h4>
+              {/* User's existing active listings with multi-select */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
+                  <div>
+                    <h4 className="text-xs font-black text-foreground">
+                      {lang === 'ar' ? 'اختر الكتب المراد إيداعها بمخزن المجتمع:' : 'Select books to store in community hub:'}
+                    </h4>
+                    <p className="text-[10px] text-muted-foreground">
+                      {lang === 'ar'
+                        ? 'حدد كتاباً أو أكثر لإصدار رمز QR موحد لتسليمها لمسؤول المجتمع'
+                        : 'Select one or more books to generate an intake QR code for the hub admin'}
+                    </p>
+                  </div>
+                  {userBooks.length > 0 && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleSelectAllListings}
+                      className="h-8 text-xs font-bold text-primary hover:bg-primary/10 rounded-xl px-2.5 cursor-pointer shrink-0"
+                    >
+                      {selectedListingIds.length === userBooks.length
+                        ? (lang === 'ar' ? 'إلغاء التحديد' : 'Deselect All')
+                        : (lang === 'ar' ? 'تحديد الكل' : 'Select All')}
+                    </Button>
+                  )}
+                </div>
 
                 {loadingUserBooks ? (
-                  <p className="text-xs text-muted-foreground">{lang === 'ar' ? 'جاري تحميل كتبك...' : 'Loading your books...'}</p>
+                  <p className="text-xs text-muted-foreground py-6 text-center">{lang === 'ar' ? 'جاري تحميل كتبك...' : 'Loading your books...'}</p>
                 ) : userBooks.length === 0 ? (
-                  <div className="text-center py-6 border border-dashed rounded-2xl text-xs text-muted-foreground space-y-2">
-                    <p>{lang === 'ar' ? 'ليس لديك كتب معروضة حالياً.' : 'No active listings found.'}</p>
+                  <div className="text-center py-8 border border-dashed rounded-2xl text-xs text-muted-foreground space-y-2">
+                    <p>{lang === 'ar' ? 'ليس لديك كتب معروضة حالياً في حسابك.' : 'No active listings in your profile.'}</p>
                     <Link href="/books/add" onClick={() => setShowAddBookModal(false)}>
                       <Button size="sm" variant="outline" className="text-xs font-bold rounded-xl">
                         {lang === 'ar' ? '+ إدراج أول كتاب لك الآن' : '+ List your first book'}
@@ -2889,36 +2951,119 @@ export function CommunityDetailClient({
                     </Link>
                   </div>
                 ) : (
-                  <div className="space-y-2.5">
-                    {userBooks.map(item => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-muted/30 border border-border/60"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-xs font-black text-foreground truncate">{item.book?.title || 'كتاب'}</p>
-                          <p className="text-[11px] text-muted-foreground truncate">{item.book?.author}</p>
-                        </div>
-                        <Button
-                          size="sm"
-                          disabled={addingListingId === item.id}
-                          loading={addingListingId === item.id}
-                          onClick={() => handleAddBookToShelf(item.id, item.book?.title || 'الكتاب')}
-                          className="rounded-xl font-black text-xs shrink-0 cursor-pointer"
+                  <div className="space-y-2 max-h-[46vh] overflow-y-auto pe-1">
+                    {userBooks.map(item => {
+                      const isSelected = selectedListingIds.includes(item.id)
+                      const bookTitle = item.book?.title_ar || item.book?.title || 'كتاب'
+                      const cover = item.images?.[0]?.url || item.book?.cover_image_url
+
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => handleToggleSelectListing(item.id)}
+                          className={`flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-primary/10 border-primary shadow-xs'
+                              : 'bg-muted/30 border-border/70 hover:bg-muted/50'
+                          }`}
                         >
-                          {lang === 'ar' ? 'إضافة للرف 📚' : 'Add to Shelf'}
-                        </Button>
-                      </div>
-                    ))}
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            {/* Checkbox */}
+                            <div
+                              className={`h-5 w-5 rounded-lg border flex items-center justify-center shrink-0 transition-all ${
+                                isSelected
+                                  ? 'bg-primary border-primary text-primary-foreground'
+                                  : 'border-muted-foreground/40 bg-background'
+                              }`}
+                            >
+                              {isSelected && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+                            </div>
+
+                            {/* Book Cover */}
+                            <div className="relative h-12 w-9 rounded-lg overflow-hidden bg-muted border border-border/60 shrink-0">
+                              {cover ? (
+                                <Image src={cover} alt="" fill className="object-cover" />
+                              ) : (
+                                <div className="h-full w-full flex items-center justify-center text-xs">📖</div>
+                              )}
+                            </div>
+
+                            {/* Details */}
+                            <div className="min-w-0 flex-1 text-start">
+                              <p className="text-xs font-black text-foreground truncate">{bookTitle}</p>
+                              <p className="text-[11px] text-muted-foreground truncate">{item.book?.author}</p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-bold">
+                                  {(item.listing_type as string) === 'SELL' ? (lang === 'ar' ? 'للبيع' : 'Sell') :
+                                   (item.listing_type as string) === 'SWAP' ? (lang === 'ar' ? 'للتبادل' : 'Swap') :
+                                   (item.listing_type as string) === 'BORROW' ? (lang === 'ar' ? 'للإعارة' : 'Borrow') :
+                                   (item.listing_type || 'متاح')}
+                                </Badge>
+                                {item.price ? (
+                                  <span className="text-[10px] font-bold text-emerald-600">
+                                    {item.price} {lang === 'ar' ? 'ج.م' : 'EGP'}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Quick single-submit button */}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={addingListingId === item.id || submittingBatchIntake}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleAddBookToShelf(item.id, bookTitle)
+                            }}
+                            className="rounded-xl font-bold text-[11px] shrink-0 text-primary hover:bg-primary/10 h-8 px-2.5 cursor-pointer"
+                            title={lang === 'ar' ? 'إصدار رمز QR لهذا الكتاب منفرداً' : 'Generate QR for this book'}
+                          >
+                            <QrCode className="h-3.5 w-3.5 me-1" />
+                            <span>{lang === 'ar' ? 'إيداع فردي' : 'Single'}</span>
+                          </Button>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="p-4 border-t border-border bg-muted/20 shrink-0 flex justify-end">
-              <Button variant="outline" onClick={() => setShowAddBookModal(false)} className="rounded-xl font-bold text-xs py-5">
-                {lang === 'ar' ? 'إغلاق' : 'Close'}
-              </Button>
+            {/* Bottom Actions Bar */}
+            <div className="p-4 border-t border-border bg-muted/20 shrink-0 flex items-center justify-between gap-3">
+              <div className="text-xs">
+                <span className="font-bold text-muted-foreground">{lang === 'ar' ? 'المحدد للإيداع:' : 'Selected:'} </span>
+                <span className="font-black text-primary text-sm">{selectedListingIds.length}</span>
+                <span className="text-[11px] text-muted-foreground ms-1">{lang === 'ar' ? 'كتب' : 'books'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowAddBookModal(false)
+                    setSelectedListingIds([])
+                  }}
+                  className="rounded-xl font-bold text-xs py-5"
+                >
+                  {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                </Button>
+                <Button
+                  disabled={selectedListingIds.length === 0 || submittingBatchIntake}
+                  loading={submittingBatchIntake}
+                  onClick={handleBatchSubmitForIntake}
+                  className="rounded-xl font-black text-xs py-5 px-5 gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 text-white shadow-md shadow-emerald-600/25 cursor-pointer"
+                >
+                  <QrCode className="h-4 w-4" />
+                  <span>
+                    {lang === 'ar'
+                      ? `إصدار رمز QR للإيداع (${selectedListingIds.length}) 📦`
+                      : `Generate Intake QR (${selectedListingIds.length}) 📦`}
+                  </span>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -3369,106 +3514,6 @@ export function CommunityDetailClient({
         </div>
       )}
 
-      {/* Community Drop-off Intake Voucher Modal */}
-      {showDropoffModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <div className="w-full max-w-md rounded-3xl bg-card border-2 border-border shadow-2xl overflow-hidden flex flex-col text-foreground">
-            <div className="p-4 sm:p-5 border-b border-border bg-muted/30 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Package className="h-5 w-5 text-emerald-600" />
-                <h3 className="text-base font-black text-foreground">
-                  {lang === 'ar' ? 'بطاقة إيداع كتب لنقطة اللقاء 📦' : 'Community Hub Drop-off Voucher'}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowDropoffModal(false)
-                  setDropoffQrUrl(null)
-                  setDropoffPin(null)
-                }}
-                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="p-5 sm:p-6 space-y-4 text-center">
-              {dropoffQrUrl ? (
-                <div className="space-y-3">
-                  <div className="bg-white p-3 rounded-2xl inline-block shadow-md">
-                    <img src={dropoffQrUrl} alt="Drop-off QR" className="h-48 w-48 mx-auto rounded-xl" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[11px] font-bold text-muted-foreground">
-                      {lang === 'ar' ? 'رمز التحقق اليدوي للإيداع:' : 'Manual Intake Code:'}
-                    </p>
-                    <div className="font-mono text-xl font-black tracking-widest text-emerald-600">
-                      {dropoffPin}
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-start text-xs space-y-1">
-                    <p className="font-bold text-emerald-700 dark:text-emerald-400">
-                      {lang === 'ar' ? 'تعليمات تسليم الحزمة:' : 'Drop-off Instructions:'}
-                    </p>
-                    <p className="text-muted-foreground text-[11px]">
-                      {lang === 'ar'
-                        ? `توجه إلى نقطة اللقاء "${currentComm.hub_name || 'نقطة المجتمع'}" وأظهر هذا الرمز للمسؤول لاعتماد استلام الكتب وإدراجها فوراً في الرف العام ليستعيرها باقي الأعضاء.`
-                        : `Visit "${currentComm.hub_name}" and present this voucher to the hub custodian to accept the books.`}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4 text-start">
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {lang === 'ar'
-                      ? 'يمكنك التبرع بكتاب أو باقة من 2 إلى 5 كتب وإيداعها على رف المجتمع في نقطة اللقاء الآمنة. سيتم إصدار رمز QR لتأكيد الاستلام عند التسليم الفعلي.'
-                      : 'Donate a single book or a bundle of books to the physical community shelf. Generate an intake QR voucher to confirm deposit at the hub.'}
-                  </p>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-black text-foreground block">
-                      {lang === 'ar' ? 'عنوان أو وصف الحزمة (مثال: روايات نجيب محفوظ)' : 'Package Title / Note'}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder={lang === 'ar' ? 'حزمة كتب روايات...' : 'Bundle title...'}
-                      value={dropoffPackageTitle}
-                      onChange={e => setDropoffPackageTitle(e.target.value)}
-                      className="w-full rounded-2xl border border-border bg-background px-3.5 py-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-black text-foreground block">
-                      {lang === 'ar' ? 'عدد الكتب في الحزمة' : 'Number of Books'}
-                    </label>
-                    <select
-                      value={dropoffBookCount}
-                      onChange={e => setDropoffBookCount(Number(e.target.value))}
-                      className="w-full rounded-2xl border border-border bg-background px-3.5 py-2.5 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    >
-                      <option value={1}>كتاب واحد (1 Book)</option>
-                      <option value={2}>كتابان (2 Books)</option>
-                      <option value={3}>3 كتب (3 Books bundle)</option>
-                      <option value={4}>4 كتب (4 Books bundle)</option>
-                      <option value={5}>5 كتب (5 Books bundle)</option>
-                    </select>
-                  </div>
-
-                  <Button
-                    onClick={handleGenerateDropoffVoucher}
-                    className="w-full rounded-2xl font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white py-5 shadow-md shadow-emerald-600/20 cursor-pointer"
-                  >
-                    <QrCode className="h-4 w-4 me-1.5" />
-                    <span>{lang === 'ar' ? 'إصدار رمز QR للإيداع الفعلي 📦' : 'Generate Intake QR'}</span>
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Remove Book from Shelf Confirmation Modal */}
       {bookToRemove && (
@@ -3544,11 +3589,25 @@ export function CommunityDetailClient({
         book={intakeQrModal.book}
         intakePin={intakeQrModal.intakePin}
         pendingBooks={pendingBooks}
-        onVerifiedSuccess={(approvedBook) => {
-          setPendingBooks(prev => prev.filter(b => b.id !== approvedBook.id && b.listing_id !== approvedBook.listing_id))
-          setShelfBooks(prev => [approvedBook, ...prev.filter(b => b.listing_id !== approvedBook.listing_id)])
+        onVerifiedSuccess={(approvedBook, allApprovedBooks) => {
+          const listToApprove =
+            allApprovedBooks && allApprovedBooks.length > 0 ? allApprovedBooks : [approvedBook]
+          const approvedIds = new Set(listToApprove.map(b => b.id))
+          const approvedListingIds = new Set(listToApprove.map(b => b.listing_id))
+
+          setPendingBooks(prev =>
+            prev.filter(b => !approvedIds.has(b.id) && !approvedListingIds.has(b.listing_id))
+          )
+          setShelfBooks(prev => [
+            ...listToApprove,
+            ...prev.filter(b => !approvedListingIds.has(b.listing_id)),
+          ])
           setApprovalToast(
-            lang === 'ar'
+            listToApprove.length > 1
+              ? lang === 'ar'
+                ? `تم اعتماد واستلام ${listToApprove.length} كتب بنجاح وإدراجها في رف ومخزن المجتمع! 📚✅`
+                : `Successfully approved and added ${listToApprove.length} books to the community shelf! 📚✅`
+              : lang === 'ar'
               ? `تم اعتماد واستلام كتاب "${approvedBook.title}" بنجاح وإدراجه في رف المجتمع! 📚✅`
               : `Book "${approvedBook.title}" approved and added to shelf! 📚✅`
           )

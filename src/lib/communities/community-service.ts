@@ -943,7 +943,7 @@ export async function updateCommunityBookApproval(params: {
 }
 
 /**
- * Remove a book from the community shelf (by admin or the book owner)
+ * Remove a book from the community shelf (Strictly restricted to Community Admin)
  */
 export async function removeBookFromCommunityShelf(params: {
   communityId: string
@@ -957,9 +957,42 @@ export async function removeBookFromCommunityShelf(params: {
 
   const supabase = createClient()
   try {
+    if (params.userId) {
+      // Verify caller is community creator/admin or has ADMIN/MODERATOR role
+      const { data: comm } = await supabase
+        .from('communities')
+        .select('admin_id')
+        .eq('id', params.communityId)
+        .maybeSingle()
+
+      const isCreator = comm?.admin_id === params.userId
+      if (!isCreator) {
+        const { data: member } = await supabase
+          .from('community_members')
+          .select('role')
+          .eq('community_id', params.communityId)
+          .eq('user_id', params.userId)
+          .eq('status', 'APPROVED')
+          .maybeSingle()
+
+        const isRoleAdmin =
+          member?.role === 'ADMIN' || member?.role === 'MODERATOR' || member?.role === 'OWNER'
+        if (!isRoleAdmin) {
+          return {
+            success: false,
+            error: 'عذراً، فقط مسؤولو المجتمع يمكنهم إزالة الكتب من رف ومخزن المجتمع.',
+          }
+        }
+      }
+    }
+
     let query = supabase.from('community_books').delete().eq('community_id', params.communityId)
 
-    if (params.communityBookId && !params.communityBookId.startsWith('comm-book-') && !params.communityBookId.startsWith('temp-')) {
+    if (
+      params.communityBookId &&
+      !params.communityBookId.startsWith('comm-book-') &&
+      !params.communityBookId.startsWith('temp-')
+    ) {
       query = query.eq('id', params.communityBookId)
     } else if (params.listingId) {
       query = query.eq('listing_id', params.listingId)
@@ -992,7 +1025,95 @@ export async function removeBookFromCommunityShelf(params: {
 }
 
 /**
+ * Batch submit multiple books to community shelf awaiting physical QR intake drop-off
+ */
+export async function addBooksBatchToCommunity(params: {
+  communityId: string
+  listingIds: string[]
+  addedBy: string
+  note?: string
+}): Promise<{
+  success: boolean
+  intakePin?: string
+  communityBookIds?: string[]
+  status: 'PENDING'
+  error?: string
+}> {
+  if (params.listingIds.length === 0) {
+    return { success: false, error: 'No books selected', status: 'PENDING' }
+  }
+
+  if (isDemoCommunityId(params.communityId)) {
+    const demoIds = params.listingIds.map((_, i) => `cb-demo-${Date.now()}-${i}`)
+    return {
+      success: true,
+      status: 'PENDING',
+      communityBookIds: demoIds,
+      intakePin: generateCommunityIntakePin(demoIds[0]),
+    }
+  }
+
+  const supabase = createClient()
+  try {
+    const rows = params.listingIds.map(listingId => ({
+      community_id: params.communityId,
+      listing_id: listingId,
+      added_by: params.addedBy,
+      note: params.note || null,
+      status: 'PENDING',
+    }))
+
+    const { data, error } = await supabase
+      .from('community_books')
+      .insert(rows)
+      .select('id, listing_id')
+
+    if (error) {
+      console.warn('[addBooksBatchToCommunity] batch insert error, trying individually:', error)
+      const insertedIds: string[] = []
+      for (const lid of params.listingIds) {
+        const { data: single } = await supabase
+          .from('community_books')
+          .insert({
+            community_id: params.communityId,
+            listing_id: lid,
+            added_by: params.addedBy,
+            note: params.note || null,
+          })
+          .select('id')
+          .maybeSingle()
+        if (single?.id) insertedIds.push(single.id)
+      }
+      const primaryId = insertedIds[0] || `cb-${Date.now()}`
+      return {
+        success: true,
+        status: 'PENDING',
+        communityBookIds: insertedIds,
+        intakePin: generateCommunityIntakePin(primaryId),
+      }
+    }
+
+    const insertedIds = (data || []).map(r => r.id)
+    const primaryId = insertedIds[0] || `cb-${Date.now()}`
+    return {
+      success: true,
+      status: 'PENDING',
+      communityBookIds: insertedIds,
+      intakePin: generateCommunityIntakePin(primaryId),
+    }
+  } catch (err: any) {
+    console.error('[addBooksBatchToCommunity] error:', err)
+    return {
+      success: false,
+      error: err?.message || 'Failed to submit books for community intake',
+      status: 'PENDING',
+    }
+  }
+}
+
+/**
  * Verify and approve a community book intake using QR payload or manual PIN code
+ * Handles both single-book and multi-book batch payloads
  */
 export async function verifyCommunityBookIntakeQr(params: {
   communityId: string
@@ -1003,6 +1124,7 @@ export async function verifyCommunityBookIntakeQr(params: {
   messageAr: string
   messageEn: string
   book?: CommunityShelfBook
+  books?: CommunityShelfBook[]
 }> {
   const supabase = createClient()
   try {
@@ -1031,31 +1153,51 @@ export async function verifyCommunityBookIntakeQr(params: {
       }
     }
 
-    if (isDemoCommunityId(params.communityId)) {
-      const demoTitle = parsedPayload?.title || 'كتاب رف المجتمع'
-      const demoId = parsedPayload?.communityBookId || `cb-${Date.now()}`
-      return {
-        success: true,
-        messageAr: `تم اعتماد واستلام كتاب "${demoTitle}" بنجاح وإدراجه في رف المجتمع! 📚✅`,
-        messageEn: `Book "${demoTitle}" has been verified and added to the community shelf! 📚✅`,
-        book: {
-          id: demoId,
-          listing_id: parsedPayload?.listingId || demoId,
-          listing_type: 'SWAP',
-          title: demoTitle,
-          author: 'كاتب',
-          cover_image_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
-          owner_name: 'عضو بالمجتمع',
-          status: 'APPROVED',
-          community_id: params.communityId,
-        },
-      }
-    }
-
     // Extract potential search identifiers
     const targetBookId = parsedPayload?.communityBookId || parsedPayload?.id
     const targetListingId = parsedPayload?.listingId
+    const targetListingIds: string[] = Array.isArray(parsedPayload?.listingIds)
+      ? parsedPayload.listingIds
+      : targetListingId
+      ? [targetListingId]
+      : []
+    const targetBookIds: string[] = Array.isArray(parsedPayload?.bookIds)
+      ? parsedPayload.bookIds
+      : targetBookId
+      ? [targetBookId]
+      : []
     const targetCode = (parsedPayload?.code || raw).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+
+    if (isDemoCommunityId(params.communityId)) {
+      const demoTitle = parsedPayload?.title || 'كتاب رف المجتمع'
+      const demoCount = parsedPayload?.count || targetListingIds.length || 1
+      const demoId = parsedPayload?.communityBookId || `cb-${Date.now()}`
+      const primaryBook: CommunityShelfBook = {
+        id: demoId,
+        listing_id: parsedPayload?.listingId || demoId,
+        listing_type: 'SWAP',
+        title: demoTitle,
+        author: 'كاتب',
+        cover_image_url:
+          'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
+        owner_name: 'عضو بالمجتمع',
+        status: 'APPROVED',
+        community_id: params.communityId,
+      }
+      return {
+        success: true,
+        messageAr:
+          demoCount > 1
+            ? `تم اعتماد واستلام ${demoCount} كتب بنجاح وإدراجها في رف ومخزن المجتمع! 📚✅`
+            : `تم اعتماد واستلام كتاب "${demoTitle}" بنجاح وإدراجه في رف المجتمع! 📚✅`,
+        messageEn:
+          demoCount > 1
+            ? `Successfully verified and added ${demoCount} books to community shelf! 📚✅`
+            : `Book "${demoTitle}" has been verified and added to the community shelf! 📚✅`,
+        book: primaryBook,
+        books: [primaryBook],
+      }
+    }
 
     // Fetch all pending books for this community
     const { data: pendingList, error: fetchErr } = await supabase
@@ -1078,44 +1220,66 @@ export async function verifyCommunityBookIntakeQr(params: {
     if (!pendingList || pendingList.length === 0) {
       return {
         success: false,
-        messageAr: 'لا توجد كتب معلقة بانتظار الاعتماد مطابقة لهذا الرمز. قد يكون الكتاب معتمداً بالفعل!',
-        messageEn: 'No pending books found matching this code. It may already be approved!',
+        messageAr: 'لا توجد كتب معلقة بانتظار الاعتماد مطابقة لهذا الرمز. قد تكون الكتب معتمدة بالفعل!',
+        messageEn: 'No pending books found matching this code. They may already be approved!',
       }
     }
 
-    // Find the matching book record
-    const matched = pendingList.find(row => {
-      // Direct ID match
-      if (targetBookId && (row.id === targetBookId || row.listing_id === targetBookId)) return true
-      if (targetListingId && row.listing_id === targetListingId) return true
+    // Find all matching book records
+    const matchedRows = pendingList.filter(row => {
+      // Direct ID array matches
+      if (
+        targetBookIds.length > 0 &&
+        (targetBookIds.includes(row.id) || targetBookIds.includes(row.listing_id))
+      )
+        return true
+      if (targetListingIds.length > 0 && targetListingIds.includes(row.listing_id)) return true
 
       // Cleaned ID matches
       const cleanRowId = row.id.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
       const cleanListingId = (row.listing_id || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
 
       // Generated PIN matches
-      const expectedPin = generateCommunityIntakePin(row.id).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
-      const expectedPinListing = generateCommunityIntakePin(row.listing_id).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+      const expectedPin = generateCommunityIntakePin(row.id)
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .toUpperCase()
+      const expectedPinListing = generateCommunityIntakePin(row.listing_id)
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .toUpperCase()
 
       if (targetCode) {
-        if (expectedPin === targetCode || expectedPin.endsWith(targetCode) || targetCode.endsWith(expectedPin)) return true
-        if (expectedPinListing === targetCode || expectedPinListing.endsWith(targetCode) || targetCode.endsWith(expectedPinListing)) return true
-        if (cleanRowId.endsWith(targetCode) || targetCode.endsWith(cleanRowId.slice(-6))) return true
-        if (cleanListingId.endsWith(targetCode) || targetCode.endsWith(cleanListingId.slice(-6))) return true
+        if (
+          expectedPin === targetCode ||
+          expectedPin.endsWith(targetCode) ||
+          targetCode.endsWith(expectedPin)
+        )
+          return true
+        if (
+          expectedPinListing === targetCode ||
+          expectedPinListing.endsWith(targetCode) ||
+          targetCode.endsWith(expectedPinListing)
+        )
+          return true
+        if (cleanRowId.endsWith(targetCode) || targetCode.endsWith(cleanRowId.slice(-6)))
+          return true
+        if (cleanListingId.endsWith(targetCode) || targetCode.endsWith(cleanListingId.slice(-6)))
+          return true
       }
 
       return false
     })
 
-    if (!matched) {
+    if (matchedRows.length === 0) {
       return {
         success: false,
-        messageAr: 'لم يتم العثور على كتاب معلق يطابق هذا الرمز أو الباركود في هذا المجتمع.',
-        messageEn: 'No pending book in this community matches this QR code or PIN.',
+        messageAr: 'لم يتم العثور على أي كتب معلقة تطابق هذا الرمز أو الباركود في هذا المجتمع.',
+        messageEn: 'No pending books in this community match this QR code or PIN.',
       }
     }
 
-    // Update status to APPROVED
+    const matchedIds = matchedRows.map(r => r.id)
+
+    // Update status to APPROVED for all matched books
     const { error: updateErr } = await supabase
       .from('community_books')
       .update({
@@ -1124,25 +1288,35 @@ export async function verifyCommunityBookIntakeQr(params: {
         approved_at: new Date().toISOString(),
         admin_note: 'تم الاستلام والاعتماد الفعلي عبر مسح رمز QR',
       })
-      .eq('id', matched.id)
+      .in('id', matchedIds)
 
     if (updateErr) {
       console.error('[verifyCommunityBookIntakeQr] Update error:', updateErr)
       return {
         success: false,
-        messageAr: 'فشل اعتماد الكتاب في قاعدة البيانات.',
+        messageAr: 'فشل اعتماد الكتب في قاعدة البيانات.',
         messageEn: 'Failed to update approval status in database.',
       }
     }
 
-    const mappedBook = mapListingToShelfBook(matched)
-    const bookTitle = mappedBook?.title || 'الكتاب'
+    const mappedBooks = matchedRows
+      .map(mapListingToShelfBook)
+      .filter(Boolean) as CommunityShelfBook[]
+    const firstBook = mappedBooks[0]
+    const count = matchedRows.length
 
     return {
       success: true,
-      messageAr: `تم اعتماد واستلام كتاب "${bookTitle}" بنجاح وإدراجه في رف المجتمع! 📚✅`,
-      messageEn: `Book "${bookTitle}" has been verified and added to the community shelf! 📚✅`,
-      book: mappedBook || undefined,
+      messageAr:
+        count > 1
+          ? `تم اعتماد واستلام ${count} كتب بنجاح وإدراجها في رف ومخزن المجتمع! 📚✅`
+          : `تم اعتماد واستلام كتاب "${firstBook?.title || 'الكتاب'}" بنجاح وإدراجه في رف المجتمع! 📚✅`,
+      messageEn:
+        count > 1
+          ? `Successfully verified and added ${count} books to the community shelf! 📚✅`
+          : `Book "${firstBook?.title || 'Book'}" has been verified and added to the community shelf! 📚✅`,
+      book: firstBook,
+      books: mappedBooks,
     }
   } catch (err: any) {
     console.error('[verifyCommunityBookIntakeQr] Exception:', err)

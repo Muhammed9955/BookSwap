@@ -50,11 +50,21 @@ export interface CommunityIntakeQrModalProps {
     listing_type?: string
     owner_name?: string
     note?: string
+    bookCount?: number
+    items?: Array<{
+      id?: string
+      listing_id?: string
+      title: string
+      author?: string
+      cover_image_url?: string
+      price?: number | null
+      listing_type?: string
+    }>
   }
   intakePin?: string
   // For SCAN_AND_VERIFY mode:
   pendingBooks?: any[]
-  onVerifiedSuccess?: (approvedBook: CommunityShelfBook) => void
+  onVerifiedSuccess?: (approvedBook: CommunityShelfBook, allApprovedBooks?: CommunityShelfBook[]) => void
 }
 
 export function CommunityIntakeQrModal({
@@ -105,12 +115,21 @@ export function CommunityIntakeQrModal({
   useEffect(() => {
     if (!isOpen || mode !== 'VOUCHER' || !book) return
 
+    const isBatch = Boolean(book.items && book.items.length > 1)
     const payload = {
       v: 1,
       type: 'COMMUNITY_INTAKE',
       communityId,
       communityBookId: book.id,
       listingId: book.listing_id,
+      listingIds:
+        book.items?.map(i => i.listing_id || i.id).filter(Boolean) ||
+        (book.listing_id ? [book.listing_id] : []),
+      bookIds:
+        book.items?.map(i => i.id).filter(Boolean) ||
+        (book.id ? [book.id] : []),
+      count: book.bookCount || book.items?.length || 1,
+      titles: book.items?.map(i => i.title) || [book.title],
       code: calculatedPin,
       title: book.title,
     }
@@ -283,14 +302,19 @@ export function CommunityIntakeQrModal({
 
       if (result.success && result.book) {
         triggerSuccessFeedback()
+        const isBatch = Boolean(result.books && result.books.length > 1)
         setSuccessResult({
-          bookTitle: result.book.title,
-          bookAuthor: result.book.author,
+          bookTitle: isBatch
+            ? `${result.books!.length} ${lang === 'ar' ? 'كتب مستلمة' : 'books intaked'}`
+            : result.book.title,
+          bookAuthor: isBatch
+            ? result.books!.map(b => b.title).slice(0, 3).join(' • ')
+            : result.book.author,
           bookCover: result.book.cover_image_url,
           submitterName: result.book.owner_name,
         })
         if (onVerifiedSuccess) {
-          onVerifiedSuccess(result.book)
+          onVerifiedSuccess(result.book, result.books)
         }
       } else {
         setErrorMessage(lang === 'ar' ? result.messageAr : result.messageEn)
@@ -334,7 +358,7 @@ export function CommunityIntakeQrModal({
               <h3 className="text-base font-black text-foreground">
                 {mode === 'VOUCHER'
                   ? lang === 'ar'
-                    ? 'إيصال تسليم كتاب لرف المجتمع'
+                    ? 'إيصال تسليم كتب لرف المجتمع'
                     : 'Community Book Drop-off Voucher'
                   : lang === 'ar'
                     ? 'اعتماد واستلام كتاب عبر رمز QR'
@@ -360,30 +384,68 @@ export function CommunityIntakeQrModal({
           {/* ============================================================== */}
           {mode === 'VOUCHER' && book && (
             <div className="space-y-5">
-              {/* Book Summary Card */}
-              <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-muted/40 border border-border/70 text-start">
-                <div className="relative h-16 w-12 rounded-xl overflow-hidden bg-muted border border-border/80 shrink-0">
-                  {book.cover_image_url ? (
-                    <Image src={book.cover_image_url} alt="" fill className="object-cover" />
-                  ) : (
-                    <div className="h-full w-full flex items-center justify-center text-xs">📖</div>
-                  )}
+              {/* Book Summary Card - Single or Batch */}
+              {book.items && book.items.length > 1 ? (
+                <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/70 text-start space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <Badge className="bg-primary/10 text-primary border-primary/20 font-black text-xs">
+                      📦 {book.items.length} {lang === 'ar' ? 'كتب محددة للتسليم بالفرع' : 'Books for Drop-off'}
+                    </Badge>
+                    <span className="text-[11px] font-bold text-emerald-600">
+                      {lang === 'ar' ? 'بانتظار التسليم الفعلي' : 'Awaiting Hub Intake'}
+                    </span>
+                  </div>
+                  <div className="max-h-36 overflow-y-auto space-y-1.5 pe-1">
+                    {book.items.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-2.5 p-2 rounded-xl bg-background/60 border border-border/50"
+                      >
+                        <div className="relative h-10 w-7 rounded-lg overflow-hidden bg-muted border border-border/60 shrink-0">
+                          {item.cover_image_url ? (
+                            <Image src={item.cover_image_url} alt="" fill className="object-cover" />
+                          ) : (
+                            <div className="h-full w-full flex items-center justify-center text-[10px]">📖</div>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-black text-foreground truncate">{item.title}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{item.author}</p>
+                        </div>
+                        {item.listing_type && (
+                          <Badge variant="outline" className="text-[9px] shrink-0 font-bold">
+                            {item.listing_type}
+                          </Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-sm font-black text-foreground truncate">{book.title}</h4>
-                    {book.listing_type && (
-                      <Badge variant="outline" className="text-[10px] font-bold">
-                        {book.listing_type}
-                      </Badge>
+              ) : (
+                <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-muted/40 border border-border/70 text-start">
+                  <div className="relative h-16 w-12 rounded-xl overflow-hidden bg-muted border border-border/80 shrink-0">
+                    {book.cover_image_url ? (
+                      <Image src={book.cover_image_url} alt="" fill className="object-cover" />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center text-xs">📖</div>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground truncate">{book.author}</p>
-                  <p className="text-[11px] text-emerald-600 font-bold mt-0.5">
-                    {lang === 'ar' ? 'الحالة: بانتظار التسليم الفعلي بالفرع' : 'Status: Awaiting physical drop-off'}
-                  </p>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-black text-foreground truncate">{book.title}</h4>
+                      {book.listing_type && (
+                        <Badge variant="outline" className="text-[10px] font-bold">
+                          {book.listing_type}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate">{book.author}</p>
+                    <p className="text-[11px] text-emerald-600 font-bold mt-0.5">
+                      {lang === 'ar' ? 'الحالة: بانتظار التسليم الفعلي بالفرع' : 'Status: Awaiting physical drop-off'}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* QR Code Canvas Card */}
               <div className="p-5 rounded-3xl bg-white border-2 border-emerald-500/30 shadow-lg inline-block mx-auto">
