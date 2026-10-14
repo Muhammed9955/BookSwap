@@ -21,6 +21,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { useLanguage } from '@/i18n/language-context'
 import { cn } from '@/lib/utils'
+import { compressImageForAi } from '@/lib/image-utils'
 
 const editBookSchema = z.object({
   title: z.string().min(1, 'عنوان الكتاب مطلوب'),
@@ -238,21 +239,19 @@ export function EditBookForm({ listing, userId, categories, cities }: EditBookFo
     setAiScanLoading(true)
     setAiSuccessMessage(null)
     try {
-      const reader = new FileReader()
-      reader.onloadend = async () => {
-        const base64Data = reader.result as string
-        const customKey = localStorage.getItem('bookswap_gemini_api_key') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
-        const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-        if (customKey) headers['x-gemini-key'] = customKey
+      const { base64Data, mimeType } = await compressImageForAi(file, 1200, 0.82)
+      const customKey = localStorage.getItem('bookswap_gemini_api_key') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (customKey) headers['x-gemini-key'] = customKey
 
-        const res = await fetch('/api/books/scan-cover', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            imageBase64: base64Data,
-            mimeType: file.type || 'image/jpeg',
-          }),
-        })
+      const res = await fetch('/api/books/scan-cover', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          imageBase64: base64Data,
+          mimeType,
+        }),
+      })
 
         const data = await res.json()
         if (data.success && data.data) {
@@ -276,8 +275,6 @@ export function EditBookForm({ listing, userId, categories, cities }: EditBookFo
           }
           setAiSuccessMessage(lang === 'ar' ? 'تم تحديث بيانات الكتاب بالذكاء الاصطناعي بنجاح!' : 'Metadata refreshed via AI!')
         }
-      }
-      reader.readAsDataURL(file)
     } catch {
       // ignore
     } finally {

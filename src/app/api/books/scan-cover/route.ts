@@ -68,10 +68,10 @@ export async function POST(req: NextRequest) {
       try {
         const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '')
         const candidateModels = [
+          'gemini-flash-lite-latest',
+          'gemini-3.5-flash-lite',
+          'gemini-3.8-flash',
           'gemini-3.1-flash-lite',
-          'gemini-3.5-flash',
-          'gemini-flash-latest',
-          'gemini-2.5-pro'
         ]
 
         for (const modelName of candidateModels) {
@@ -81,6 +81,7 @@ export async function POST(req: NextRequest) {
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                signal: AbortSignal.timeout(7000),
                 body: JSON.stringify({
                   contents: [
                     {
@@ -92,20 +93,25 @@ export async function POST(req: NextRequest) {
                           },
                         },
                         {
-                          text: `You are an expert literary AI assistant for a book exchange platform.
-Inspect this book image and identify the book title and author.
-Even if certain details (like publisher, synopsis description, standard ISBN, or category) are NOT explicitly printed on the front cover, USE YOUR EXTENSIVE LITERARY KNOWLEDGE OF THIS BOOK to provide COMPLETE, high-quality metadata so the user does not have to type anything manually:
+                          text: `You are an expert literary AI and vision OCR assistant for WARAQ (an Egyptian & international book platform).
+Inspect this book image carefully. It may be:
+- A FRONT COVER (with title, author, and publisher in Arabic or English).
+- A BACK COVER (with a 13-digit ISBN barcode usually starting with 978, summary blurb, or publisher logo).
+- A BOOK SPINE or an angled/tilted photograph of a book.
+- A book with stylized Arabic calligraphy (الرقعة، الكوفي، الديواني، النسخ) or decorative fonts.
+
+Read any visible text, barcode digits, and use your extensive literary knowledge to identify the exact book and return COMPLETE metadata:
 {
-  "title": "exact official title of the book in its original language",
-  "author": "official author full name",
-  "isbn": "Real standard 13-digit ISBN (e.g. 9789959853905 or 9780143127741) or standard 10-digit ISBN",
-  "publisher": "The most prominent or original publisher for this book (e.g. Dar El Shorouk, Kayan, Penguin, HarperCollins, etc.)",
-  "edition": "Edition (e.g. الأولى, الثانية, 1st Edition, 2nd Edition) - default to 'الأولى' if unknown",
+  "title": "Exact official title of the book in its original language (Arabic or English)",
+  "author": "Official author full name",
+  "isbn": "Standard 13-digit ISBN (e.g. 978977... or 9780...) or standard 10-digit ISBN if found or known for this book",
+  "publisher": "Prominent publisher (e.g. دار الشروق, عصير الكتب, دون, كيان, الكرمة, تنمية, نهضة مصر, Penguin, HarperCollins)",
+  "edition": "Edition (e.g. الأولى, الثانية, 1st Edition) - default to 'الأولى' if unknown",
   "language": "ARABIC or ENGLISH or FRENCH or GERMAN or OTHER",
   "category": "One of: Fiction, Self Development, Business, Psychology, Programming, History, Science, Children, Academic, Language, Comics, Philosophy, Religion, Health, Other",
-  "description": "An engaging, well-written 2-4 sentence summary/synopsis of the book in the same language as the book (Arabic for Arabic books, English for English books)",
+  "description": "Engaging, well-written 2-4 sentence synopsis of the book in the same language as the book (Arabic for Arabic books, English for English books)",
   "condition": "GOOD",
-  "estimated_market_price": estimated fair market/retail price in Egyptian Pounds EGP (number, e.g. 150 for standard novel, 450 for hardcover, 800-1500 for medical/academic textbook)
+  "estimated_market_price": estimated fair retail/market price in Egyptian Pounds EGP (number, e.g. 140 for regular novel, 350 for hardcovers, 700+ for academic textbooks)
 }
 Return ONLY valid JSON.`,
                         },
@@ -113,7 +119,7 @@ Return ONLY valid JSON.`,
                     },
                   ],
                   generationConfig: {
-                    temperature: 0.2,
+                    temperature: 0.15,
                     response_mime_type: 'application/json',
                   },
                 }),
@@ -124,15 +130,20 @@ Return ONLY valid JSON.`,
               const aiData = await geminiRes.json()
               const rawText = aiData.candidates?.[0]?.content?.parts?.[0]?.text
               if (rawText) {
-                const parsed = JSON.parse(rawText.replace(/```json/g, '').replace(/```/g, '').trim())
-                if (parsed.title) {
+                const jsonMatch = rawText.match(/\{[\s\S]*\}|\[[\s\S]*\]/)
+                const cleaned = jsonMatch ? jsonMatch[0] : rawText.replace(/```json/gi, '').replace(/```/g, '').trim()
+                const rawParsed = JSON.parse(cleaned)
+                const parsed = Array.isArray(rawParsed) ? rawParsed[0] : rawParsed
+
+                const title = parsed?.title || parsed?.book_title
+                if (title && title !== 'Unknown' && title !== 'null') {
                   const estimatedPrice = parsed.estimated_market_price || 120
                   const terms = calculateBorrowTerms(estimatedPrice)
 
                   return NextResponse.json({
                     success: true,
                     data: {
-                      title: parsed.title,
+                      title: title.trim(),
                       author: parsed.author || '',
                       isbn: parsed.isbn || '',
                       publisher: parsed.publisher || '',
@@ -262,10 +273,11 @@ Return ONLY valid JSON.`,
       if (geminiKey) {
         try {
           const aiIsbnRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${geminiKey.trim()}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent?key=${geminiKey.trim()}`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
+              signal: AbortSignal.timeout(6000),
               body: JSON.stringify({
                 contents: [
                   {
