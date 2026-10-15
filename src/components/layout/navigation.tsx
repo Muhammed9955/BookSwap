@@ -20,6 +20,7 @@ import {
   TrendingUp,
   Flame,
   Users,
+  Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLanguage } from '@/i18n/language-context'
@@ -629,6 +630,17 @@ export function TopNav({
                             <User className="h-4 w-4" />
                           </div>
                           <span>{t('nav_profile', lang)}</span>
+                        </Link>
+
+                        <Link
+                          href="/profile/settings"
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-foreground/90 hover:bg-accent hover:text-foreground transition-colors cursor-pointer group"
+                        >
+                          <div className="p-1 rounded-lg bg-slate-500/10 text-slate-600 dark:text-slate-400 group-hover:scale-110 transition-transform">
+                            <Settings className="h-4 w-4" />
+                          </div>
+                          <span>{lang === 'ar' ? 'إعدادات وتعديل الملف' : 'Profile Settings'}</span>
                         </Link>
 
                         <Link

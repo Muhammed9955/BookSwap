@@ -21,6 +21,8 @@ import { cn, formatPrice, formatRelativeTime } from '@/lib/utils'
 import { acceptTransaction, rejectTransaction, acceptSwapRequest, rejectSwapRequest, createTestIncomingTransaction } from '@/lib/transactions/lifecycle'
 import { MeetupDetailBadge } from '@/components/ui/meetup-badge'
 import { MeetupQrModal } from '@/components/transactions/meetup-qr-modal'
+import { EditProfileModal } from '@/components/profile/edit-profile-modal'
+import { getAvatarUrl } from '@/lib/utils'
 import type { BookListing, Profile, Rating } from '@/types'
 
 interface ProfileClientProps {
@@ -60,6 +62,8 @@ export function ProfileClient({
   const [activeTab, setActiveTab] = useState<string>('books')
   const [following, setFollowing] = useState(initialFollowing)
   const [follCount, setFollCount] = useState(followerCount)
+  const [currentProfile, setCurrentProfile] = useState(profile)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
 
   const handleFollow = async () => {
     if (!currentUserId) return
@@ -506,36 +510,46 @@ export function ProfileClient({
         <div className="rounded-2xl border bg-card p-6 mb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
             {/* Avatar */}
-            <div className="h-20 w-20 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center flex-shrink-0 ring-4 ring-primary/20">
-              {profile.avatar_url ? (
-                <Image src={profile.avatar_url} alt={profile.full_name ?? ''} width={80} height={80} className="object-cover" />
-              ) : (
-                <span className="text-3xl font-bold text-primary">
-                  {profile.full_name?.charAt(0) ?? '?'}
-                </span>
-              )}
+            <div className="h-20 w-20 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center flex-shrink-0 ring-4 ring-primary/20 relative">
+              <Image
+                src={getAvatarUrl(currentProfile.avatar_url, currentProfile.full_name)}
+                alt={currentProfile.full_name ?? 'Avatar'}
+                fill
+                className="object-cover"
+                unoptimized
+              />
             </div>
 
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2 mb-1">
                 <h1 className="text-xl font-bold">
-                  {lang === 'ar' && profile.full_name_ar ? profile.full_name_ar : profile.full_name}
+                  {lang === 'ar' && currentProfile.full_name_ar ? currentProfile.full_name_ar : currentProfile.full_name}
                 </h1>
-                {profile.is_verified && (
+                {currentProfile.username && (
+                  <span className="text-xs text-primary font-bold">@{currentProfile.username}</span>
+                )}
+                {currentProfile.is_verified && (
                   <span title="Verified" aria-label="Verified">
                     <Shield className="h-4 w-4 text-blue-500" />
                   </span>
                 )}
               </div>
 
+              {/* Bio */}
+              {currentProfile.bio && (
+                <p className="text-xs text-foreground/80 my-1.5 p-2 rounded-lg bg-muted/30 border border-border/40 italic">
+                  &quot;{currentProfile.bio}&quot;
+                </p>
+              )}
+
               {/* Rating */}
-              {profile.rating_average > 0 && (
+              {currentProfile.rating_average > 0 && (
                 <div className="flex items-center gap-1 mb-2">
                   {[1,2,3,4,5].map(s => (
-                    <Star key={s} className={cn('h-4 w-4', s <= Math.round(profile.rating_average) ? 'fill-amber-400 text-amber-400' : 'text-muted')} />
+                    <Star key={s} className={cn('h-4 w-4', s <= Math.round(currentProfile.rating_average) ? 'fill-amber-400 text-amber-400' : 'text-muted')} />
                   ))}
-                  <span className="text-sm font-medium ms-1">{profile.rating_average.toFixed(1)}</span>
-                  <span className="text-xs text-muted-foreground">({profile.rating_count})</span>
+                  <span className="text-sm font-medium ms-1">{currentProfile.rating_average.toFixed(1)}</span>
+                  <span className="text-xs text-muted-foreground">({currentProfile.rating_count})</span>
                 </div>
               )}
 
@@ -543,15 +557,15 @@ export function ProfileClient({
               <div className="flex flex-wrap gap-4 text-sm">
                 <span className="flex items-center gap-1 text-muted-foreground">
                   <BookOpen className="h-3.5 w-3.5" />
-                  {profile.total_listings} {lang === 'ar' ? 'كتاب' : 'books'}
+                  {currentProfile.total_listings} {lang === 'ar' ? 'كتاب' : 'books'}
                 </span>
                 <span className="flex items-center gap-1 text-muted-foreground">
                   <ArrowRightLeft className="h-3.5 w-3.5" />
-                  {profile.total_swaps} {lang === 'ar' ? 'مبادلة' : 'swaps'}
+                  {currentProfile.total_swaps} {lang === 'ar' ? 'مبادلة' : 'swaps'}
                 </span>
                 <span className="flex items-center gap-1 text-muted-foreground">
                   <Gift className="h-3.5 w-3.5" />
-                  {profile.total_donations} {lang === 'ar' ? 'تبرع' : 'gifts'}
+                  {currentProfile.total_donations} {lang === 'ar' ? 'تبرع' : 'gifts'}
                 </span>
                 <span className="text-muted-foreground">
                   👥 {follCount} {lang === 'ar' ? 'متابعون' : 'followers'}
@@ -559,18 +573,18 @@ export function ProfileClient({
               </div>
 
               {/* Location */}
-              {profile.area && (
+              {currentProfile.area && (
                 <p className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                   <MapPin className="h-3.5 w-3.5" />
-                  {lang === 'ar' ? profile.area.name_ar : profile.area.name_en}
-                  {profile.city && `, ${lang === 'ar' ? profile.city.name_ar : profile.city.name_en}`}
+                  {lang === 'ar' ? currentProfile.area.name_ar : currentProfile.area.name_en}
+                  {currentProfile.city && `, ${lang === 'ar' ? currentProfile.city.name_ar : currentProfile.city.name_en}`}
                 </p>
               )}
 
               {/* Genres */}
-              {profile.genres && profile.genres.length > 0 && (
+              {currentProfile.genres && currentProfile.genres.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2">
-                  {profile.genres.map((g: { category: { id: string; name_ar: string; name_en: string; icon?: string } }) => (
+                  {currentProfile.genres.map((g: { category: { id: string; name_ar: string; name_en: string; icon?: string } }) => (
                     <span key={g.category.id} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
                       {g.category.icon} {lang === 'ar' ? g.category.name_ar : g.category.name_en}
                     </span>
@@ -589,12 +603,23 @@ export function ProfileClient({
                       {lang === 'ar' ? 'معاملاتي وكتبي المستعارة' : 'My Deals & Loans'}
                     </Button>
                   </Link>
-                  <Link href="/profile/settings">
-                    <Button variant="outline" size="sm" className="w-full gap-1.5 font-semibold">
-                      <Settings className="h-4 w-4" />
+                  <div className="flex items-center gap-1.5 w-full">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditModalOpen(true)}
+                      className="flex-1 gap-1.5 font-bold cursor-pointer"
+                      id="edit-profile-btn"
+                    >
+                      <Edit3 className="h-4 w-4 text-primary" />
                       {lang === 'ar' ? 'تعديل الملف' : 'Edit Profile'}
                     </Button>
-                  </Link>
+                    <Link href="/profile/settings" title={lang === 'ar' ? 'إعدادات الحساب' : 'Account Settings'}>
+                      <Button variant="outline" size="sm" className="px-2.5 cursor-pointer">
+                        <Settings className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -1794,6 +1819,18 @@ export function ProfileClient({
             listingId={qrModalData.listingId}
             swapListingId={qrModalData.swapListingId}
             onVerifiedSuccess={handleVerifiedSuccess}
+          />
+        )}
+        {/* Edit Profile Modal */}
+        {isOwnProfile && (
+          <EditProfileModal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            profile={currentProfile}
+            onProfileUpdated={(updated) => {
+              setCurrentProfile(updated)
+              showFeedback(lang === 'ar' ? 'تم تحديث الملف الشخصي بنجاح! ✨' : 'Profile updated successfully! ✨')
+            }}
           />
         )}
       </div>

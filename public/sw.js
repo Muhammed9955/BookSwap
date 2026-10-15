@@ -1,5 +1,5 @@
 // WARAQ — Lightweight Service Worker for PWA
-const CACHE_NAME = 'waraq-cache-v1'
+const CACHE_NAME = 'waraq-cache-v2'
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
