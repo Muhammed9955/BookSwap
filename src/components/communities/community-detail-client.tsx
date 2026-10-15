@@ -220,6 +220,12 @@ export function CommunityDetailClient({
   const [bookApprovalLoading, setBookApprovalLoading] = useState<string | null>(null)
   const [approvalToast, setApprovalToast] = useState<string | null>(null)
 
+  // Submitter's own pending books awaiting hub intake
+  const myPendingBooks = useMemo(() => {
+    if (!currentUserId) return []
+    return pendingBooks.filter(b => b.added_by === currentUserId || b.owner_id === currentUserId)
+  }, [pendingBooks, currentUserId])
+
   // Community Book Request Modal State
   const [selectedBookForRequest, setSelectedBookForRequest] = useState<any | null>(null)
   const [reqModalType, setReqModalType] = useState<'BUY' | 'BORROW' | 'SWAP'>('BUY')
@@ -255,12 +261,15 @@ export function CommunityDetailClient({
     intakePin?: string
   }>({ isOpen: false, mode: 'VOUCHER' })
 
-  // Listen for query params e.g. /communities/slug?tab=admin&scan=true from notifications
+  // Listen for query params e.g. /communities/slug?tab=admin&scan=true or ?voucher=true
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       if (params.get('tab') === 'admin') {
         setActiveTab('admin')
+      }
+      if (params.get('tab') === 'shelf') {
+        setActiveTab('bookshelf')
       }
       if (params.get('scan') === 'true') {
         setActiveTab('admin')
@@ -269,8 +278,25 @@ export function CommunityDetailClient({
           mode: 'SCAN_AND_VERIFY',
         })
       }
+      if (params.get('voucher') === 'true' && myPendingBooks.length > 0) {
+        const primaryItem = myPendingBooks[0]
+        setIntakeQrModal({
+          isOpen: true,
+          mode: 'VOUCHER',
+          book: {
+            ...primaryItem,
+            title:
+              myPendingBooks.length > 1
+                ? `${myPendingBooks.length} ${lang === 'ar' ? 'كتب للتسليم الموحد' : 'books unified batch'}`
+                : primaryItem.title,
+            bookCount: myPendingBooks.length,
+            items: myPendingBooks,
+          },
+          intakePin: generateCommunityIntakePin(primaryItem.id),
+        })
+      }
     }
-  }, [])
+  }, [myPendingBooks, lang])
 
   // Remove Book from Shelf state
   const [bookToRemove, setBookToRemove] = useState<any | null>(null)
@@ -500,7 +526,15 @@ export function CommunityDetailClient({
         setShowAddBookModal(false)
         setSelectedListingIds([])
 
-        const allUserPending = [...selectedItems, ...myPendingBooks]
+        // Deduplicate newly added items with existing pending books
+        const pendingMap = new Map<string, any>()
+        for (const item of [...selectedItems, ...myPendingBooks]) {
+          const key = item.listing_id || item.id
+          if (key && !pendingMap.has(key)) {
+            pendingMap.set(key, item)
+          }
+        }
+        const allUserPending = Array.from(pendingMap.values())
         const primaryItem = allUserPending[0]
         setIntakeQrModal({
           isOpen: true,
@@ -582,16 +616,25 @@ export function CommunityDetailClient({
           setPendingBooks(prev => [pendingItem, ...prev])
           setShowAddBookModal(false)
 
-          const allUserPending = [pendingItem, ...myPendingBooks]
+          // Deduplicate newly submitted item with existing pending books
+          const pendingMap = new Map<string, any>()
+          for (const item of [pendingItem, ...myPendingBooks]) {
+            const key = item.listing_id || item.id
+            if (key && !pendingMap.has(key)) {
+              pendingMap.set(key, item)
+            }
+          }
+          const allUserPending = Array.from(pendingMap.values())
+          const primaryItem = allUserPending[0]
           setIntakeQrModal({
             isOpen: true,
             mode: 'VOUCHER',
             book: {
-              ...pendingItem,
+              ...primaryItem,
               title:
                 allUserPending.length > 1
                   ? `${allUserPending.length} ${lang === 'ar' ? 'كتب للتسليم الموحد' : 'books unified batch'}`
-                  : pendingItem.title,
+                  : primaryItem.title,
               bookCount: allUserPending.length,
               items: allUserPending,
             },
@@ -1083,11 +1126,6 @@ export function CommunityDetailClient({
     }
     return true
   })
-
-  const myPendingBooks = useMemo(() => {
-    if (!currentUserId) return []
-    return pendingBooks.filter(b => b.added_by === currentUserId || b.owner_id === currentUserId)
-  }, [pendingBooks, currentUserId])
 
   return (
     <MainLayout>

@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge'
 import { useLanguage } from '@/i18n/language-context'
 import { cn } from '@/lib/utils'
 import { compressImageForAi } from '@/lib/image-utils'
+import { addBookToCommunity } from '@/lib/communities/community-service'
 
 const addBookSchema = z.object({
   title: z.string().min(1, 'عنوان الكتاب مطلوب'),
@@ -568,14 +569,13 @@ export function AddBookForm({
       }
 
       // 5. Auto-link to community if communityId is specified
+      let communityRes: { success: boolean; status: 'APPROVED' | 'PENDING'; intakePin?: string } | null = null
       if (communityId) {
         try {
-          await supabase.from('community_books').insert({
-            community_id: communityId,
-            listing_id: listing.id,
-            added_by: userId,
-            status: 'APPROVED',
-            approved_at: new Date().toISOString(),
+          communityRes = await addBookToCommunity({
+            communityId,
+            listingId: listing.id,
+            addedBy: userId,
           })
         } catch (e) {
           console.warn('[AddBookForm] Error auto-linking to community_books:', e)
@@ -588,7 +588,11 @@ export function AddBookForm({
       setSuccess(true)
       setTimeout(() => {
         if (communitySlug) {
-          router.push(`/communities/${communitySlug}`)
+          if (communityRes?.status === 'PENDING') {
+            router.push(`/communities/${communitySlug}?voucher=true&bookId=${listing.id}`)
+          } else {
+            router.push(`/communities/${communitySlug}?tab=shelf`)
+          }
         } else {
           router.push(`/books/${listing.id}`)
         }

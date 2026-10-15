@@ -1317,7 +1317,7 @@ export async function addBooksBatchToCommunity(params: {
       await notifyCommunityAdminOfIntake(supabase, {
         communityId: params.communityId,
         addedBy: params.addedBy,
-        count: params.listingIds.length,
+        count: freshListingIds.length,
         intakePin,
       })
       return {
@@ -1335,7 +1335,7 @@ export async function addBooksBatchToCommunity(params: {
     await notifyCommunityAdminOfIntake(supabase, {
       communityId: params.communityId,
       addedBy: params.addedBy,
-      count: params.listingIds.length,
+      count: freshListingIds.length,
       intakePin,
     })
 
