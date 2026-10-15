@@ -57,7 +57,7 @@ export function BookCard({
 
   if (compact) {
     return (
-      <Link href={`/books/${bookSlug}`} className={cn('book-card flex gap-3 p-3', className)}>
+      <Link href={`/books/${bookSlug}`} prefetch={true} className={cn('book-card flex gap-3 p-3', className)}>
         {/* Cover */}
         <div className="relative h-20 w-14 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
           {primaryImage ? (
@@ -95,7 +95,7 @@ export function BookCard({
   }
 
   return (
-    <Link href={`/books/${bookSlug}`} className={cn('book-card group flex flex-col h-full justify-between', className)}>
+    <Link href={`/books/${bookSlug}`} prefetch={true} className={cn('book-card group flex flex-col h-full justify-between', className)}>
       {/* Cover Image */}
       <div className="relative aspect-[2/3] w-full overflow-hidden bg-muted shrink-0">
         {primaryImage ? (

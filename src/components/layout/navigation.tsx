@@ -52,14 +52,14 @@ const navItems = [
   { key: 'home', href: '/', icon: Home, labelKey: 'nav_home' as const },
   { key: 'search', href: '/search', icon: Search, labelKey: 'nav_explore' as const },
   { key: 'add', href: '/books/add', icon: PlusCircle, labelKey: 'nav_add' as const, isAdd: true },
-  { key: 'messages', href: '/messages', icon: MessageCircle, labelKey: 'nav_messages' as const },
+  { key: 'notifications', href: '/notifications', icon: Bell, labelKey: 'nav_notifications' as const },
   { key: 'profile', href: '/profile', icon: User, labelKey: 'nav_profile' as const },
 ]
 
 export function BottomNav() {
   const pathname = usePathname()
   const { lang } = useLanguage()
-  const { unreadMessages } = useAuth()
+  const { unreadNotifications } = useAuth()
 
   return (
     <nav className="bottom-nav md:hidden" aria-label="Mobile navigation">
@@ -72,6 +72,7 @@ export function BottomNav() {
             <Link
               key={item.key}
               href={item.href}
+              prefetch={true}
               aria-label={t(item.labelKey, lang)}
               className="relative -mt-6 flex flex-col items-center justify-center cursor-pointer group"
             >
@@ -89,6 +90,7 @@ export function BottomNav() {
           <Link
             key={item.key}
             href={item.href}
+            prefetch={true}
             aria-label={t(item.labelKey, lang)}
             className={cn(
               'relative flex flex-col items-center justify-center gap-0.5 px-3 py-1 rounded-xl transition-all duration-200 cursor-pointer min-w-[56px]',
@@ -99,14 +101,18 @@ export function BottomNav() {
           >
             <div className="relative">
               <Icon className={cn('h-5 w-5 transition-transform duration-200', isActive && 'scale-115')} />
-              {item.key === 'messages' && unreadMessages > 0 && (
+              {item.key === 'notifications' && unreadNotifications > 0 && (
                 <span className="absolute -top-1.5 -end-2 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white shadow-xs animate-pulse">
-                  {unreadMessages > 9 ? '9+' : unreadMessages}
+                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
                 </span>
               )}
             </div>
             <span className="text-[10px] leading-tight">
-              {item.key === 'search' ? (lang === 'ar' ? 'بحث' : 'Search') : t(item.labelKey, lang)}
+              {item.key === 'notifications'
+                ? (lang === 'ar' ? 'إشعارات' : 'Alerts')
+                : item.key === 'search'
+                ? (lang === 'ar' ? 'بحث' : 'Search')
+                : t(item.labelKey, lang)}
             </span>
             {isActive && (
               <span className="h-1 w-1 rounded-full bg-primary mt-0.5" />
@@ -191,6 +197,20 @@ export function TopNav({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
+
+  // Pre-warm client router cache for instant back/forth page transitions
+  useEffect(() => {
+    try {
+      router.prefetch('/')
+      router.prefetch('/search')
+      router.prefetch('/notifications')
+      router.prefetch('/messages')
+      router.prefetch('/profile')
+      router.prefetch('/transactions')
+      router.prefetch('/communities')
+      router.prefetch('/books/add')
+    } catch {}
+  }, [router])
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -474,6 +494,7 @@ export function TopNav({
                 {/* Deals & Loans quick link (with active badge) */}
                 <Link
                   href="/transactions"
+                  prefetch={true}
                   className="relative hidden sm:flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                   aria-label={lang === 'ar' ? 'معاملاتي وطلبات الكتب' : 'Deals & Requests'}
                   title={lang === 'ar' ? 'معاملاتي وطلبات الكتب' : 'Deals & Requests'}
@@ -481,10 +502,11 @@ export function TopNav({
                   <ArrowRightLeft className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 </Link>
 
-                {/* Messages quick link */}
+                {/* Messages quick link — Visible on ALL screens (including Mobile Top Header!) */}
                 <Link
                   href="/messages"
-                  className="relative hidden sm:flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                  prefetch={true}
+                  className="relative flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                   aria-label={t('nav_messages', lang)}
                   title={t('nav_messages', lang)}
                 >
@@ -496,10 +518,11 @@ export function TopNav({
                   )}
                 </Link>
 
-                {/* Notifications */}
+                {/* Notifications — Visible on desktop (screens >= sm); on mobile it is in the Bottom Nav */}
                 <Link
                   href="/notifications"
-                  className="relative flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                  prefetch={true}
+                  className="relative hidden sm:flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                   aria-label={t('nav_notifications', lang)}
                   title={t('nav_notifications', lang)}
                 >
@@ -610,13 +633,21 @@ export function TopNav({
 
                         <Link
                           href="/messages"
+                          prefetch={true}
                           onClick={() => setDropdownOpen(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-foreground/90 hover:bg-accent hover:text-foreground transition-colors cursor-pointer group"
+                          className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-foreground/90 hover:bg-accent hover:text-foreground transition-colors cursor-pointer group"
                         >
-                          <div className="p-1 rounded-lg bg-indigo-500/10 text-indigo-500 group-hover:scale-110 transition-transform">
-                            <MessageCircle className="h-4 w-4" />
+                          <div className="flex items-center gap-2.5">
+                            <div className="p-1 rounded-lg bg-indigo-500/10 text-indigo-500 group-hover:scale-110 transition-transform">
+                              <MessageCircle className="h-4 w-4" />
+                            </div>
+                            <span>{lang === 'ar' ? 'الرسائل والمحادثات' : 'Messages & Chat'}</span>
                           </div>
-                          <span>{lang === 'ar' ? 'الرسائل والمحادثات' : 'Messages & Chat'}</span>
+                          {unreadMessages > 0 && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground font-black animate-pulse">
+                              {unreadMessages > 9 ? '9+' : unreadMessages}
+                            </span>
+                          )}
                         </Link>
 
                         <Link

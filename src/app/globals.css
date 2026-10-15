@@ -199,6 +199,12 @@
     cursor: not-allowed !important;
   }
 
+  /* Fast tap responsiveness for mobile browsers (eliminates 300ms tap delay) */
+  a, button, input, select, textarea, [role="button"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   /* Typography */
   h1, h2, h3, h4, h5, h6 {
     font-weight: 700;
