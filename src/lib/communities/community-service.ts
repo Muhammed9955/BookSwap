@@ -1107,11 +1107,14 @@ export async function addBooksBatchToCommunity(params: {
 
   const supabase = createClient()
   try {
+    const batchTag = `BATCH-${Date.now().toString(36).toUpperCase()}`
+    const noteWithBatch = params.note ? `${params.note} [${batchTag}]` : `[${batchTag}]`
+
     const rows = params.listingIds.map(listingId => ({
       community_id: params.communityId,
       listing_id: listingId,
       added_by: params.addedBy,
-      note: params.note || null,
+      note: noteWithBatch,
       status: 'PENDING',
     }))
 
@@ -1130,7 +1133,7 @@ export async function addBooksBatchToCommunity(params: {
             community_id: params.communityId,
             listing_id: lid,
             added_by: params.addedBy,
-            note: params.note || null,
+            note: noteWithBatch,
           })
           .select('id')
           .maybeSingle()
@@ -1388,6 +1391,26 @@ export async function verifyCommunityBookIntakeQr(params: {
 
       return false
     })
+
+    // Expand matches if any matched row belongs to a batch
+    const batchTags = new Set<string>()
+    for (const r of matchedRows) {
+      const match = (r.note || '').match(/\[(BATCH-[a-zA-Z0-9_-]+)\]/)
+      if (match) {
+        batchTags.add(match[1])
+      }
+    }
+
+    if (batchTags.size > 0) {
+      for (const r of pendingList) {
+        if (!matchedRows.some(m => m.id === r.id)) {
+          const match = (r.note || '').match(/\[(BATCH-[a-zA-Z0-9_-]+)\]/)
+          if (match && batchTags.has(match[1])) {
+            matchedRows.push(r)
+          }
+        }
+      }
+    }
 
     if (matchedRows.length === 0) {
       return {

@@ -1401,6 +1401,28 @@ export function CommunityDetailClient({
                     </button>
                   </div>
 
+                  {/* Admin Quick Scan Button */}
+                  {isAdmin && (
+                    <Button
+                      onClick={() =>
+                        setIntakeQrModal({
+                          isOpen: true,
+                          mode: 'SCAN_AND_VERIFY',
+                        })
+                      }
+                      size="sm"
+                      className="rounded-2xl font-black text-xs gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 text-white px-4 py-2.5 active:scale-98 transition-all"
+                    >
+                      <QrCode className="h-4 w-4" />
+                      <span>{lang === 'ar' ? 'مسح رمز استلام (QR) 📷' : 'Scan Intake QR 📷'}</span>
+                      {pendingBooks.length > 0 && (
+                        <span className="ms-1 px-1.5 py-0.5 rounded-full bg-white/25 text-[10px] font-mono font-bold">
+                          {pendingBooks.length}
+                        </span>
+                      )}
+                    </Button>
+                  )}
+
                   <Button
                     onClick={handleOpenAddBook}
                     size="sm"
@@ -1461,11 +1483,38 @@ export function CommunityDetailClient({
                       </h4>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
                         {lang === 'ar'
-                          ? `توجه إلى "${currentComm.hub_name || 'نقطة المجتمع'}" وأظهر رمز الـ QR لمسؤول المجتمع لاعتماد الكتاب فوراً وإدراجه على الرف`
+                          ? `توجه إلى "${currentComm.hub_name || 'نقطة المجتمع'}" وأظهر رمز الـ QR لمسؤول المجتمع لاعتماد الكتب فوراً وإدراجها على الرف`
                           : `Visit "${currentComm.hub_name || 'Community Hub'}" and present your QR code to the admin.`}
                       </p>
                     </div>
                   </div>
+
+                  {/* Combined Batch QR Button for all books */}
+                  {myPendingBooks.length > 1 && (
+                    <Button
+                      onClick={() =>
+                        setIntakeQrModal({
+                          isOpen: true,
+                          mode: 'VOUCHER',
+                          book: {
+                            id: myPendingBooks[0].id,
+                            title: `${myPendingBooks.length} ${lang === 'ar' ? 'كتب للتسليم المجمع' : 'books batch'}`,
+                            bookCount: myPendingBooks.length,
+                            items: myPendingBooks,
+                          },
+                          intakePin: generateCommunityIntakePin(myPendingBooks[0].id),
+                        })
+                      }
+                      className="rounded-2xl font-black text-xs bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-600/20 gap-2 px-4 py-2.5 cursor-pointer"
+                    >
+                      <QrCode className="h-4 w-4" />
+                      <span>
+                        {lang === 'ar'
+                          ? `عرض رمز التسليم المجمع لجميع الكتب (${myPendingBooks.length}) 📦`
+                          : `View Combined Batch QR (${myPendingBooks.length} books) 📦`}
+                      </span>
+                    </Button>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1">
@@ -1894,6 +1943,61 @@ export function CommunityDetailClient({
         {activeTab === 'safe-hub' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
             <div className="rounded-3xl border border-border/80 bg-card p-6 sm:p-8 space-y-6 shadow-sm">
+              {/* Admin Quick Intake Actions on site at the Hub */}
+              {isAdmin && (
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent border-2 border-emerald-500/30 space-y-3">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-600 border border-emerald-500/30">
+                        <QrCode className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-black text-foreground">
+                          {lang === 'ar' ? 'إدارة استلام الكتب في هذا المقر 📦' : 'Hub Intake Custodian Actions 📦'}
+                        </h4>
+                        <p className="text-[11px] text-muted-foreground">
+                          {lang === 'ar'
+                            ? `لديك ${pendingBooks.length} كتب معلقة بانتظار الاستلام والاعتماد بالفرع`
+                            : `${pendingBooks.length} pending books awaiting physical intake`}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          setIntakeQrModal({
+                            isOpen: true,
+                            mode: 'SCAN_AND_VERIFY',
+                          })
+                        }
+                        className="rounded-2xl font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 gap-1.5 px-3.5 py-2 cursor-pointer"
+                      >
+                        <Camera className="h-3.5 w-3.5" />
+                        <span>{lang === 'ar' ? 'مسح QR بالكاميرا' : 'Scan QR'}</span>
+                      </Button>
+                      {pendingBooks.length > 0 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          loading={approvingAllPending}
+                          onClick={handleApproveAllPendingBooks}
+                          className="rounded-2xl font-black text-xs border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 gap-1.5 px-3 py-2 cursor-pointer"
+                        >
+                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          <span>
+                            {lang === 'ar'
+                              ? `اعتماد الكل (${pendingBooks.length})`
+                              : `Approve All (${pendingBooks.length})`}
+                          </span>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-xs font-black border border-emerald-500/20">
                 <Coffee className="h-4 w-4" />
                 <span>{lang === 'ar' ? 'المكان الرسمي الآمن للقاء والتسليم' : 'Designated Safe Meetup Spot'}</span>
