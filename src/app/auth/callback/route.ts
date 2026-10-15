@@ -27,13 +27,14 @@ export async function GET(request: Request) {
       // Check if profile exists and if onboarding is completed
       const { data: profile } = await supabase
         .from('profiles')
-        .select('id, onboarding_completed, full_name, avatar_url')
+        .select('id, onboarding_completed, full_name, avatar_url, whatsapp_number')
         .eq('id', data.user.id)
         .maybeSingle()
 
       const meta = data.user.user_metadata || {}
       const fullName = meta.full_name || meta.name || ''
       const avatarUrl = meta.avatar_url || meta.picture || ''
+      const phone = meta.whatsapp_number || meta.phone || ''
 
       // If user profile doesn't exist yet, create it from Google user metadata
       if (!profile) {
@@ -43,6 +44,8 @@ export async function GET(request: Request) {
           id: data.user.id,
           full_name: fullName || null,
           avatar_url: avatarUrl || null,
+          whatsapp_number: phone || null,
+          show_whatsapp: Boolean(phone),
           email_verified: true,
           referral_code: referralCode,
           preferred_language: 'ar',
@@ -52,13 +55,17 @@ export async function GET(request: Request) {
         return NextResponse.redirect(`${origin}/onboarding`)
       }
 
-      // If profile exists but is missing avatar or full name, sync it from Google OAuth
-      const updates: Record<string, string> = {}
+      // If profile exists but is missing avatar, full name, or phone, sync it
+      const updates: Record<string, any> = {}
       if (!profile.avatar_url && avatarUrl) {
         updates.avatar_url = avatarUrl
       }
       if (!profile.full_name && fullName) {
         updates.full_name = fullName
+      }
+      if (!profile.whatsapp_number && phone) {
+        updates.whatsapp_number = phone
+        updates.show_whatsapp = true
       }
       if (Object.keys(updates).length > 0) {
         await supabase.from('profiles').update(updates).eq('id', data.user.id)

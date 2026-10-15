@@ -1351,8 +1351,8 @@ export function BookDetailClient({
                     <a
                       href={`https://wa.me/${(seller as any).whatsapp_number.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
                         lang === 'ar'
-                          ? `مرحباً! أستفسر عن كتابك "${book.title}" المعروض على منصة بدّلها.`
-                          : `Hi! Inquiring about your book "${book.title}" on BookSwap.`
+                          ? `مرحباً! أستفسر عن كتابك "${book.title}" المعروض على منصة وَرَق.`
+                          : `Hi! Inquiring about your book "${book.title}" on WARAQ.`
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"

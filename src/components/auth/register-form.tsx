@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight, RefreshCw } from 'lucide-react'
+import { Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle2, ArrowRight, RefreshCw, Phone } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -18,6 +18,13 @@ import { cn } from '@/lib/utils'
 const registerSchema = z.object({
   full_name: z.string().min(2, 'الاسم يجب أن يكون حرفين على الأقل'),
   email: z.string().email('صيغة البريد الإلكتروني غير صحيحة'),
+  phone: z.string().optional().refine(val => {
+    if (!val || val.trim() === '') return true
+    const clean = val.replace(/[\s\-\(\)]/g, '')
+    return /^\+?[0-9]{8,15}$/.test(clean)
+  }, {
+    message: 'رقم الهاتف غير صحيح (مثال: 01012345678 أو +201012345678)',
+  }),
   password: z.string().min(8, 'كلمة المرور يجب أن تكون 8 أحرف على الأقل'),
   confirm_password: z.string(),
 }).refine(d => d.password === d.confirm_password, {
@@ -78,6 +85,7 @@ export function RegisterForm() {
 
     try {
       const email = data.email.trim()
+      const phone = data.phone?.trim() || ''
       const referralCode = 'BOOK-' + Math.random().toString(36).substring(2, 8).toUpperCase()
 
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
@@ -86,6 +94,8 @@ export function RegisterForm() {
         options: {
           data: {
             full_name: data.full_name.trim(),
+            phone: phone || undefined,
+            whatsapp_number: phone || undefined,
             referral_code: referralCode,
           },
         },
@@ -137,6 +147,8 @@ export function RegisterForm() {
         await supabase.from('profiles').upsert({
           id: signUpData.user.id,
           full_name: data.full_name.trim(),
+          whatsapp_number: phone || null,
+          show_whatsapp: Boolean(phone),
           referral_code: referralCode,
           preferred_language: lang === 'en' ? 'en' : 'ar',
           onboarding_completed: false,
@@ -364,6 +376,38 @@ export function RegisterForm() {
             />
           </div>
           {errors.email && <p className="text-xs text-destructive font-medium">{errors.email.message}</p>}
+        </div>
+
+        {/* Phone / WhatsApp */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="reg-phone" className="font-semibold text-xs text-foreground">
+              {lang === 'ar' ? 'رقم الهاتف / الواتساب' : 'Phone / WhatsApp'}
+            </Label>
+            <span className="text-[11px] text-primary font-bold">
+              {lang === 'ar' ? 'للتواصل والاستفسار عن الكتب' : 'For book inquiries'}
+            </span>
+          </div>
+          <div className="relative">
+            <Phone className={cn('absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none', isRTL ? 'right-3' : 'left-3')} />
+            <Input
+              id="reg-phone"
+              type="tel"
+              dir="ltr"
+              placeholder={lang === 'ar' ? '01xxxxxxxxx (اختياري / موصى به)' : '01xxxxxxxxx (Optional / Recommended)'}
+              className={cn(
+                'h-11 rounded-xl transition-all focus:border-primary focus:ring-2 focus:ring-primary/10',
+                isRTL ? 'pr-10' : 'pl-10'
+              )}
+              {...register('phone')}
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            {lang === 'ar'
+              ? 'سيتمكن القراء من الاتصال بك أو مراسلتك على واتساب للاستفسار عن كتبك وتنسيق التبادل.'
+              : 'Readers will be able to call or WhatsApp you regarding book inquiries and swaps.'}
+          </p>
+          {errors.phone && <p className="text-xs text-destructive font-medium">{errors.phone.message}</p>}
         </div>
 
         {/* Password */}

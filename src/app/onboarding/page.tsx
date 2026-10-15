@@ -36,6 +36,7 @@ export default async function OnboardingPage() {
     const meta = user.user_metadata || {}
     const fullName = meta.full_name || meta.name || ''
     const avatarUrl = meta.avatar_url || meta.picture || ''
+    const phone = meta.whatsapp_number || meta.phone || ''
     const referralCode = 'BOOK-' + Math.random().toString(36).substring(2, 8).toUpperCase()
 
     const { data: newProfile } = await supabase
@@ -44,6 +45,8 @@ export default async function OnboardingPage() {
         id: user.id,
         full_name: fullName || null,
         avatar_url: avatarUrl || null,
+        whatsapp_number: phone || null,
+        show_whatsapp: Boolean(phone),
         email_verified: user.email_confirmed_at != null,
         referral_code: referralCode,
         preferred_language: 'ar',
@@ -54,6 +57,14 @@ export default async function OnboardingPage() {
       .maybeSingle()
 
     currentProfile = newProfile
+  } else if (!currentProfile.whatsapp_number) {
+    const meta = user.user_metadata || {}
+    const phone = meta.whatsapp_number || meta.phone || ''
+    if (phone) {
+      currentProfile.whatsapp_number = phone
+      currentProfile.show_whatsapp = true
+      await supabase.from('profiles').update({ whatsapp_number: phone, show_whatsapp: true }).eq('id', user.id)
+    }
   }
 
   const initialGenreIds = (profileGenres || []).map(g => g.category_id)

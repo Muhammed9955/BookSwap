@@ -10,9 +10,11 @@ import {
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
+  Phone,
 } from 'lucide-react'
 import { Category, Profile } from '@/types'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { useLanguage } from '@/i18n/language-context'
 import { useAuth } from '@/lib/auth/auth-context'
 import { createClient } from '@/lib/supabase/client'
@@ -55,6 +57,7 @@ export function OnboardingClient({
   const [step, setStep] = useState(initialStep > 3 ? 1 : initialStep)
   const [selectedCityId, setSelectedCityId] = useState(profile?.city_id || '')
   const [selectedAreaId, setSelectedAreaId] = useState(profile?.area_id || '')
+  const [whatsappNumber, setWhatsappNumber] = useState(profile?.whatsapp_number || '')
   const [selectedGenres, setSelectedGenres] = useState<string[]>(initialGenreIds)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -110,13 +113,19 @@ export function OnboardingClient({
           return
         }
 
+        const updateData: Record<string, unknown> = {
+          city_id: selectedCityId || null,
+          area_id: selectedAreaId || null,
+          onboarding_step: 1,
+        }
+        if (whatsappNumber.trim()) {
+          updateData.whatsapp_number = whatsappNumber.trim()
+          updateData.show_whatsapp = true
+        }
+
         await supabase
           .from('profiles')
-          .update({
-            city_id: selectedCityId || null,
-            area_id: selectedAreaId || null,
-            onboarding_step: 1,
-          })
+          .update(updateData)
           .eq('id', userId)
 
         await refreshProfile()
@@ -318,6 +327,38 @@ export function OnboardingClient({
                   </div>
                 </div>
               )}
+
+              {/* Phone / WhatsApp for inquiries */}
+              <div className="pt-3 border-t border-border/60 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label htmlFor="onboarding-phone" className="block text-xs font-bold text-muted-foreground uppercase tracking-wider text-start">
+                    {lang === 'ar' ? 'رقم الهاتف / الواتساب للتواصل' : 'Phone / WhatsApp Number'}
+                  </label>
+                  <span className="text-[11px] text-primary font-bold">
+                    {lang === 'ar' ? 'للتواصل واستفسارات الكتب' : 'For book inquiries'}
+                  </span>
+                </div>
+                <div className="relative">
+                  <Phone className={cn('absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none', isRTL ? 'right-3' : 'left-3')} />
+                  <Input
+                    id="onboarding-phone"
+                    type="tel"
+                    dir="ltr"
+                    value={whatsappNumber}
+                    onChange={e => setWhatsappNumber(e.target.value)}
+                    placeholder="01xxxxxxxxx"
+                    className={cn(
+                      'h-11 rounded-xl bg-card border-2 transition-all focus:border-primary',
+                      isRTL ? 'pr-10' : 'pl-10'
+                    )}
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1.5 text-start leading-relaxed">
+                  {lang === 'ar'
+                    ? 'يساعد القراء الآخرين على التواصل معك عبر الاتصال أو الواتساب للاستفسار عن كتبك وتنسيق المقابلة والتبادل.'
+                    : 'Helps other readers contact you via Call or WhatsApp to inquire about your books and coordinate meetups.'}
+                </p>
+              </div>
             </div>
           </div>
         )}
