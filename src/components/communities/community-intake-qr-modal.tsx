@@ -453,13 +453,13 @@ export function CommunityIntakeQrModal({
               )}
 
               {/* QR Code Canvas Card */}
-              <div className="p-5 rounded-3xl bg-white border-2 border-emerald-500/30 shadow-lg inline-block mx-auto">
+              <div className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-white border-2 border-emerald-500/30 shadow-lg inline-block mx-auto">
                 {voucherQrUrl ? (
                   <div className="relative">
                     <img
                       src={voucherQrUrl}
                       alt="Community Intake QR"
-                      className="w-56 h-56 mx-auto rounded-xl"
+                      className="w-48 h-48 sm:w-56 sm:h-56 mx-auto rounded-xl"
                     />
                     <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                       <div className="p-2 rounded-xl bg-white/95 shadow-md border border-emerald-500/40">
@@ -468,7 +468,7 @@ export function CommunityIntakeQrModal({
                     </div>
                   </div>
                 ) : (
-                  <div className="w-56 h-56 flex items-center justify-center text-xs text-muted-foreground">
+                  <div className="w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center text-xs text-muted-foreground">
                     <RefreshCw className="h-6 w-6 animate-spin text-emerald-600" />
                   </div>
                 )}
@@ -649,48 +649,48 @@ export function CommunityIntakeQrModal({
               ) : (
                 <div className="space-y-4">
                   {/* Tabs */}
-                  <div className="flex items-center rounded-2xl bg-muted/60 p-1 border border-border/60">
+                  <div className="flex items-center rounded-2xl bg-muted/60 p-1 border border-border/60 gap-0.5 sm:gap-1">
                     <button
                       onClick={() => {
                         setActiveTab('CAMERA')
                         setErrorMessage(null)
                       }}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-1.5 sm:py-2 px-1 rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer ${
                         activeTab === 'CAMERA'
                           ? 'bg-card text-emerald-600 shadow-xs'
                           : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      <Camera className="h-3.5 w-3.5" />
-                      <span>{lang === 'ar' ? 'الكاميرا' : 'Camera'}</span>
+                      <Camera className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{lang === 'ar' ? 'الكاميرا' : 'Camera'}</span>
                     </button>
                     <button
                       onClick={() => {
                         setActiveTab('MANUAL')
                         setErrorMessage(null)
                       }}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-1.5 sm:py-2 px-1 rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer ${
                         activeTab === 'MANUAL'
                           ? 'bg-card text-emerald-600 shadow-xs'
                           : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      <span className="font-mono">#</span>
-                      <span>{lang === 'ar' ? 'كود التحقق' : 'Enter PIN'}</span>
+                      <span className="font-mono text-xs font-bold">#</span>
+                      <span className="truncate">{lang === 'ar' ? 'كود PIN' : 'PIN'}</span>
                     </button>
                     <button
                       onClick={() => {
                         setActiveTab('UPLOAD')
                         setErrorMessage(null)
                       }}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                      className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-1.5 sm:py-2 px-1 rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer ${
                         activeTab === 'UPLOAD'
                           ? 'bg-card text-emerald-600 shadow-xs'
                           : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      <Upload className="h-3.5 w-3.5" />
-                      <span>{lang === 'ar' ? 'رفع صورة' : 'Upload'}</span>
+                      <Upload className="h-3.5 w-3.5 shrink-0" />
+                      <span className="truncate">{lang === 'ar' ? 'رفع صورة' : 'Upload'}</span>
                     </button>
                     {pendingBooks.length > 0 && (
                       <button
@@ -698,13 +698,13 @@ export function CommunityIntakeQrModal({
                           setActiveTab('LIST')
                           setErrorMessage(null)
                         }}
-                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                        className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-1.5 sm:py-2 px-1 rounded-xl text-[11px] sm:text-xs font-black transition-all cursor-pointer ${
                           activeTab === 'LIST'
                             ? 'bg-card text-emerald-600 shadow-xs'
                             : 'text-muted-foreground hover:text-foreground'
                         }`}
                       >
-                        <BookOpen className="h-3.5 w-3.5" />
+                        <BookOpen className="h-3.5 w-3.5 shrink-0" />
                         <span>({pendingBooks.length})</span>
                       </button>
                     )}

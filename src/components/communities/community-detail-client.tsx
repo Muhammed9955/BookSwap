@@ -1085,27 +1085,29 @@ export function CommunityDetailClient({
           </div>
 
           {/* Quick Edit Cover & Logo Button for Community Admins */}
+          {/* Quick Edit Cover & Logo Button for Community Admins */}
           {isAdmin && (
-            <div className="absolute top-4 end-4 z-20 flex items-center gap-2">
+            <div className="absolute top-3 end-3 sm:top-4 sm:end-4 z-20 flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setShowBrandingModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-black/60 hover:bg-black/85 text-white backdrop-blur-md border border-white/20 text-xs font-black shadow-xl cursor-pointer transition active:scale-95"
+                className="inline-flex items-center gap-1.5 px-3 py-2 sm:px-4 sm:py-2.5 rounded-2xl bg-black/65 hover:bg-black/85 text-white backdrop-blur-md border border-white/20 text-xs font-black shadow-xl cursor-pointer transition active:scale-95"
               >
-                <Camera className="h-4 w-4 text-emerald-400" />
-                <span>{lang === 'ar' ? 'تعديل الغلاف والشعار' : 'Edit Cover & Logo'}</span>
+                <Camera className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-400" />
+                <span className="hidden sm:inline">{lang === 'ar' ? 'تعديل الغلاف والشعار' : 'Edit Cover & Logo'}</span>
+                <span className="sm:hidden">{lang === 'ar' ? 'تعديل' : 'Edit'}</span>
               </button>
             </div>
           )}
         </div>
 
         {/* Community Header Card */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative -mt-24 sm:-mt-32 z-10">
-          <div className="rounded-3xl border border-border/80 bg-card/95 backdrop-blur-xl p-6 sm:p-8 shadow-2xl shadow-black/5 dark:shadow-black/30 space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 relative -mt-16 sm:-mt-28 md:-mt-32 z-10">
+          <div className="rounded-3xl border border-border/80 bg-card/95 backdrop-blur-xl p-4 sm:p-8 shadow-2xl shadow-black/5 dark:shadow-black/30 space-y-4 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 sm:gap-6">
               {/* Logo & Basic Info */}
-              <div className="flex items-start gap-4">
-                <div className="relative group/avatar h-20 w-20 sm:h-24 sm:w-24 rounded-2xl overflow-hidden border-4 border-card bg-card shadow-xl ring-2 ring-primary/20 shrink-0">
+              <div className="flex items-start gap-3 sm:gap-4 min-w-0 flex-1">
+                <div className="relative group/avatar h-16 w-16 sm:h-24 sm:w-24 rounded-2xl overflow-hidden border-2 sm:border-4 border-card bg-card shadow-xl ring-2 ring-primary/20 shrink-0">
                   {(currentComm.logo_url || currentComm.avatar_url) ? (
                     <Image
                       src={(currentComm.logo_url || currentComm.avatar_url)!}
@@ -1115,7 +1117,7 @@ export function CommunityDetailClient({
                       unoptimized={(currentComm.logo_url || currentComm.avatar_url)?.startsWith('data:')}
                     />
                   ) : (
-                    <div className="h-full w-full flex items-center justify-center font-black text-2xl text-primary bg-primary/10">
+                    <div className="h-full w-full flex items-center justify-center font-black text-xl sm:text-2xl text-primary bg-primary/10">
                       {currentComm.name.charAt(0)}
                     </div>
                   )}
@@ -1127,20 +1129,20 @@ export function CommunityDetailClient({
                       title={lang === 'ar' ? 'تغيير الشعار' : 'Change Logo'}
                       className="absolute inset-0 bg-black/60 text-white opacity-0 group-hover/avatar:opacity-100 transition-opacity flex flex-col items-center justify-center gap-0.5 cursor-pointer backdrop-blur-[2px]"
                     >
-                      <Camera className="h-5 w-5 text-emerald-400" />
-                      <span className="text-[10px] font-black">{lang === 'ar' ? 'تعديل' : 'Edit'}</span>
+                      <Camera className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-400" />
+                      <span className="text-[9px] sm:text-[10px] font-black">{lang === 'ar' ? 'تعديل' : 'Edit'}</span>
                     </button>
                   )}
                 </div>
 
-                <div className="space-y-1.5 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+                <div className="space-y-1 sm:space-y-1.5 min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-foreground tracking-tight truncate max-w-full">
                       {commName}
                     </h1>
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      <ShieldCheck className="h-3.5 w-3.5" />
-                      {lang === 'ar' ? 'مجتمع موثق' : 'Verified Community'}
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shrink-0">
+                      <ShieldCheck className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                      {lang === 'ar' ? 'مجتمع موثق' : 'Verified'}
                     </span>
                   </div>
 
@@ -1148,27 +1150,27 @@ export function CommunityDetailClient({
                     {commDesc}
                   </p>
 
-                  <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-muted-foreground font-semibold">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-0.5 sm:pt-1 text-[11px] sm:text-xs text-muted-foreground font-semibold">
                     <span className="flex items-center gap-1 text-foreground">
-                      <Users className="h-3.5 w-3.5 text-primary" />
-                      <span>{memberCount} {lang === 'ar' ? 'قارئ عضو' : 'members'}</span>
+                      <Users className="h-3.5 w-3.5 text-primary shrink-0" />
+                      <span>{memberCount} {lang === 'ar' ? 'عضو' : 'members'}</span>
                     </span>
 
                     <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-                      <BookOpen className="h-3.5 w-3.5" />
-                      <span>{currentComm.books_count ?? community.books_count ?? 50}+ {lang === 'ar' ? 'كتاب متاح في الرف' : 'books on shelf'}</span>
+                      <BookOpen className="h-3.5 w-3.5 shrink-0" />
+                      <span>{currentComm.books_count ?? community.books_count ?? 50}+ {lang === 'ar' ? 'كتاب بالرف' : 'books'}</span>
                     </span>
 
                     {currentComm.location_text && (
-                      <span className="flex items-center gap-1 text-foreground bg-muted/60 px-2.5 py-0.5 rounded-xl border border-border/60">
-                        <MapPin className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <span className="font-bold">{currentComm.location_text}</span>
+                      <span className="flex items-center gap-1 text-foreground bg-muted/60 px-2 py-0.5 rounded-xl border border-border/60 max-w-[140px] sm:max-w-xs truncate">
+                        <MapPin className="h-3 w-3 text-primary shrink-0" />
+                        <span className="font-bold truncate">{currentComm.location_text}</span>
                       </span>
                     )}
 
                     {currentComm.hub_name && (
-                      <span className="flex items-center gap-1 text-primary truncate max-w-xs">
-                        <Coffee className="h-3.5 w-3.5 shrink-0" />
+                      <span className="flex items-center gap-1 text-primary max-w-[140px] sm:max-w-xs truncate">
+                        <Coffee className="h-3 w-3 shrink-0" />
                         <span className="truncate">{currentComm.hub_name}</span>
                       </span>
                     )}
@@ -1177,32 +1179,33 @@ export function CommunityDetailClient({
               </div>
 
               {/* Actions: Admin Quick Actions, Join & Share */}
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <div className="w-full sm:w-auto grid grid-cols-2 sm:flex sm:items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
                 {isAdmin && (
                   <>
                     <Button
                       variant="outline"
+                      size="sm"
                       onClick={() => {
                         setActiveTab('admin')
-                        // Smooth scroll to the edit section
                         setTimeout(() => {
                           const el = document.getElementById('admin-edit-section')
                           if (el) el.scrollIntoView({ behavior: 'smooth' })
                         }, 100)
                       }}
-                      className="rounded-xl font-bold text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/10 cursor-pointer"
+                      className="rounded-xl font-bold text-xs gap-1 border-primary/40 text-primary hover:bg-primary/10 cursor-pointer py-2"
                     >
-                      <Settings className="h-4 w-4" />
-                      <span>{lang === 'ar' ? 'تعديل المجتمع ✏️' : 'Edit Community ✏️'}</span>
+                      <Settings className="h-3.5 w-3.5" />
+                      <span>{lang === 'ar' ? 'تعديل المجتمع' : 'Edit'}</span>
                     </Button>
 
                     <Button
                       variant="outline"
+                      size="sm"
                       onClick={() => setShowDeleteModal(true)}
-                      className="rounded-xl font-bold text-xs gap-1.5 border-red-500/40 text-red-600 hover:bg-red-500/10 cursor-pointer"
+                      className="rounded-xl font-bold text-xs gap-1 border-red-500/40 text-red-600 hover:bg-red-500/10 cursor-pointer py-2"
                     >
-                      <Trash2 className="h-4 w-4" />
-                      <span>{lang === 'ar' ? 'حذف 🗑️' : 'Delete 🗑️'}</span>
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>{lang === 'ar' ? 'حذف' : 'Delete'}</span>
                     </Button>
                   </>
                 )}
@@ -1210,16 +1213,19 @@ export function CommunityDetailClient({
                 <Button
                   onClick={handleToggleJoin}
                   variant={isMember ? 'secondary' : 'default'}
-                  className="rounded-xl font-bold text-xs gap-1.5 shadow-sm cursor-pointer"
+                  className="col-span-2 sm:col-auto flex-1 rounded-xl font-black text-xs gap-1.5 shadow-sm cursor-pointer py-2.5 sm:py-2"
                 >
                   <Users className="h-4 w-4" />
-                  {isMember
-                    ? lang === 'ar' ? '✓ عضو بالمجموعة' : '✓ Joined'
-                    : lang === 'ar' ? '+ انضمام للمجموعة' : '+ Join Group'}
+                  <span>
+                    {isMember
+                      ? lang === 'ar' ? '✓ عضو بالمجموعة' : '✓ Joined'
+                      : lang === 'ar' ? '+ انضمام للمجموعة' : '+ Join Group'}
+                  </span>
                 </Button>
 
                 <Button
                   variant="outline"
+                  size="sm"
                   onClick={() => {
                     if (navigator.share) {
                       navigator.share({ title: commName, url: window.location.href })
@@ -1228,34 +1234,35 @@ export function CommunityDetailClient({
                       alert(lang === 'ar' ? 'تم نسخ رابط المجموعة' : 'Link copied')
                     }
                   }}
-                  className="rounded-xl font-bold text-xs gap-1.5 cursor-pointer"
+                  className="rounded-xl font-bold text-xs gap-1 cursor-pointer py-2 sm:py-2 shrink-0 justify-center"
+                  title={lang === 'ar' ? 'مشاركة' : 'Share'}
                 >
                   <Share2 className="h-4 w-4" />
+                  <span className="sm:hidden text-xs">{lang === 'ar' ? 'مشاركة' : 'Share'}</span>
                 </Button>
               </div>
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex items-center gap-2 border-t border-border/80 pt-5 overflow-x-auto scrollbar-none pb-1">
+            <div className="flex items-center gap-1.5 sm:gap-2 border-t border-border/80 pt-3 sm:pt-5 overflow-x-auto scrollbar-none pb-1 -mx-4 px-4 sm:mx-0 sm:px-0 touch-pan-x">
               {[
                 {
                   id: 'bookshelf',
-                  labelAr: 'رف كتب المجتمع',
-                  labelEn: 'Community Bookshelf',
+                  labelAr: 'رف الكتب',
+                  labelEn: 'Bookshelf',
                   badge: filteredBooks.length,
                   icon: BookOpen,
                 },
                 {
                   id: 'safe-hub',
-                  labelAr: 'نقطة اللقاء الآمنة',
-                  labelEn: 'Designated Safe Hub',
-                  badge: '☕',
+                  labelAr: 'نقطة اللقاء ☕',
+                  labelEn: 'Safe Hub ☕',
                   icon: Coffee,
                 },
                 {
                   id: 'discussion',
-                  labelAr: 'حائط النقاش والطلبات',
-                  labelEn: 'Discussions & Requests',
+                  labelAr: 'حائط النقاش',
+                  labelEn: 'Discussions',
                   badge: posts.length,
                   icon: MessageCircle,
                 },
@@ -1263,8 +1270,8 @@ export function CommunityDetailClient({
                   ? [
                       {
                         id: 'admin',
-                        labelAr: 'لوحة تحكم الأدمن',
-                        labelEn: 'Admin Management',
+                        labelAr: 'لوحة الإدارة',
+                        labelEn: 'Admin Panel',
                         badge: pendingBooks.length + members.filter(m => m.status === 'PENDING').length,
                         isDangerBadge: (pendingBooks.length + members.filter(m => m.status === 'PENDING').length) > 0,
                         icon: ShieldCheck,
@@ -1279,18 +1286,18 @@ export function CommunityDetailClient({
                     type="button"
                     onClick={() => setActiveTab(tab.id as TabType)}
                     className={cn(
-                      'flex items-center gap-2 px-4 sm:px-5 py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 border',
+                      'flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-2xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 border',
                       isActive
                         ? 'bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/25 scale-[1.02]'
                         : 'bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border-border/50'
                     )}
                   >
-                    <tab.icon className={cn('h-4 w-4', isActive ? 'text-primary-foreground' : 'text-primary')} />
+                    <tab.icon className={cn('h-3.5 w-3.5 sm:h-4 sm:w-4', isActive ? 'text-primary-foreground' : 'text-primary')} />
                     <span>{lang === 'ar' ? tab.labelAr : tab.labelEn}</span>
                     {tab.badge !== undefined && tab.badge !== 0 && (
                       <span
                         className={cn(
-                          'px-2 py-0.5 rounded-full text-[10px] font-black leading-none',
+                          'px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black leading-none',
                           isActive
                             ? 'bg-white/20 text-white'
                             : (tab as any).isDangerBadge
@@ -1310,23 +1317,23 @@ export function CommunityDetailClient({
       </div>
 
       {/* Main Tab Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 pb-28">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8 md:py-12 pb-24 sm:pb-28">
         {/* TAB 1: COMMUNITY BOOKSHELF */}
         {activeTab === 'bookshelf' && (
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             {/* Safe Spot Banner Callout */}
             {community.hub_name && (
-              <div className="rounded-3xl bg-gradient-to-r from-emerald-500/10 via-primary/5 to-transparent border-2 border-emerald-500/30 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
-                <div className="flex items-start gap-3.5">
-                  <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5 border border-emerald-500/20">
-                    <Coffee className="h-6 w-6" />
+              <div className="rounded-3xl bg-gradient-to-r from-emerald-500/10 via-primary/5 to-transparent border-2 border-emerald-500/30 p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 sm:p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5 border border-emerald-500/20">
+                    <Coffee className="h-5 w-5 sm:h-6 sm:w-6" />
                   </div>
-                  <div>
-                    <h3 className="text-sm sm:text-base font-black text-foreground flex items-center gap-1.5 flex-wrap">
+                  <div className="min-w-0">
+                    <h3 className="text-xs sm:text-base font-black text-foreground flex items-center gap-1.5 flex-wrap">
                       <span>{lang === 'ar' ? 'مكان التسليم والاستلام المعتمد:' : 'Designated Handover Spot:'}</span>
-                      <span className="text-primary font-black underline decoration-primary/40 underline-offset-4">{community.hub_name}</span>
+                      <span className="text-primary font-black underline decoration-primary/40 underline-offset-4 truncate">{community.hub_name}</span>
                     </h3>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 line-clamp-2">
                       {community.hub_instructions || community.hub_address}
                     </p>
                   </div>
@@ -1336,7 +1343,7 @@ export function CommunityDetailClient({
                   size="sm"
                   variant="outline"
                   onClick={() => setActiveTab('safe-hub')}
-                  className="rounded-xl font-bold text-xs shrink-0 border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-4 py-2"
+                  className="w-full sm:w-auto rounded-xl font-bold text-xs shrink-0 border-emerald-500/30 hover:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-4 py-2"
                 >
                   {lang === 'ar' ? 'تفاصيل الموقع والمواعيد 📍' : 'View Location & Hours 📍'}
                 </Button>
@@ -1344,17 +1351,17 @@ export function CommunityDetailClient({
             )}
 
             {/* Bookshelf Toolbar: Search, Filters, View Switcher & Add Book Button */}
-            <div className="space-y-4">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
                 {/* Search Input */}
-                <div className="relative flex-1 max-w-md">
+                <div className="relative w-full md:max-w-md">
                   <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                   <input
                     type="text"
                     value={bookshelfSearch}
                     onChange={e => setBookshelfSearch(e.target.value)}
-                    placeholder={lang === 'ar' ? 'ابحث في كتب الرف بالعنوان، الكاتب أو المالك...' : 'Search bookshelf by title, author, or member...'}
-                    className="w-full ps-10 pe-9 py-2.5 rounded-2xl bg-muted/40 hover:bg-muted/60 focus:bg-background border border-border/70 focus:border-primary text-xs sm:text-sm font-semibold outline-none transition-all shadow-xs"
+                    placeholder={lang === 'ar' ? 'ابحث في كتب الرف بالعنوان أو الكاتب...' : 'Search bookshelf by title or author...'}
+                    className="w-full ps-10 pe-9 py-2 sm:py-2.5 rounded-2xl bg-muted/40 hover:bg-muted/60 focus:bg-background border border-border/70 focus:border-primary text-xs sm:text-sm font-semibold outline-none transition-all shadow-xs"
                   />
                   {bookshelfSearch && (
                     <button
@@ -1367,20 +1374,20 @@ export function CommunityDetailClient({
                   )}
                 </div>
 
-                {/* Right controls: View Switcher & Add Book Button */}
-                <div className="flex items-center gap-3">
+                {/* Right controls: View Switcher, Admin Quick Scan & Add Book Button */}
+                <div className="flex items-center gap-2 w-full md:w-auto">
                   {/* View Switcher */}
-                  <div className="flex items-center p-1 rounded-2xl bg-muted/50 border border-border/60">
+                  <div className="flex items-center p-1 rounded-2xl bg-muted/50 border border-border/60 shrink-0">
                     <button
                       type="button"
                       onClick={() => setBookshelfView('grid')}
                       className={cn(
-                        'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer',
+                        'flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer',
                         bookshelfView === 'grid'
                           ? 'bg-card text-foreground shadow-xs'
                           : 'text-muted-foreground hover:text-foreground'
                       )}
-                      title={lang === 'ar' ? 'عرض معرض الكتب (كبير)' : 'Large Book Showcase Grid'}
+                      title={lang === 'ar' ? 'معرض' : 'Grid'}
                     >
                       <LayoutGrid className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">{lang === 'ar' ? 'معرض' : 'Grid'}</span>
@@ -1389,12 +1396,12 @@ export function CommunityDetailClient({
                       type="button"
                       onClick={() => setBookshelfView('list')}
                       className={cn(
-                        'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer',
+                        'flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer',
                         bookshelfView === 'list'
                           ? 'bg-card text-foreground shadow-xs'
                           : 'text-muted-foreground hover:text-foreground'
                       )}
-                      title={lang === 'ar' ? 'عرض القائمة التفصيلية' : 'Detailed List'}
+                      title={lang === 'ar' ? 'قائمة' : 'List'}
                     >
                       <List className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">{lang === 'ar' ? 'قائمة' : 'List'}</span>
@@ -1411,12 +1418,12 @@ export function CommunityDetailClient({
                         })
                       }
                       size="sm"
-                      className="rounded-2xl font-black text-xs gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 text-white px-4 py-2.5 active:scale-98 transition-all"
+                      className="flex-1 md:flex-initial rounded-2xl font-black text-xs gap-1.5 shadow-md shadow-emerald-600/20 cursor-pointer bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 text-white px-3 sm:px-4 py-2 sm:py-2.5 active:scale-98 transition-all"
                     >
-                      <QrCode className="h-4 w-4" />
-                      <span>{lang === 'ar' ? 'مسح رمز استلام (QR) 📷' : 'Scan Intake QR 📷'}</span>
+                      <QrCode className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{lang === 'ar' ? 'مسح رمز (QR)' : 'Scan QR'}</span>
                       {pendingBooks.length > 0 && (
-                        <span className="ms-1 px-1.5 py-0.5 rounded-full bg-white/25 text-[10px] font-mono font-bold">
+                        <span className="ms-1 px-1.5 py-0.5 rounded-full bg-white/25 text-[10px] font-mono font-bold shrink-0">
                           {pendingBooks.length}
                         </span>
                       )}
@@ -1426,29 +1433,29 @@ export function CommunityDetailClient({
                   <Button
                     onClick={handleOpenAddBook}
                     size="sm"
-                    className="rounded-2xl font-black text-xs gap-1.5 shadow-md shadow-primary/25 cursor-pointer bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/95 text-white px-5 py-2.5 active:scale-98 transition-all"
+                    className="flex-1 md:flex-initial rounded-2xl font-black text-xs gap-1.5 shadow-md shadow-primary/25 cursor-pointer bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/95 text-white px-3 sm:px-5 py-2 sm:py-2.5 active:scale-98 transition-all"
                   >
-                    <Plus className="h-4 w-4" />
-                    <span>{lang === 'ar' ? '+ أضف كتاب إلى الرف' : '+ Add Book to Shelf'}</span>
+                    <Plus className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{lang === 'ar' ? '+ أضف كتاب' : '+ Add Book'}</span>
                   </Button>
                 </div>
               </div>
 
               {/* Filter Pills & Result Counter */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-                <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-1">
+                <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap touch-pan-x">
                   {[
-                    { id: 'ALL', labelAr: 'كافة كتب المجتمع', labelEn: 'All Books' },
-                    { id: 'SWAP', labelAr: '🔄 للتبادل المجاني', labelEn: '🔄 For Swap' },
-                    { id: 'BORROW', labelAr: '⏳ للاستعارة المؤقتة', labelEn: '⏳ For Borrow' },
-                    { id: 'SELL', labelAr: '💰 للشراء النقدي', labelEn: '💰 For Sale' },
+                    { id: 'ALL', labelAr: 'الكل', labelEn: 'All' },
+                    { id: 'SWAP', labelAr: '🔄 تبادل', labelEn: '🔄 Swap' },
+                    { id: 'BORROW', labelAr: '⏳ استعارة', labelEn: '⏳ Borrow' },
+                    { id: 'SELL', labelAr: '💰 شراء', labelEn: '💰 Buy' },
                   ].map(tab => (
                     <button
                       key={tab.id}
                       type="button"
                       onClick={() => setBookFilter(tab.id as any)}
                       className={cn(
-                        'px-3.5 py-2 rounded-2xl text-xs font-black transition-all cursor-pointer whitespace-nowrap',
+                        'px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0',
                         bookFilter === tab.id
                           ? 'bg-primary text-primary-foreground shadow-md shadow-primary/25'
                           : 'bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted border border-border/50'
@@ -1459,10 +1466,10 @@ export function CommunityDetailClient({
                   ))}
                 </div>
 
-                <div className="text-xs font-bold text-muted-foreground">
+                <div className="text-[11px] sm:text-xs font-bold text-muted-foreground">
                   {lang === 'ar'
-                    ? `عرض ${filteredBooks.length} من أصل ${shelfBooks.length} كتاب على الرف`
-                    : `Showing ${filteredBooks.length} of ${shelfBooks.length} books on shelf`}
+                    ? `${filteredBooks.length} كتاب على الرف`
+                    : `${filteredBooks.length} books on shelf`}
                 </div>
               </div>
             </div>
@@ -1824,14 +1831,14 @@ export function CommunityDetailClient({
                   return (
                     <div
                       key={book.id}
-                      className="group flex flex-col sm:flex-row gap-5 p-5 rounded-3xl border border-border/70 bg-card hover:bg-card/95 hover:border-primary/50 shadow-sm hover:shadow-xl transition-all duration-300"
+                      className="group flex flex-row items-start sm:items-stretch gap-3 sm:gap-5 p-3 sm:p-5 rounded-2xl sm:rounded-3xl border border-border/70 bg-card hover:bg-card/95 hover:border-primary/50 shadow-sm hover:shadow-xl transition-all duration-300"
                     >
                       {/* List Cover (Big & crisp) */}
-                      <div className="relative h-52 w-36 sm:h-56 sm:w-40 rounded-2xl overflow-hidden bg-muted border border-border/60 shrink-0 shadow-md">
+                      <div className="relative h-32 w-24 sm:h-56 sm:w-40 rounded-xl sm:rounded-2xl overflow-hidden bg-muted border border-border/60 shrink-0 shadow-md">
                         {book.cover_image_url ? (
-                          <Image src={book.cover_image_url} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                          <Image src={book.cover_image_url} alt="" fill className="object-cover group-hover:scale-105 transition-transform duration-300" sizes="(max-width: 640px) 96px, 160px" />
                         ) : (
-                          <div className="h-full w-full flex items-center justify-center text-4xl bg-gradient-to-br from-indigo-950 to-slate-900 text-white">
+                          <div className="h-full w-full flex items-center justify-center text-3xl sm:text-4xl bg-gradient-to-br from-indigo-950 to-slate-900 text-white">
                             📖
                           </div>
                         )}
@@ -1839,70 +1846,72 @@ export function CommunityDetailClient({
                       </div>
 
                       {/* List Details */}
-                      <div className="flex-1 flex flex-col justify-between space-y-3">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex-1 min-w-0 flex flex-col justify-between space-y-2.5 sm:space-y-3">
+                        <div className="space-y-1.5 sm:space-y-2">
+                          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                             {bookType === 'SWAP' && (
-                              <Badge variant="swap" className="text-xs font-black">
+                              <Badge variant="swap" className="text-[10px] sm:text-xs font-black">
                                 🔄 {lang === 'ar' ? 'تبادل مجاني' : 'Swap'}
                               </Badge>
                             )}
                             {bookType === 'BORROW' && (
-                              <Badge variant="outline" className="text-xs font-black border-amber-500 text-amber-600 bg-amber-500/10">
+                              <Badge variant="outline" className="text-[10px] sm:text-xs font-black border-amber-500 text-amber-600 bg-amber-500/10">
                                 ⏳ {lang === 'ar' ? 'استعارة مؤقتة' : 'Borrow'}
                               </Badge>
                             )}
                             {(bookType === 'SELL' || bookType === 'SELL_OR_SWAP') && (
-                              <Badge variant="sell" className="text-xs font-black">
+                              <Badge variant="sell" className="text-[10px] sm:text-xs font-black">
                                 💰 {lang === 'ar' ? 'شراء نقدي' : 'For Sale'}
                               </Badge>
                             )}
                             {isMyBook && (
-                              <Badge variant="outline" className="text-xs font-black bg-primary/10 text-primary border-primary/20">
+                              <Badge variant="outline" className="text-[10px] sm:text-xs font-black bg-primary/10 text-primary border-primary/20">
                                 👑 {lang === 'ar' ? 'كتابك' : 'Your Book'}
                               </Badge>
                             )}
                           </div>
 
-                          <h4 className="font-black text-lg text-foreground group-hover:text-primary transition-colors">
+                          <h4 className="font-black text-sm sm:text-lg text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-snug">
                             {book.title}
                           </h4>
-                          <p className="text-sm text-muted-foreground font-semibold">{book.author}</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground font-semibold line-clamp-1">{book.author}</p>
 
-                          <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-3 py-2 rounded-xl border border-emerald-500/20 max-w-fit">
-                            <Coffee className="h-4 w-4 shrink-0 text-emerald-600" />
-                            <span>
-                              {lang === 'ar' ? `نقطة التسليم الآمنة: ${community.hub_name || 'فرع المجتمع'}` : `Safe Pickup Hub: ${community.hub_name || 'Hub'}`}
+                          <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg sm:rounded-xl border border-emerald-500/20 max-w-fit">
+                            <Coffee className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0 text-emerald-600" />
+                            <span className="truncate">
+                              {lang === 'ar' ? `نقطة التسليم: ${community.hub_name || 'فرع المجتمع'}` : `Safe Pickup Hub: ${community.hub_name || 'Hub'}`}
                             </span>
                           </div>
                         </div>
 
                         {/* List Footer with Owner & CTA */}
-                        <div className="pt-3 border-t border-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                          <div className="flex items-center gap-3">
-                            <div className="h-7 w-7 rounded-full bg-primary/10 text-primary font-black text-xs flex items-center justify-center">
-                              {(book.owner_name || 'U').charAt(0)}
-                            </div>
-                            <div>
-                              <div className="text-xs font-bold text-foreground">{book.owner_name}</div>
-                              <div className="text-[11px] text-amber-500 font-bold flex items-center gap-0.5">
-                                <Star className="h-3 w-3 fill-current" />
-                                <span>{book.owner_rating || '5.0'}</span>
+                        <div className="pt-2 sm:pt-3 border-t border-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
+                          <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3 w-full sm:w-auto">
+                            <div className="flex items-center gap-2">
+                              <div className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-primary/10 text-primary font-black text-[11px] sm:text-xs flex items-center justify-center shrink-0">
+                                {(book.owner_name || 'U').charAt(0)}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold text-foreground truncate max-w-[90px] sm:max-w-none">{book.owner_name}</div>
+                                <div className="text-[10px] sm:text-[11px] text-amber-500 font-bold flex items-center gap-0.5">
+                                  <Star className="h-3 w-3 fill-current" />
+                                  <span>{book.owner_rating || '5.0'}</span>
+                                </div>
                               </div>
                             </div>
-                            <div className="ms-4 ps-4 border-s border-border/60 text-sm font-black text-foreground">
+                            <div className="ms-2 ps-2 sm:ms-4 sm:ps-4 border-s border-border/60 text-xs sm:text-sm font-black text-foreground shrink-0 text-end">
                               {bookType === 'SWAP' && <span className="text-emerald-600">تبادل 1:1</span>}
                               {bookType === 'BORROW' && <span className="text-amber-600">{book.borrow_fee || 15} ج.م / أسبوع</span>}
                               {(bookType === 'SELL' || bookType === 'SELL_OR_SWAP') && <span>{formatPrice(book.price ?? 0)}</span>}
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 flex-wrap">
+                          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
                             {book.listing_id && (
-                              <Link href={`/books/${book.listing_id}`}>
-                                <Button size="sm" variant="outline" className="rounded-xl font-bold text-xs h-10 px-4 cursor-pointer gap-1.5">
+                              <Link href={`/books/${book.listing_id}`} className={isMyBook ? 'col-span-2 sm:col-auto' : 'col-span-1 sm:col-auto'}>
+                                <Button size="sm" variant="outline" className="w-full sm:w-auto rounded-xl font-bold text-xs h-9 sm:h-10 px-3 sm:px-4 cursor-pointer gap-1.5 justify-center">
                                   <Eye className="h-4 w-4" />
-                                  <span>{lang === 'ar' ? 'تفاصيل الكتاب' : 'Book Details'}</span>
+                                  <span>{lang === 'ar' ? 'التفاصيل' : 'Details'}</span>
                                 </Button>
                               </Link>
                             )}
@@ -1910,10 +1919,10 @@ export function CommunityDetailClient({
                               <Button
                                 size="sm"
                                 onClick={() => handleOpenRequestModal(book)}
-                                className="rounded-xl font-black text-xs gap-1.5 cursor-pointer bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md shadow-primary/20 h-10 px-5"
+                                className={book.listing_id ? 'col-span-1 sm:col-auto rounded-xl font-black text-xs gap-1.5 cursor-pointer bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md shadow-primary/20 h-9 sm:h-10 px-3 sm:px-5 justify-center' : 'col-span-2 sm:col-auto rounded-xl font-black text-xs gap-1.5 cursor-pointer bg-gradient-to-r from-primary to-indigo-600 text-white shadow-md shadow-primary/20 h-9 sm:h-10 px-3 sm:px-5 justify-center'}
                               >
-                                <ArrowRightLeft className="h-4 w-4" />
-                                <span>{lang === 'ar' ? 'طلب استلام من الفرع' : 'Request & Pickup'}</span>
+                                <ArrowRightLeft className="h-4 w-4 shrink-0" />
+                                <span className="truncate">{lang === 'ar' ? 'طلب استلام' : 'Request'}</span>
                               </Button>
                             )}
                             {isAdmin && (
@@ -1921,7 +1930,7 @@ export function CommunityDetailClient({
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => setBookToRemove(book)}
-                                className="rounded-xl font-bold text-xs h-10 px-3 cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 gap-1.5 transition-colors"
+                                className="col-span-2 sm:col-auto rounded-xl font-bold text-xs h-8 sm:h-10 px-3 cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 gap-1.5 transition-colors justify-center"
                                 title={lang === 'ar' ? 'إزالة من رف المجتمع' : 'Remove from shelf'}
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -1942,13 +1951,13 @@ export function CommunityDetailClient({
         {/* TAB 2: SAFE HUB SPOTLIGHT */}
         {activeTab === 'safe-hub' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-            <div className="rounded-3xl border border-border/80 bg-card p-6 sm:p-8 space-y-6 shadow-sm">
+            <div className="rounded-2xl sm:rounded-3xl border border-border/80 bg-card p-4 sm:p-8 space-y-5 sm:space-y-6 shadow-sm">
               {/* Admin Quick Intake Actions on site at the Hub */}
               {isAdmin && (
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent border-2 border-emerald-500/30 space-y-3">
-                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-transparent border-2 border-emerald-500/30 space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-600 border border-emerald-500/30">
+                      <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-600 border border-emerald-500/30 shrink-0">
                         <QrCode className="h-4 w-4" />
                       </div>
                       <div>
@@ -1963,7 +1972,7 @@ export function CommunityDetailClient({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
                       <Button
                         size="sm"
                         onClick={() =>
@@ -1972,10 +1981,10 @@ export function CommunityDetailClient({
                             mode: 'SCAN_AND_VERIFY',
                           })
                         }
-                        className="rounded-2xl font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 gap-1.5 px-3.5 py-2 cursor-pointer"
+                        className="col-span-1 sm:col-auto justify-center rounded-xl font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 gap-1.5 px-3.5 py-2 cursor-pointer"
                       >
                         <Camera className="h-3.5 w-3.5" />
-                        <span>{lang === 'ar' ? 'مسح QR بالكاميرا' : 'Scan QR'}</span>
+                        <span>{lang === 'ar' ? 'مسح QR' : 'Scan QR'}</span>
                       </Button>
                       {pendingBooks.length > 0 && (
                         <Button
@@ -1983,7 +1992,7 @@ export function CommunityDetailClient({
                           variant="outline"
                           loading={approvingAllPending}
                           onClick={handleApproveAllPendingBooks}
-                          className="rounded-2xl font-black text-xs border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 gap-1.5 px-3 py-2 cursor-pointer"
+                          className="col-span-1 sm:col-auto justify-center rounded-xl font-black text-xs border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 gap-1.5 px-3 py-2 cursor-pointer"
                         >
                           <Check className="h-3.5 w-3.5 text-emerald-600" />
                           <span>
@@ -2104,8 +2113,8 @@ export function CommunityDetailClient({
             </div>
 
             {/* Hub Photo Card */}
-            <div className="rounded-3xl border border-border/80 bg-card overflow-hidden shadow-sm space-y-4 p-4 sm:p-6">
-              <div className="relative h-80 sm:h-96 w-full rounded-2xl overflow-hidden bg-muted">
+            <div className="rounded-2xl sm:rounded-3xl border border-border/80 bg-card overflow-hidden shadow-sm space-y-4 p-3.5 sm:p-6">
+              <div className="relative h-56 sm:h-96 w-full rounded-xl sm:rounded-2xl overflow-hidden bg-muted">
                 {(currentComm.hub_photo_url || community.hub_photo_url) ? (
                   <Image src={(currentComm.hub_photo_url || community.hub_photo_url)!} alt="" fill className="object-cover" />
                 ) : (
@@ -2272,14 +2281,14 @@ export function CommunityDetailClient({
                   </Badge>
                 </div>
 
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                   {/* Approve All Pending Books in 1 Click */}
                   {pendingBooks.length > 0 && (
                     <Button
                       variant="outline"
                       loading={approvingAllPending}
                       onClick={handleApproveAllPendingBooks}
-                      className="rounded-2xl font-black text-xs border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 gap-2 px-3.5 py-2.5 cursor-pointer"
+                      className="rounded-2xl font-black text-xs border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 gap-2 px-3.5 py-2.5 cursor-pointer justify-center w-full sm:w-auto"
                     >
                       <Check className="h-4 w-4 text-emerald-600" />
                       <span>
@@ -2298,7 +2307,7 @@ export function CommunityDetailClient({
                         mode: 'SCAN_AND_VERIFY',
                       })
                     }
-                    className="rounded-2xl font-black text-xs bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-600/20 gap-2 px-4 py-2.5 cursor-pointer"
+                    className="rounded-2xl font-black text-xs bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-600/20 gap-2 px-4 py-2.5 cursor-pointer justify-center w-full sm:w-auto"
                   >
                     <QrCode className="h-4 w-4" />
                     <span>{lang === 'ar' ? 'مسح رمز QR لاعتماد واستلام كتاب 📷' : 'Scan QR to Accept Book 📷'}</span>
@@ -2350,7 +2359,7 @@ export function CommunityDetailClient({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50 flex-wrap">
+                      <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto pt-2.5 sm:pt-0 border-t sm:border-t-0 border-border/50">
                         <Button
                           size="sm"
                           variant="outline"
@@ -2361,7 +2370,7 @@ export function CommunityDetailClient({
                               book,
                             })
                           }
-                          className="text-xs font-bold rounded-xl border-border/80 text-muted-foreground hover:text-foreground cursor-pointer gap-1"
+                          className="col-span-1 sm:col-auto justify-center text-xs font-bold rounded-xl border-border/80 text-muted-foreground hover:text-foreground cursor-pointer gap-1 py-2 sm:py-2"
                         >
                           <QrCode className="h-3.5 w-3.5" />
                           <span>{lang === 'ar' ? 'عرض الرمز' : 'View QR'}</span>
@@ -2371,7 +2380,7 @@ export function CommunityDetailClient({
                           variant="ghost"
                           loading={bookApprovalLoading === `reject-${book.id}`}
                           onClick={() => handleRejectCommunityBook(book)}
-                          className="text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl cursor-pointer"
+                          className="col-span-1 sm:col-auto justify-center text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl cursor-pointer py-2 sm:py-2"
                         >
                           <X className="h-4 w-4 me-1" />
                           <span>{lang === 'ar' ? 'رفض' : 'Reject'}</span>
@@ -2380,7 +2389,7 @@ export function CommunityDetailClient({
                           size="sm"
                           loading={bookApprovalLoading === `approve-${book.id}`}
                           onClick={() => handleApproveCommunityBook(book)}
-                          className="text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs cursor-pointer gap-1"
+                          className="col-span-2 sm:col-auto w-full sm:w-auto justify-center text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs cursor-pointer gap-1 py-2.5 sm:py-2"
                         >
                           <Check className="h-4 w-4 me-1" />
                           <span>{lang === 'ar' ? 'اعتماد وإضافة للرف' : 'Approve to Shelf'}</span>
@@ -2470,13 +2479,13 @@ export function CommunityDetailClient({
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
+                        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
                           {book.listing_id && (
-                            <Link href={`/books/${book.listing_id}`}>
+                            <Link href={`/books/${book.listing_id}`} className="flex-1 sm:flex-initial">
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="text-xs font-bold rounded-xl border-border/80 text-muted-foreground hover:text-foreground cursor-pointer h-9 px-3"
+                                className="w-full sm:w-auto text-xs font-bold rounded-xl border-border/80 text-muted-foreground hover:text-foreground cursor-pointer h-9 px-3 justify-center"
                               >
                                 <Eye className="h-3.5 w-3.5 me-1" />
                                 <span>{lang === 'ar' ? 'عرض' : 'View'}</span>
@@ -2488,10 +2497,10 @@ export function CommunityDetailClient({
                             variant="ghost"
                             onClick={() => setBookToRemove(book)}
                             disabled={removingBookId === (book.id || book.listing_id)}
-                            className="text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl cursor-pointer h-9 px-3 gap-1"
+                            className="flex-1 sm:flex-initial text-xs font-bold text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl cursor-pointer h-9 px-3 gap-1 justify-center"
                           >
                             <Trash2 className="h-4 w-4" />
-                            <span>{lang === 'ar' ? 'إزالة من الرف' : 'Remove from Shelf'}</span>
+                            <span>{lang === 'ar' ? 'إزالة' : 'Remove'}</span>
                           </Button>
                         </div>
                       </div>
