@@ -28,25 +28,44 @@ export interface MeetupProposal {
   /** Array of available time slots */
   proposed_times?: Array<{ label: string; iso: string }>
   preferred_delivery: DeliveryPreference
+  /** Specific meetup date e.g. "2026-10-18" */
+  meetup_date?: string
+  /** Specific meetup time e.g. "17:30" */
+  meetup_time?: string
+  /** Requester phone number for fast communication & calling */
+  contact_phone?: string
 }
 
 /**
- * Format a human-readable meetup summary for chat messages.
- * E.g. "📍 Cilantro Maadi | 🕐 Friday 3pm or Saturday morning"
+ * Format a human-readable meetup summary for chat messages and notifications.
  */
 export function formatMeetupSummary(meetup?: MeetupProposal): string {
   if (!meetup) return ''
   const parts: string[] = []
   if (meetup.preferred_delivery === 'COMMUNITY_HUB') {
-    parts.push('🏪 Drop off at Community Hub')
+    parts.push('🏪 نقطة استلام آمنة (Community Hub)')
   } else if (meetup.preferred_delivery === 'COURIER') {
-    parts.push('🚚 Via Courier (buyer pays delivery)')
+    parts.push('🚚 شحن وتوصيل (رسوم الشحن على المشتري)')
   } else if (meetup.location) {
-    parts.push(`📍 ${meetup.location}`)
+    parts.push(`📍 مكان اللقاء: ${meetup.location}`)
   }
-  if (meetup.proposed_times && meetup.proposed_times.length > 0) {
-    parts.push(`🕐 ${meetup.proposed_times.map(t => t.label).join(' or ')}`)
+
+  if (meetup.meetup_date) {
+    const formattedDate = new Date(meetup.meetup_date).toLocaleDateString('ar-EG', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+    })
+    const timeStr = meetup.meetup_time ? ` الساعة ${meetup.meetup_time}` : ''
+    parts.push(`📅 الموعد: ${formattedDate}${timeStr}`)
+  } else if (meetup.proposed_times && meetup.proposed_times.length > 0) {
+    parts.push(`🕐 الأوقات المقترحة: ${meetup.proposed_times.map(t => t.label).join(' أو ')}`)
   }
+
+  if (meetup.contact_phone) {
+    parts.push(`📞 للتواصل السريع: ${meetup.contact_phone}`)
+  }
+
   return parts.join(' | ')
 }
 
@@ -208,6 +227,10 @@ export async function submitBuyRequest(params: {
 
   // 1. Create transaction row (resilient to missing migration columns)
   let transaction: { id: string } | null = null
+  const computedMeetupAt = meetup?.meetup_date
+    ? new Date(meetup.meetup_time ? `${meetup.meetup_date}T${meetup.meetup_time}` : meetup.meetup_date).toISOString()
+    : null
+
   const payloadWithMeetup: Record<string, unknown> = {
     transaction_type: 'BUY',
     status: 'PENDING',
@@ -217,8 +240,9 @@ export async function submitBuyRequest(params: {
     price: price ?? 0,
     payment_method: 'CASH',
     payment_status: 'UNPAID',
-    buyer_note: JSON.stringify({ mode: 'BUY', note: buyerNote, meetup }),
+    buyer_note: JSON.stringify({ mode: 'BUY', note: buyerNote, meetup, contact_phone: meetup?.contact_phone }),
     meetup_location: meetup?.location ?? null,
+    meetup_at: computedMeetupAt,
     meetup_area_id: meetup?.area_id ?? null,
     meetup_lat: meetup?.lat ?? null,
     meetup_lng: meetup?.lng ?? null,
@@ -355,6 +379,10 @@ export async function submitBorrowRequest(params: {
 
   // 1. Create transaction row (resilient to missing migration columns)
   let transaction: { id: string } | null = null
+  const computedMeetupAt = meetup?.meetup_date
+    ? new Date(meetup.meetup_time ? `${meetup.meetup_date}T${meetup.meetup_time}` : meetup.meetup_date).toISOString()
+    : null
+
   const payloadWithBorrow: Record<string, unknown> = {
     transaction_type: 'BUY',
     status: 'PENDING',
@@ -364,8 +392,9 @@ export async function submitBorrowRequest(params: {
     price: borrowFee,
     payment_method: 'CASH',
     payment_status: 'UNPAID',
-    buyer_note: JSON.stringify(loanPayload),
+    buyer_note: JSON.stringify({ ...loanPayload, contact_phone: meetup?.contact_phone }),
     meetup_location: meetup?.location ?? null,
+    meetup_at: computedMeetupAt,
     meetup_area_id: meetup?.area_id ?? null,
     meetup_lat: meetup?.lat ?? null,
     meetup_lng: meetup?.lng ?? null,
@@ -512,6 +541,10 @@ export async function submitSwapRequest(params: {
 
   // 1. Create swap_request row (resilient to missing migration columns)
   let swap: { id: string } | null = null
+  const computedMeetupAt = meetup?.meetup_date
+    ? new Date(meetup.meetup_time ? `${meetup.meetup_date}T${meetup.meetup_time}` : meetup.meetup_date).toISOString()
+    : null
+
   const payloadWithMeetup: Record<string, unknown> = {
     requester_id: requesterId,
     listing_id: listingId,
@@ -519,6 +552,7 @@ export async function submitSwapRequest(params: {
     status: 'PENDING',
     message: message || null,
     proposed_meetup_location: meetup?.location ?? null,
+    proposed_meetup_at: computedMeetupAt,
     proposed_meetup_area_id: meetup?.area_id ?? null,
     proposed_meetup_lat: meetup?.lat ?? null,
     proposed_meetup_lng: meetup?.lng ?? null,

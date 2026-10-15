@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Heart, MapPin, Star, ArrowRightLeft, Gift } from 'lucide-react'
@@ -30,12 +31,16 @@ export function BookCard({
   matchScore,
 }: BookCardProps) {
   const { lang, isRTL } = useLanguage()
+  const [imageError, setImageError] = useState(false)
   const book = listing.book
   const seller = listing.seller
 
-  const primaryImage = listing.images?.find(img => img.is_primary)?.url
+  const rawImage = listing.images?.find(img => img.is_primary)?.url
     || listing.images?.[0]?.url
     || book?.cover_image_url
+
+  const primaryImage = rawImage && rawImage.trim() !== '' ? rawImage : null
+  const displayCover = !imageError && primaryImage ? primaryImage : '/images/book-placeholder.svg'
 
   const bookSlug = listing.id
 
@@ -59,20 +64,16 @@ export function BookCard({
     return (
       <Link href={`/books/${bookSlug}`} prefetch={true} className={cn('book-card flex gap-3 p-3', className)}>
         {/* Cover */}
-        <div className="relative h-20 w-14 flex-shrink-0 overflow-hidden rounded-lg bg-muted">
-          {primaryImage ? (
-            <Image
-              src={primaryImage}
-              alt={book?.title ?? 'Book cover'}
-              fill
-              className="object-cover"
-              sizes="56px"
-            />
-          ) : (
-            <div className="h-full w-full flex items-center justify-center text-2xl bg-gradient-to-br from-primary/10 to-primary/20">
-              📚
-            </div>
-          )}
+        <div className="relative h-20 w-14 flex-shrink-0 overflow-hidden rounded-lg bg-muted border border-border/40">
+          <Image
+            src={displayCover}
+            alt={book?.title ?? 'Book cover'}
+            fill
+            className="object-cover"
+            sizes="56px"
+            onError={() => setImageError(true)}
+            unoptimized={displayCover.endsWith('.svg')}
+          />
         </div>
 
         {/* Info */}
@@ -98,19 +99,15 @@ export function BookCard({
     <Link href={`/books/${bookSlug}`} prefetch={true} className={cn('book-card group flex flex-col h-full justify-between', className)}>
       {/* Cover Image */}
       <div className="relative aspect-[2/3] w-full overflow-hidden bg-muted shrink-0">
-        {primaryImage ? (
-          <Image
-            src={primaryImage}
-            alt={book?.title ?? 'Book cover'}
-            fill
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          />
-        ) : (
-          <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-primary/10 via-primary/15 to-purple-500/10">
-            <span className="text-5xl">📚</span>
-          </div>
-        )}
+        <Image
+          src={displayCover}
+          alt={book?.title ?? 'Book cover'}
+          fill
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          onError={() => setImageError(true)}
+          unoptimized={displayCover.endsWith('.svg')}
+        />
 
         {/* Realistic Book Spine Depth & Highlights */}
         <div className="pointer-events-none absolute inset-y-0 start-0 w-3.5 bg-gradient-to-r from-black/40 via-white/10 to-transparent z-10" />

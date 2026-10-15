@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { MapPin, Building2, Truck, Clock, Plus, X } from 'lucide-react'
+import { MapPin, Building2, Truck, Clock, Plus, X, Calendar, Phone, CheckCircle2, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MeetupProposal, DeliveryPreference } from '@/lib/transactions/lifecycle'
 
@@ -36,9 +36,9 @@ const CAIRO_LOCATIONS = [
 const QUICK_LOCATIONS = [...ALEX_LOCATIONS, ...CAIRO_LOCATIONS]
 
 const QUICK_TIMES = [
-  { label: 'Friday afternoon', label_ar: 'الجمعة بعد الظهر', iso: '' },
-  { label: 'Saturday morning', label_ar: 'السبت صباحاً', iso: '' },
-  { label: 'Sunday evening', label_ar: 'الأحد مساءً', iso: '' },
+  { label: 'Friday afternoon', label_ar: 'الجمعة بعد الظهر (2م - 5م)', iso: '' },
+  { label: 'Saturday morning', label_ar: 'السبت صباحاً (10ص - 1م)', iso: '' },
+  { label: 'Sunday evening', label_ar: 'الأحد مساءً (6م - 9م)', iso: '' },
   { label: 'Weekday after 5pm', label_ar: 'يوم عمل بعد 5م', iso: '' },
   { label: 'Anytime this week', label_ar: 'أي وقت هذا الأسبوع', iso: '' },
 ]
@@ -50,6 +50,16 @@ export function MeetupPicker({ value, onChange, lang = 'ar', className }: Meetup
   const [showCustomTime, setShowCustomTime] = useState(false)
   const [customTimeLabel, setCustomTimeLabel] = useState('')
   const [activeCityTab, setActiveCityTab] = useState<'all' | 'alex' | 'cairo'>('alex')
+  const [timePickerMode, setTimePickerMode] = useState<'shortcuts' | 'specific'>(
+    value.meetup_date ? 'specific' : 'shortcuts'
+  )
+
+  const getTodayISO = () => new Date().toISOString().split('T')[0]
+  const getOffsetDateISO = (days: number) => {
+    const d = new Date()
+    d.setDate(d.getDate() + days)
+    return d.toISOString().split('T')[0]
+  }
 
   const setDelivery = (d: DeliveryPreference) =>
     onChange({ ...value, preferred_delivery: d, hub_id: undefined, location: d === 'COURIER' ? undefined : value.location })
@@ -84,6 +94,28 @@ export function MeetupPicker({ value, onChange, lang = 'ar', className }: Meetup
   const removeTime = (label: string) =>
     onChange({ ...value, proposed_times: (value.proposed_times ?? []).filter(t => t.label !== label) })
 
+  const handleDateChange = (dateVal: string) => {
+    const timeVal = value.meetup_time || '17:00'
+    const label = `${dateVal} @ ${timeVal}`
+    onChange({
+      ...value,
+      meetup_date: dateVal,
+      meetup_time: timeVal,
+      proposed_times: [{ label, iso: `${dateVal}T${timeVal}:00` }],
+    })
+  }
+
+  const handleTimeChange = (timeVal: string) => {
+    const dateVal = value.meetup_date || getTodayISO()
+    const label = `${dateVal} @ ${timeVal}`
+    onChange({
+      ...value,
+      meetup_date: dateVal,
+      meetup_time: timeVal,
+      proposed_times: [{ label, iso: `${dateVal}T${timeVal}:00` }],
+    })
+  }
+
   const filteredLocations = activeCityTab === 'all'
     ? QUICK_LOCATIONS
     : activeCityTab === 'alex'
@@ -91,11 +123,11 @@ export function MeetupPicker({ value, onChange, lang = 'ar', className }: Meetup
     : CAIRO_LOCATIONS
 
   return (
-    <div className={cn('space-y-4', className)}>
-      {/* ── Delivery method ── */}
+    <div className={cn('space-y-4 text-start', className)}>
+      {/* ── 1. Delivery method ── */}
       <div>
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-          {t('طريقة التسليم والمقابلة', 'Pickup Method', lang)}
+        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">
+          {t('1. طريقة التسليم والمقابلة', '1. Pickup & Handover Method', lang)}
         </p>
         <div className="grid grid-cols-3 gap-2">
           {(
@@ -108,12 +140,12 @@ export function MeetupPicker({ value, onChange, lang = 'ar', className }: Meetup
               {
                 key: 'COMMUNITY_HUB',
                 icon: <Building2 className="h-4 w-4" />,
-                label: t('نقطة لقاء آمنة (Hub)', 'Safe Community Hub', lang),
+                label: t('نقطة مجتمعية آمنة (Hub)', 'Safe Hub', lang),
               },
               {
                 key: 'COURIER',
                 icon: <Truck className="h-4 w-4" />,
-                label: t('مندوب شحن وتوصيل', 'Courier', lang),
+                label: t('شحن وتوصيل', 'Courier', lang),
               },
             ] as { key: DeliveryPreference; icon: React.ReactNode; label: string }[]
           ).map(opt => (
@@ -122,9 +154,9 @@ export function MeetupPicker({ value, onChange, lang = 'ar', className }: Meetup
               type="button"
               onClick={() => setDelivery(opt.key)}
               className={cn(
-                'flex flex-col items-center text-center gap-1.5 rounded-xl border py-3 px-2 text-xs font-bold transition-all cursor-pointer',
+                'flex flex-col items-center text-center gap-1.5 rounded-2xl border py-3 px-2 text-xs font-bold transition-all cursor-pointer',
                 value.preferred_delivery === opt.key
-                  ? 'border-primary bg-primary/10 text-primary shadow-xs'
+                  ? 'border-primary bg-primary/10 text-primary shadow-xs ring-1 ring-primary/30'
                   : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground'
               )}
             >
@@ -135,13 +167,13 @@ export function MeetupPicker({ value, onChange, lang = 'ar', className }: Meetup
         </div>
       </div>
 
-      {/* ── Location (Meetup only) ── */}
+      {/* ── 2. Location (Meetup only) ── */}
       {value.preferred_delivery === 'MEETUP' && (
         <div className="space-y-2.5">
           <div className="flex flex-wrap items-center justify-between gap-1.5">
             <p className="text-xs font-bold text-foreground">
               <MapPin className="inline h-3.5 w-3.5 text-primary me-1" />
-              {t('اختر مكان اللقاء المفضل (أماكن عامة وآمنة):', 'Select Safe Public Meetup Location:', lang)}
+              {t('2. اختر مكان اللقاء المفضل (أماكن عامة وآمنة):', '2. Select Safe Public Meetup Location:', lang)}
             </p>
 
             {/* City filter tabs */}
@@ -180,7 +212,7 @@ export function MeetupPicker({ value, onChange, lang = 'ar', className }: Meetup
           </div>
 
           {/* Quick picks */}
-          <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1 border border-border/50 rounded-xl bg-muted/20">
+          <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto p-1.5 border border-border/60 rounded-2xl bg-muted/20">
             {filteredLocations.map(loc => {
               const label = lang === 'ar' ? loc.label_ar : loc.label
               const isSelected = value.location === label
@@ -206,7 +238,7 @@ export function MeetupPicker({ value, onChange, lang = 'ar', className }: Meetup
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder={t('أو اكتب مكاناً آخر مفضلاً للمقابلة...', 'Or type a custom meetup spot...', lang)}
+              placeholder={t('أو اكتب مكاناً مفضلاً آخر (مثال: محطة ترام كليوباترا، كافيه كوستا)...', 'Or type a custom meetup spot (e.g. Costa, Tram Station)...', lang)}
               value={value.location && !QUICK_LOCATIONS.some(l => l.label === value.location || l.label_ar === value.location)
                 ? value.location
                 : customLocation}
@@ -214,7 +246,7 @@ export function MeetupPicker({ value, onChange, lang = 'ar', className }: Meetup
                 setCustomLocation(e.target.value)
                 setLocation(e.target.value)
               }}
-              className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
+              className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
             />
           </div>
         </div>
@@ -263,93 +295,225 @@ export function MeetupPicker({ value, onChange, lang = 'ar', className }: Meetup
 
       {/* ── Courier note ── */}
       {value.preferred_delivery === 'COURIER' && (
-        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-sm text-amber-400">
-          <Truck className="inline h-4 w-4 mr-1.5" />
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-700 dark:text-amber-300 font-bold">
+          <Truck className="inline h-4 w-4 me-1.5" />
           {t(
-            'رسوم التوصيل على عاتق المشتري. سيتم التنسيق عبر المحادثة.',
-            'Delivery fees are paid by buyer. We\'ll coordinate via chat.',
+            'رسوم التوصيل على عاتق المشتري. سيتم التنسيق وعنوان الشحن عبر المحادثة المباشرة.',
+            'Delivery fees are paid by buyer. Shipping address coordinates via chat.',
             lang
           )}
         </div>
       )}
 
-      {/* ── Available times ── */}
-      <div>
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-          <Clock className="inline h-3 w-3 mr-1" />
-          {t('الأوقات المناسبة', 'Available Times', lang)}
-        </p>
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {QUICK_TIMES.map(slot => (
-            <button
-              key={slot.label}
-              type="button"
-              onClick={() => toggleTime(slot)}
-              className={cn(
-                'rounded-full border px-3 py-1 text-xs transition-all',
-                isTimeSelected(slot)
-                  ? 'border-primary bg-primary/10 text-primary font-medium'
-                  : 'border-border bg-card text-muted-foreground hover:border-primary/40'
-              )}
-            >
-              {lang === 'ar' ? slot.label_ar : slot.label}
-            </button>
-          ))}
-        </div>
+      {/* ── 3. Date & Time Selection ── */}
+      {value.preferred_delivery !== 'COURIER' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-bold text-foreground flex items-center gap-1.5">
+              <Calendar className="h-3.5 w-3.5 text-primary" />
+              <span>{t('3. موعد وتاريخ المقابلة المقترح:', '3. Proposed Date & Time for Meetup:', lang)}</span>
+            </p>
 
-        {/* Selected times as removable tags */}
-        {(value.proposed_times ?? []).filter(t =>
-          !QUICK_TIMES.some(qt => qt.label === t.label || qt.label_ar === t.label)
-        ).map(customT => (
-          <span
-            key={customT.label}
-            className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary mr-1.5 mb-1.5"
-          >
-            {customT.label}
-            <button type="button" onClick={() => removeTime(customT.label)}>
-              <X className="h-3 w-3" />
-            </button>
-          </span>
-        ))}
-
-        {/* Add custom time */}
-        {showCustomTime ? (
-          <div className="flex gap-2 mt-1">
-            <input
-              type="text"
-              autoFocus
-              placeholder={t('مثال: الخميس 4م', 'e.g. Thursday 4pm', lang)}
-              value={customTimeLabel}
-              onChange={e => setCustomTimeLabel(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addCustomTime()}
-              className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            <button
-              type="button"
-              onClick={addCustomTime}
-              className="rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground"
-            >
-              {t('أضف', 'Add', lang)}
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowCustomTime(false)}
-              className="rounded-lg border border-border px-3 py-2 text-sm"
-            >
-              <X className="h-4 w-4" />
-            </button>
+            {/* Mode Switcher */}
+            <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-lg text-[11px] font-bold">
+              <button
+                type="button"
+                onClick={() => setTimePickerMode('specific')}
+                className={cn(
+                  'px-2 py-0.5 rounded-md transition-all cursor-pointer',
+                  timePickerMode === 'specific' ? 'bg-primary text-white shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                📅 {t('تاريخ ووقت محدد', 'Exact Date & Time', lang)}
+              </button>
+              <button
+                type="button"
+                onClick={() => setTimePickerMode('shortcuts')}
+                className={cn(
+                  'px-2 py-0.5 rounded-md transition-all cursor-pointer',
+                  timePickerMode === 'shortcuts' ? 'bg-primary text-white shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                ⚡ {t('أوقات عامة', 'Quick Slots', lang)}
+              </button>
+            </div>
           </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowCustomTime(true)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mt-1"
-          >
-            <Plus className="h-3 w-3" />
-            {t('أضف وقتاً مخصصاً', 'Add custom time', lang)}
-          </button>
-        )}
+
+          {timePickerMode === 'specific' ? (
+            /* Specific Date & Time Input */
+            <div className="p-3.5 rounded-2xl border border-border bg-card space-y-3 shadow-xs">
+              {/* Quick day shortcut chips */}
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { labelAr: 'اليوم', labelEn: 'Today', date: getTodayISO() },
+                  { labelAr: 'غداً', labelEn: 'Tomorrow', date: getOffsetDateISO(1) },
+                  { labelAr: 'بعد غد', labelEn: 'In 2 Days', date: getOffsetDateISO(2) },
+                  { labelAr: 'خلال 3 أيام', labelEn: 'In 3 Days', date: getOffsetDateISO(3) },
+                ].map(chip => (
+                  <button
+                    key={chip.date}
+                    type="button"
+                    onClick={() => handleDateChange(chip.date)}
+                    className={cn(
+                      'px-2.5 py-1 rounded-xl text-xs font-bold border transition-all cursor-pointer',
+                      value.meetup_date === chip.date
+                        ? 'border-primary bg-primary text-white font-black shadow-xs'
+                        : 'border-border bg-muted/40 text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    {lang === 'ar' ? chip.labelAr : chip.labelEn}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Date Picker */}
+                <div>
+                  <label className="text-[11px] font-bold text-muted-foreground block mb-1">
+                    {t('تاريخ المقابلة:', 'Meetup Date:', lang)}
+                  </label>
+                  <input
+                    type="date"
+                    min={getTodayISO()}
+                    value={value.meetup_date ?? getTodayISO()}
+                    onChange={e => handleDateChange(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
+                  />
+                </div>
+
+                {/* Time Picker */}
+                <div>
+                  <label className="text-[11px] font-bold text-muted-foreground block mb-1">
+                    {t('وقت المقابلة (ساعة):', 'Meetup Time:', lang)}
+                  </label>
+                  <input
+                    type="time"
+                    value={value.meetup_time ?? '17:00'}
+                    onChange={e => handleTimeChange(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-card px-3 py-2 text-xs font-bold text-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* General Quick Slots */
+            <div>
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {QUICK_TIMES.map(slot => (
+                  <button
+                    key={slot.label}
+                    type="button"
+                    onClick={() => toggleTime(slot)}
+                    className={cn(
+                      'rounded-full border px-3 py-1.5 text-xs transition-all cursor-pointer',
+                      isTimeSelected(slot)
+                        ? 'border-primary bg-primary/10 text-primary font-bold shadow-xs'
+                        : 'border-border bg-card text-muted-foreground hover:border-primary/40'
+                    )}
+                  >
+                    {lang === 'ar' ? slot.label_ar : slot.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Selected times as removable tags */}
+              {(value.proposed_times ?? []).filter(t =>
+                !QUICK_TIMES.some(qt => qt.label === t.label || qt.label_ar === t.label)
+              ).map(customT => (
+                <span
+                  key={customT.label}
+                  className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-primary me-1.5 mb-1.5 font-bold"
+                >
+                  {customT.label}
+                  <button type="button" onClick={() => removeTime(customT.label)}>
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+
+              {/* Add custom text time */}
+              {showCustomTime ? (
+                <div className="flex gap-2 mt-1">
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder={t('مثال: الخميس 4م بعد انتهاء الدوام', 'e.g. Thursday 4pm after work', lang)}
+                    value={customTimeLabel}
+                    onChange={e => setCustomTimeLabel(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addCustomTime()}
+                    className="flex-1 rounded-xl border border-border bg-card px-3 py-2 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomTime}
+                    className="rounded-xl bg-primary px-3 py-2 text-xs font-bold text-primary-foreground cursor-pointer"
+                  >
+                    {t('أضف', 'Add', lang)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomTime(false)}
+                    className="rounded-xl border border-border px-3 py-2 text-xs cursor-pointer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowCustomTime(true)}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors mt-1 font-bold cursor-pointer"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  {t('أضف وقتاً مخصصاً آخر...', 'Add custom time note...', lang)}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── 4. Contact Phone for Fast Communication ── */}
+      <div className="space-y-1.5 pt-3 border-t border-border/70">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+            <Phone className="h-3.5 w-3.5 text-emerald-600" />
+            <span>{t('4. رقم هاتفك للتواصل السريع أثناء المقابلة (مكالمة / واتساب):', '4. Your Phone for Fast Calling / WhatsApp Coordination:', lang)}</span>
+          </label>
+          <span className="text-[10px] text-muted-foreground">
+            {t('(يظهر للمالك لتسريع التنسيق)', '(Shown to owner for fast handover)', lang)}
+          </span>
+        </div>
+        <div className="relative">
+          <input
+            type="tel"
+            dir="ltr"
+            placeholder="010 1234 5678"
+            value={value.contact_phone ?? ''}
+            onChange={e => onChange({ ...value, contact_phone: e.target.value })}
+            className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-xs font-mono font-bold placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
+          />
+        </div>
       </div>
+
+      {/* ── 5. Live Selection Summary Pill ── */}
+      {(value.location || value.meetup_date || value.contact_phone || (value.proposed_times && value.proposed_times.length > 0)) && (
+        <div className="p-3 rounded-2xl bg-primary/10 border border-primary/20 text-xs font-bold text-primary space-y-1 animate-in fade-in">
+          <div className="flex items-center gap-1.5 text-xs font-black">
+            <Sparkles className="h-3.5 w-3.5" />
+            <span>{t('ملخص المقابلة المحدد في طلبك:', 'Your Configured Meetup Summary:', lang)}</span>
+          </div>
+          <div className="text-[11px] text-foreground/80 space-y-0.5">
+            {value.location && <p>📍 {t('المكان:', 'Spot:', lang)} <span className="font-bold text-foreground">{value.location}</span></p>}
+            {value.meetup_date && (
+              <p>📅 {t('الموعد:', 'Schedule:', lang)} <span className="font-bold text-foreground">{value.meetup_date} {value.meetup_time ? `@ ${value.meetup_time}` : ''}</span></p>
+            )}
+            {value.contact_phone && (
+              <p>📞 {t('رقم الاتصال:', 'Call Phone:', lang)} <span className="font-mono font-bold text-foreground" dir="ltr">{value.contact_phone}</span></p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

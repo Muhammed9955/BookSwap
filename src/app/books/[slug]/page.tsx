@@ -72,7 +72,7 @@ export default async function BookDetailPage({ params }: BookPageProps) {
       .select(`
         *,
         book:books(*, category:categories(*)),
-        seller:profiles(id, username, full_name, full_name_ar, avatar_url, rating_average, rating_count, total_transactions, is_verified, created_at, city:cities(*), area:areas(*)),
+        seller:profiles(id, username, full_name, full_name_ar, avatar_url, whatsapp_number, phone, show_whatsapp, rating_average, rating_count, total_transactions, is_verified, created_at, city:cities(*), area:areas(*)),
         city:cities(*),
         area:areas(*),
         images:book_images(id, url, is_primary, sort_order)
@@ -89,7 +89,7 @@ export default async function BookDetailPage({ params }: BookPageProps) {
         .select(`
           *,
           book:books(*, category:categories(*)),
-          seller:profiles(id, username, full_name, full_name_ar, avatar_url, rating_average, rating_count, total_transactions, is_verified, created_at, city:cities(*), area:areas(*)),
+          seller:profiles(id, username, full_name, full_name_ar, avatar_url, whatsapp_number, phone, show_whatsapp, rating_average, rating_count, total_transactions, is_verified, created_at, city:cities(*), area:areas(*)),
           city:cities(*),
           area:areas(*),
           images:book_images(id, url, is_primary, sort_order)
@@ -119,7 +119,7 @@ export default async function BookDetailPage({ params }: BookPageProps) {
           .select(`
             *,
             book:books(*, category:categories(*)),
-            seller:profiles(id, username, full_name, full_name_ar, avatar_url, rating_average, rating_count, total_transactions, is_verified, created_at, city:cities(*), area:areas(*)),
+            seller:profiles(id, username, full_name, full_name_ar, avatar_url, whatsapp_number, phone, show_whatsapp, rating_average, rating_count, total_transactions, is_verified, created_at, city:cities(*), area:areas(*)),
             city:cities(*),
             area:areas(*),
             images:book_images(id, url, is_primary, sort_order)

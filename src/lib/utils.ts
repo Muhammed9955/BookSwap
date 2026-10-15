@@ -102,19 +102,32 @@ export function truncate(text: string, maxLength: number): string {
 }
 
 export function getImageUrl(path: string | null | undefined): string {
-  if (!path) return '/images/book-placeholder.svg'
-  if (path.startsWith('http')) return path
-  return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${path}`
+  if (!path || path.trim() === '') return '/images/book-placeholder.svg'
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:') || path.startsWith('/')) {
+    return path
+  }
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  if (path.startsWith('book-images/')) {
+    return `${supabaseUrl}/storage/v1/object/public/${path}`
+  }
+  return `${supabaseUrl}/storage/v1/object/public/book-images/${path}`
 }
 
 export function getAvatarUrl(url: string | null | undefined, name?: string): string {
-  if (url) {
-    if (url.startsWith('http')) return url
-    return `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${url}`
+  if (url && url.trim() !== '') {
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('/')) {
+      return url
+    }
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+    if (url.startsWith('avatars/')) {
+      return `${supabaseUrl}/storage/v1/object/public/${url}`
+    }
+    return `${supabaseUrl}/storage/v1/object/public/avatars/${url}`
   }
-  // Generate initials-based avatar
-  const initials = name ? name.charAt(0).toUpperCase() : 'U'
-  return `https://ui-avatars.com/api/?name=${initials}&background=6366f1&color=fff&size=200`
+  // Generate initials-based avatar with safe encoding
+  const trimmed = name?.trim()
+  const initial = trimmed ? encodeURIComponent(trimmed.charAt(0).toUpperCase()) : 'U'
+  return `https://ui-avatars.com/api/?name=${initial}&background=4f46e5&color=fff&size=200`
 }
 
 export function isRTL(lang: 'ar' | 'en' = 'ar'): boolean {

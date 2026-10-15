@@ -9,7 +9,7 @@ import {
   ShoppingBag, MessageCircle, Check, ChevronLeft, Clock, Eye, Users,
   ShieldCheck, Calendar, AlertCircle, Edit3, Tag, Sparkles, CheckCircle2,
   Lock, PlusCircle, ExternalLink, Copy, AlertTriangle, ArrowRight, BookOpen, RefreshCw, Search,
-  Trash2, Loader2
+  Trash2, Loader2, Phone
 } from 'lucide-react'
 import { deleteBookListing } from '@/lib/books/listing-actions'
 import { BookListing, Profile } from '@/types'
@@ -70,6 +70,7 @@ export function BookDetailClient({
 
   const [wishlisted, setWishlisted] = useState(initialWishlisted)
   const [activeImage, setActiveImage] = useState(0)
+  const [coverError, setCoverError] = useState(false)
   const [showSwapModal, setShowSwapModal] = useState(false)
   const [showBorrowModal, setShowBorrowModal] = useState(false)
   // Dynamic lending calculation (supporting normal vs. high-value books)
@@ -630,17 +631,24 @@ export function BookDetailClient({
           {/* Images */}
           <div className="space-y-3">
             {/* Main image */}
-            <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-muted">
-              {primaryImage ? (
+            <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-muted border border-border/40">
+              {primaryImage && !coverError ? (
                 <Image
                   src={images[activeImage]?.url ?? primaryImage}
                   alt={book.title}
                   fill
                   className="object-contain"
+                  onError={() => setCoverError(true)}
                   priority
                 />
               ) : (
-                <div className="h-full w-full flex items-center justify-center text-8xl">📚</div>
+                <Image
+                  src="/images/book-placeholder.svg"
+                  alt={book.title}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
               )}
               {listing.is_featured && (
                 <div className="absolute top-3 start-3">
@@ -1328,6 +1336,34 @@ export function BookDetailClient({
                   </Button>
                 </Link>
               </div>
+
+              {/* Quick Communication with Seller: Call & WhatsApp */}
+              {((seller as any)?.phone || (seller as any)?.whatsapp_number) && (
+                <div className="flex flex-wrap items-center gap-2 pt-2.5 border-t border-slate-200 dark:border-slate-800">
+                  <a
+                    href={`tel:${(seller as any)?.phone || (seller as any)?.whatsapp_number}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-transform hover:scale-105 cursor-pointer"
+                  >
+                    <Phone className="h-3.5 w-3.5 fill-current" />
+                    <span>{lang === 'ar' ? 'اتصال بالبائع' : 'Call Seller'}</span>
+                  </a>
+                  {(seller as any)?.whatsapp_number && (
+                    <a
+                      href={`https://wa.me/${(seller as any).whatsapp_number.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                        lang === 'ar'
+                          ? `مرحباً! أستفسر عن كتابك "${book.title}" المعروض على منصة بدّلها.`
+                          : `Hi! Inquiring about your book "${book.title}" on BookSwap.`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-transform hover:scale-105 cursor-pointer"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      <span>{lang === 'ar' ? 'واتساب' : 'WhatsApp'}</span>
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

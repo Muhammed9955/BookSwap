@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e1b4b" />
+      <stop offset="50%" stop-color="#312e81" />
+      <stop offset="100%" stop-color="#4338ca" />
+    </linearGradient>
+
+    <!-- Spine Shadow -->
+    <linearGradient id="spineShadow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#000000" stop-opacity="0.6" />
+      <stop offset="35%" stop-color="#000000" stop-opacity="0.2" />
+      <stop offset="70%" stop-color="#ffffff" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Accent Gold Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
+
+    <!-- Page edge texture -->
+    <linearGradient id="edgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.05" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.15" />
+    </linearGradient>
+  </defs>
+
+  <!-- Book Cover Background -->
+  <rect width="400" height="600" rx="16" fill="url(#bgGrad)" />
+
+  <!-- Subtle Geometric Pattern Overlay -->
+  <g opacity="0.06" stroke="#ffffff" stroke-width="1.5" fill="none">
+    <circle cx="200" cy="270" r="160" />
+    <circle cx="200" cy="270" r="120" />
+    <circle cx="200" cy="270" r="80" />
+    <polygon points="200,150 280,270 200,390 120,270" />
+    <polygon points="200,110 320,270 200,430 80,270" />
+  </g>
+
+  <!-- Book Spine Emboss Effect -->
+  <rect x="0" y="0" width="28" height="600" rx="4" fill="url(#spineShadow)" />
+  <line x1="28" y1="0" x2="28" y2="600" stroke="#000000" stroke-opacity="0.4" stroke-width="1.5" />
+  <line x1="29" y1="0" x2="29" y2="600" stroke="#ffffff" stroke-opacity="0.15" stroke-width="1" />
+
+  <!-- Inner Decorative Frame -->
+  <rect x="44" y="32" width="324" height="536" rx="12" fill="none" stroke="url(#goldGrad)" stroke-width="2" stroke-opacity="0.4" stroke-dasharray="8 4" />
+  <rect x="52" y="40" width="308" height="520" rx="8" fill="none" stroke="#ffffff" stroke-width="1" stroke-opacity="0.1" />
+
+  <!-- Corner Flourishes -->
+  <path d="M 60 70 L 60 60 L 70 60" fill="none" stroke="url(#goldGrad)" stroke-width="3" stroke-linecap="round" />
+  <path d="M 340 70 L 340 60 L 330 60" fill="none" stroke="url(#goldGrad)" stroke-width="3" stroke-linecap="round" />
+  <path d="M 60 530 L 60 540 L 70 540" fill="none" stroke="url(#goldGrad)" stroke-width="3" stroke-linecap="round" />
+  <path d="M 340 530 L 340 540 L 330 540" fill="none" stroke="url(#goldGrad)" stroke-width="3" stroke-linecap="round" />
+
+  <!-- Central Emblem / Icon: Open Book with Star -->
+  <g transform="translate(200, 250)">
+    <!-- Glow -->
+    <circle cx="0" cy="0" r="54" fill="#fbbf24" fill-opacity="0.12" />
+    <circle cx="0" cy="0" r="42" fill="none" stroke="url(#goldGrad)" stroke-width="2" stroke-opacity="0.6" />
+
+    <!-- Stylized Open Book Icon -->
+    <path d="M -26 -8 C -14 -16 -4 -12 0 -6 C 4 -12 14 -16 26 -8 L 26 22 C 14 14 4 18 0 24 C -4 18 -14 14 -26 22 Z"
+          fill="none" stroke="url(#goldGrad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="0" y1="-6" x2="0" y2="24" stroke="url(#goldGrad)" stroke-width="2.5" />
+
+    <!-- Sparkle Stars -->
+    <path d="M 0 -22 L 2 -16 L 8 -14 L 2 -12 L 0 -6 L -2 -12 L -8 -14 L -2 -16 Z" fill="url(#goldGrad)" />
+  </g>
+
+  <!-- Typography: App Brand / Placeholder Title -->
+  <text x="206" y="360" font-family="'Cairo', 'Segoe UI', Tahoma, sans-serif" font-size="24" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="1">
+    بدّلها | BookSwap
+  </text>
+  <text x="206" y="390" font-family="'Cairo', 'Segoe UI', Tahoma, sans-serif" font-size="14" font-weight="600" fill="#c7d2fe" text-anchor="middle" letter-spacing="0.5">
+    مجتمع تبادل واستعارة الكتب
+  </text>
+
+  <!-- Divider Line with Diamond -->
+  <g transform="translate(206, 420)">
+    <line x1="-80" y1="0" x2="-14" y2="0" stroke="url(#goldGrad)" stroke-width="1.5" stroke-opacity="0.5" />
+    <polygon points="0,-4 4,0 0,4 -4,0" fill="url(#goldGrad)" />
+    <line x1="14" y1="0" x2="80" y2="0" stroke="url(#goldGrad)" stroke-width="1.5" stroke-opacity="0.5" />
+  </g>
+
+  <!-- Bottom Details -->
+  <text x="206" y="520" font-family="'Cairo', 'Segoe UI', Tahoma, sans-serif" font-size="12" font-weight="700" fill="#94a3b8" text-anchor="middle" letter-spacing="2">
+    WARAQ • وَرَق
+  </text>
+</svg>

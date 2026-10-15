@@ -217,8 +217,16 @@ export function DetailedDealCard({
       : counterparty.city.name_en
     : null
 
-  // Phone / WhatsApp Setup
-  const phone = counterparty?.whatsapp_number || counterparty?.phone
+  // Phone / WhatsApp Setup (with note fallback)
+  let fallbackPhone: string | null = null
+  if (!counterparty?.whatsapp_number && !counterparty?.phone) {
+    const noteText = `${buyerNote || ''} ${sellerNote || ''}`
+    const phoneMatch = noteText.match(/(?:01[0-25]\d{8}|\+?201[0-25]\d{8})/)
+    if (phoneMatch) {
+      fallbackPhone = phoneMatch[0]
+    }
+  }
+  const phone = counterparty?.whatsapp_number || counterparty?.phone || fallbackPhone
   const displayPhone = formatPhoneDisplay(phone)
   const bookTitleForMessage = primaryBook?.title_ar || primaryBook?.title || 'الكتاب'
   const defaultWhatsAppText =
@@ -400,11 +408,20 @@ export function DetailedDealCard({
             </div>
           </div>
 
-          {/* Quick Communication Actions */}
+          {/* Quick Communication Actions (Direct Call, WhatsApp, In-app Chat) */}
           <div className="flex flex-wrap items-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/60">
-            {/* Direct Phone / WhatsApp button */}
+            {/* Direct Voice Call button */}
             {phone && (
               <>
+                <a
+                  href={`tel:${phone}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-transform hover:scale-105 cursor-pointer"
+                  title={lang === 'ar' ? `اتصال هاتفي مباشر: ${displayPhone}` : `Quick voice call: ${displayPhone}`}
+                >
+                  <Phone className="h-3.5 w-3.5 fill-current" />
+                  <span>{lang === 'ar' ? `اتصال هاتفي (${displayPhone})` : `Call (${displayPhone})`}</span>
+                </a>
+
                 {whatsAppUrl && (
                   <a
                     href={whatsAppUrl}
@@ -412,18 +429,10 @@ export function DetailedDealCard({
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-transform hover:scale-105 cursor-pointer"
                   >
-                    <Phone className="h-3.5 w-3.5" />
+                    <MessageCircle className="h-3.5 w-3.5" />
                     <span>{lang === 'ar' ? 'واتساب' : 'WhatsApp'}</span>
                   </a>
                 )}
-                <a
-                  href={`tel:${phone}`}
-                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold border border-border bg-card hover:bg-muted text-foreground transition-colors cursor-pointer"
-                  title={displayPhone}
-                >
-                  <Phone className="h-3.5 w-3.5 text-primary" />
-                  <span dir="ltr" className="font-mono text-[11px] font-bold">{displayPhone}</span>
-                </a>
               </>
             )}
 

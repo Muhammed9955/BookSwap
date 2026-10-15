@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -8,7 +8,7 @@ import {
   MapPin, Star, Shield, BookOpen, ArrowRightLeft, Gift, MessageCircle,
   UserPlus, UserMinus, Settings, Clock, CheckCircle2, XCircle, ShoppingBag,
   ExternalLink, Calendar, ShieldCheck, Sparkles, Trash2, Edit3, AlertTriangle, Loader2,
-  QrCode, ChevronRight
+  QrCode, ChevronRight, Camera, Phone
 } from 'lucide-react'
 import { deleteBookListing } from '@/lib/books/listing-actions'
 import { BookCard } from '@/components/books/book-card'
@@ -65,6 +65,12 @@ export function ProfileClient({
   const [follCount, setFollCount] = useState(followerCount)
   const [currentProfile, setCurrentProfile] = useState(profile)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [avatarError, setAvatarError] = useState(false)
+
+  useEffect(() => {
+    setCurrentProfile(profile)
+    setAvatarError(false)
+  }, [profile])
 
   const handleFollow = async () => {
     if (!currentUserId) return
@@ -552,15 +558,36 @@ export function ProfileClient({
         {/* Profile Header */}
         <div className="rounded-2xl border bg-card p-6 mb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
-            {/* Avatar */}
-            <div className="h-20 w-20 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center flex-shrink-0 ring-4 ring-primary/20 relative">
-              <Image
-                src={getAvatarUrl(currentProfile.avatar_url, currentProfile.full_name)}
-                alt={currentProfile.full_name ?? 'Avatar'}
-                fill
-                className="object-cover"
-                unoptimized
-              />
+            {/* Avatar with Resilient Fallback & Quick Camera Overlay */}
+            <div className="relative group shrink-0">
+              <div className="h-24 w-24 sm:h-28 sm:w-28 rounded-full overflow-hidden bg-gradient-to-br from-primary/10 via-primary/20 to-purple-500/20 flex items-center justify-center ring-4 ring-primary/25 shadow-md relative">
+                {!avatarError ? (
+                  <Image
+                    src={getAvatarUrl(currentProfile.avatar_url, currentProfile.full_name)}
+                    alt={currentProfile.full_name ?? 'Avatar'}
+                    fill
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    onError={() => setAvatarError(true)}
+                    unoptimized
+                  />
+                ) : (
+                  <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-primary to-indigo-600 text-white font-black text-2xl sm:text-3xl">
+                    {(currentProfile.full_name || 'قارئ').charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+
+              {isOwnProfile && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="absolute bottom-0 end-0 p-2 rounded-full bg-primary text-white shadow-md hover:bg-primary/90 transition-transform hover:scale-110 cursor-pointer ring-2 ring-background"
+                  title={lang === 'ar' ? 'تعديل أو تغيير الصورة الشخصية' : 'Change profile photo'}
+                  aria-label="Change photo"
+                >
+                  <Camera className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
 
             <div className="flex-1 min-w-0">
