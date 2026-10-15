@@ -726,6 +726,26 @@ export async function addBookToCommunity(params: {
       }
     }
 
+    // 1. Prevent adding duplicate book listing to the same community
+    const { data: existingBook } = await supabase
+      .from('community_books')
+      .select('id, status')
+      .eq('community_id', params.communityId)
+      .eq('listing_id', params.listingId)
+      .neq('status', 'REJECTED')
+      .maybeSingle()
+
+    if (existingBook) {
+      return {
+        success: false,
+        status: existingBook.status as 'APPROVED' | 'PENDING',
+        error:
+          existingBook.status === 'APPROVED'
+            ? 'هذا الكتاب مضاف ومتاح بالفعل في رف هذا المجتمع!'
+            : 'هذا الكتاب تم إيداعه بالفعل وفي انتظار اعتماد المشرف.',
+      }
+    }
+
     // Check if submitter is the community admin or if community does not require approval
     const { data: comm } = await supabase
       .from('communities')
@@ -1241,10 +1261,29 @@ export async function addBooksBatchToCommunity(params: {
 
   const supabase = createClient()
   try {
+    // 1. Filter out books already present in the community (PENDING or APPROVED)
+    const { data: existingRows } = await supabase
+      .from('community_books')
+      .select('listing_id, status')
+      .eq('community_id', params.communityId)
+      .in('listing_id', params.listingIds)
+      .neq('status', 'REJECTED')
+
+    const alreadyAddedListingIds = new Set((existingRows || []).map(r => r.listing_id))
+    const freshListingIds = params.listingIds.filter(id => !alreadyAddedListingIds.has(id))
+
+    if (freshListingIds.length === 0) {
+      return {
+        success: false,
+        error: 'جميع الكتب المحددة مضافة ومسجلة بالفعل في هذا المجتمع!',
+        status: 'PENDING',
+      }
+    }
+
     const batchTag = `BATCH-${Date.now().toString(36).toUpperCase()}`
     const noteWithBatch = params.note ? `${params.note} [${batchTag}]` : `[${batchTag}]`
 
-    const rows = params.listingIds.map(listingId => ({
+    const rows = freshListingIds.map(listingId => ({
       community_id: params.communityId,
       listing_id: listingId,
       added_by: params.addedBy,

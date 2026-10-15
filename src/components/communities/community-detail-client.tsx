@@ -439,17 +439,33 @@ export function CommunityDetailClient({
     }
   }
 
+  // Listing IDs already deposited or pending in this community
+  const communityListingIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const b of shelfBooks) {
+      if (b.listing_id) ids.add(b.listing_id)
+      if (b.id) ids.add(b.id)
+    }
+    for (const b of pendingBooks) {
+      if (b.listing_id) ids.add(b.listing_id)
+      if (b.id) ids.add(b.id)
+    }
+    return ids
+  }, [shelfBooks, pendingBooks])
+
   const handleToggleSelectListing = (id: string) => {
+    if (communityListingIds.has(id)) return
     setSelectedListingIds(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     )
   }
 
   const handleSelectAllListings = () => {
-    if (selectedListingIds.length === userBooks.length) {
+    const availableBooks = userBooks.filter(b => !communityListingIds.has(b.id))
+    if (selectedListingIds.length === availableBooks.length) {
       setSelectedListingIds([])
     } else {
-      setSelectedListingIds(userBooks.map(b => b.id))
+      setSelectedListingIds(availableBooks.map(b => b.id))
     }
   }
 
@@ -3192,7 +3208,7 @@ export function CommunityDetailClient({
                         : 'Select one or more books to generate an intake QR code for the hub admin'}
                     </p>
                   </div>
-                  {userBooks.length > 0 && (
+                  {userBooks.some(b => !communityListingIds.has(b.id)) && (
                     <Button
                       type="button"
                       size="sm"
@@ -3200,7 +3216,7 @@ export function CommunityDetailClient({
                       onClick={handleSelectAllListings}
                       className="h-8 text-xs font-bold text-primary hover:bg-primary/10 rounded-xl px-2.5 cursor-pointer shrink-0"
                     >
-                      {selectedListingIds.length === userBooks.length
+                      {selectedListingIds.length === userBooks.filter(b => !communityListingIds.has(b.id)).length && selectedListingIds.length > 0
                         ? (lang === 'ar' ? 'إلغاء التحديد' : 'Deselect All')
                         : (lang === 'ar' ? 'تحديد الكل' : 'Select All')}
                     </Button>
@@ -3221,6 +3237,7 @@ export function CommunityDetailClient({
                 ) : (
                   <div className="space-y-2 max-h-[46vh] overflow-y-auto pe-1">
                     {userBooks.map(item => {
+                      const isAlreadyInCommunity = communityListingIds.has(item.id)
                       const isSelected = selectedListingIds.includes(item.id)
                       const bookTitle = item.book?.title_ar || item.book?.title || 'كتاب'
                       const cover = item.images?.[0]?.url || item.book?.cover_image_url
@@ -3228,23 +3245,31 @@ export function CommunityDetailClient({
                       return (
                         <div
                           key={item.id}
-                          onClick={() => handleToggleSelectListing(item.id)}
-                          className={`flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-primary/10 border-primary shadow-xs'
-                              : 'bg-muted/30 border-border/70 hover:bg-muted/50'
+                          onClick={() => !isAlreadyInCommunity && handleToggleSelectListing(item.id)}
+                          className={`flex items-center justify-between gap-3 p-3 rounded-2xl border transition-all ${
+                            isAlreadyInCommunity
+                              ? 'bg-muted/20 border-border/40 opacity-60 cursor-not-allowed'
+                              : isSelected
+                              ? 'bg-primary/10 border-primary shadow-xs cursor-pointer'
+                              : 'bg-muted/30 border-border/70 hover:bg-muted/50 cursor-pointer'
                           }`}
                         >
                           <div className="flex items-center gap-3 min-w-0 flex-1">
-                            {/* Checkbox */}
+                            {/* Checkbox or Already-In Indicator */}
                             <div
                               className={`h-5 w-5 rounded-lg border flex items-center justify-center shrink-0 transition-all ${
-                                isSelected
+                                isAlreadyInCommunity
+                                  ? 'bg-muted/50 border-muted text-muted-foreground'
+                                  : isSelected
                                   ? 'bg-primary border-primary text-primary-foreground'
                                   : 'border-muted-foreground/40 bg-background'
                               }`}
                             >
-                              {isSelected && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+                              {isAlreadyInCommunity ? (
+                                <Check className="h-3 w-3 text-muted-foreground" />
+                              ) : isSelected ? (
+                                <Check className="h-3.5 w-3.5 stroke-[3]" />
+                              ) : null}
                             </div>
 
                             {/* Book Cover */}
@@ -3261,37 +3286,51 @@ export function CommunityDetailClient({
                               <p className="text-xs font-black text-foreground truncate">{bookTitle}</p>
                               <p className="text-[11px] text-muted-foreground truncate">{item.book?.author}</p>
                               <div className="flex items-center gap-1.5 mt-0.5">
-                                <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-bold">
-                                  {(item.listing_type as string) === 'SELL' ? (lang === 'ar' ? 'للبيع' : 'Sell') :
-                                   (item.listing_type as string) === 'SWAP' ? (lang === 'ar' ? 'للتبادل' : 'Swap') :
-                                   (item.listing_type as string) === 'BORROW' ? (lang === 'ar' ? 'للإعارة' : 'Borrow') :
-                                   (item.listing_type || 'متاح')}
-                                </Badge>
-                                {item.price ? (
-                                  <span className="text-[10px] font-bold text-emerald-600">
-                                    {item.price} {lang === 'ar' ? 'ج.م' : 'EGP'}
-                                  </span>
-                                ) : null}
+                                {isAlreadyInCommunity ? (
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-bold bg-muted/60 text-muted-foreground border-muted-foreground/30">
+                                    {lang === 'ar' ? 'مضاف للمجتمع بالفعل ✅' : 'Already in Community ✅'}
+                                  </Badge>
+                                ) : (
+                                  <>
+                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-bold">
+                                      {(item.listing_type as string) === 'SELL' ? (lang === 'ar' ? 'للبيع' : 'Sell') :
+                                       (item.listing_type as string) === 'SWAP' ? (lang === 'ar' ? 'للتبادل' : 'Swap') :
+                                       (item.listing_type as string) === 'BORROW' ? (lang === 'ar' ? 'للإعارة' : 'Borrow') :
+                                       (item.listing_type || 'متاح')}
+                                    </Badge>
+                                    {item.price ? (
+                                      <span className="text-[10px] font-bold text-emerald-600">
+                                        {item.price} {lang === 'ar' ? 'ج.م' : 'EGP'}
+                                      </span>
+                                    ) : null}
+                                  </>
+                                )}
                               </div>
                             </div>
                           </div>
 
-                          {/* Quick single-submit button */}
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            disabled={addingListingId === item.id || submittingBatchIntake}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              handleAddBookToShelf(item.id, bookTitle)
-                            }}
-                            className="rounded-xl font-bold text-[11px] shrink-0 text-primary hover:bg-primary/10 h-8 px-2.5 cursor-pointer"
-                            title={lang === 'ar' ? 'إصدار رمز QR لهذا الكتاب منفرداً' : 'Generate QR for this book'}
-                          >
-                            <QrCode className="h-3.5 w-3.5 me-1" />
-                            <span>{lang === 'ar' ? 'إيداع فردي' : 'Single'}</span>
-                          </Button>
+                          {/* Quick single-submit button or Disabled text */}
+                          {isAlreadyInCommunity ? (
+                            <span className="text-[10px] text-muted-foreground font-semibold px-2 py-1 rounded-lg bg-muted/40 shrink-0">
+                              {lang === 'ar' ? 'مدرج بالرف' : 'Deposited'}
+                            </span>
+                          ) : (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              disabled={addingListingId === item.id || submittingBatchIntake}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleAddBookToShelf(item.id, bookTitle)
+                              }}
+                              className="rounded-xl font-bold text-[11px] shrink-0 text-primary hover:bg-primary/10 h-8 px-2.5 cursor-pointer"
+                              title={lang === 'ar' ? 'إصدار رمز QR لهذا الكتاب منفرداً' : 'Generate QR for this book'}
+                            >
+                              <QrCode className="h-3.5 w-3.5 me-1" />
+                              <span>{lang === 'ar' ? 'إيداع فردي' : 'Single'}</span>
+                            </Button>
+                          )}
                         </div>
                       )
                     })}

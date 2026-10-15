@@ -52,6 +52,39 @@ export interface PwaNotificationOptions {
 }
 
 /**
+ * Subtle pleasant audio chime using Web Audio API (no external asset needed)
+ */
+export function playNotificationChime() {
+  if (typeof window === 'undefined') return
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+    if (!AudioContextClass) return
+    const ctx = new AudioContextClass()
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {})
+    }
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime) // D5
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15) // A5
+
+    gain.gain.setValueAtTime(0, ctx.currentTime)
+    gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.05)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
+
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 0.4)
+  } catch {
+    // AudioContext blocked or not supported
+  }
+}
+
+/**
  * Display a native PWA / OS notification
  * Uses the ServiceWorkerRegistration showNotification when available (best for PWA & mobile),
  * and falls back to standard Notification constructor.
@@ -83,26 +116,42 @@ export async function showLocalPwaNotification(
     renotify: true,
   }
 
+  // Play subtle audio cue alongside visual push
   try {
-    // 1. Try displaying via ServiceWorkerRegistration (Best for PWA, works on mobile Android & iOS PWA)
+    playNotificationChime()
+  } catch {}
+
+  try {
+    // 1. Try displaying via ServiceWorkerRegistration with a quick timeout (Best for PWA, works on mobile Android & iOS PWA)
     if ('serviceWorker' in navigator) {
-      const registration = await navigator.serviceWorker.ready
-      if (registration && typeof registration.showNotification === 'function') {
-        await registration.showNotification(title, notificationOptions)
-        return true
+      try {
+        const registration = await Promise.race([
+          navigator.serviceWorker.ready,
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500)),
+        ])
+        if (registration && typeof registration.showNotification === 'function') {
+          await registration.showNotification(title, notificationOptions)
+          return true
+        }
+      } catch {
+        // Fall through to fallback
       }
     }
 
     // 2. Fallback to standard window Notification constructor
-    const notif = new Notification(title, notificationOptions)
-    if (options.url) {
-      notif.onclick = () => {
-        window.focus()
-        window.location.href = options.url || '/'
-        notif.close()
+    if (typeof Notification !== 'undefined') {
+      const notif = new Notification(title, notificationOptions)
+      if (options.url) {
+        notif.onclick = () => {
+          window.focus()
+          window.location.href = options.url || '/'
+          notif.close()
+        }
       }
+      return true
     }
-    return true
+
+    return false
   } catch (err) {
     console.warn('[PWA Notification] Failed to show notification:', err)
     return false
