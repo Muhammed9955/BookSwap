@@ -667,6 +667,89 @@ export function TransactionsHubClient({
                     </div>
                   )
                 })}
+
+                {/* Accepted Incoming Swaps */}
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                {incomingSwaps.filter((s: any) => s.status === 'ACCEPTED').map((swap: any) => {
+                  const myBook = extractBook(swap.listing)
+                  const offeredBook = extractBook(swap.offered_listing)
+                  const requester = swap.requester
+                  const myCover = swap.listing?.images?.[0]?.url || myBook?.cover_image_url
+                  const offeredCover = swap.offered_listing?.images?.[0]?.url || offeredBook?.cover_image_url
+
+                  return (
+                    <div
+                      key={`acc-swap-${swap.id}`}
+                      className="rounded-3xl border-2 border-emerald-500/60 bg-emerald-500/5 p-5 sm:p-6 shadow-sm space-y-4"
+                    >
+                      <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-3">
+                        <Badge variant="swap" className="font-bold text-xs">
+                          🔄 {lang === 'ar' ? 'مبادلة مقبولة 🤝' : 'Accepted Swap Deal'}
+                        </Badge>
+                        <span className="text-xs font-bold text-foreground">
+                          {requester?.full_name_ar || requester?.full_name || 'قارئ'}
+                        </span>
+                      </div>
+
+                      {/* Books side-by-side comparison */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center bg-card p-4 rounded-2xl border border-border/60">
+                        <div className="flex items-center gap-3">
+                          <div className="relative h-16 w-12 shrink-0 rounded-xl overflow-hidden bg-muted border border-border/80">
+                            {myCover ? <Image src={myCover} alt="" fill className="object-cover" /> : <div className="h-full w-full flex items-center justify-center text-sm">📖</div>}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-[11px] font-bold text-muted-foreground uppercase">{lang === 'ar' ? 'كتابك المطلوب' : 'Your Book'}</span>
+                            <p className="text-sm font-black text-foreground truncate">{myBook?.title_ar || myBook?.title || 'كتاب'}</p>
+                            <p className="text-xs text-muted-foreground truncate">{myBook?.author}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 border-t sm:border-t-0 sm:border-s border-border/80 pt-3 sm:pt-0 sm:ps-4">
+                          <div className="relative h-16 w-12 shrink-0 rounded-xl overflow-hidden bg-muted border border-border/80">
+                            {offeredCover ? <Image src={offeredCover} alt="" fill className="object-cover" /> : <div className="h-full w-full flex items-center justify-center text-sm">📚</div>}
+                          </div>
+                          <div className="min-w-0">
+                            <span className="text-[11px] font-bold text-emerald-600 uppercase">{lang === 'ar' ? 'كتاب الطرف الآخر' : 'Their Book'}</span>
+                            <p className="text-sm font-black text-foreground truncate">{offeredBook?.title_ar || offeredBook?.title || 'كتاب'}</p>
+                            <p className="text-xs text-muted-foreground truncate">{offeredBook?.author}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <MeetupDetailBadge meetup={parseMeetupInfo(swap)} lang={lang} />
+
+                      <div className="flex items-center justify-end gap-2.5 pt-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleChatWithUser(requester?.id || swap.requester_id, swap.listing_id, `swap-${swap.id}`)}
+                          loading={chatLoadingKey === `swap-${swap.id}`}
+                          className="font-bold text-xs gap-1 cursor-pointer"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          {lang === 'ar' ? 'تواصل' : 'Chat'}
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => setQrModalData({
+                            isOpen: true,
+                            swapId: swap.id,
+                            bookTitle: myBook?.title_ar || myBook?.title || 'كتاب',
+                            meetupLocation: swap.agreed_meetup_location || swap.proposed_meetup_location,
+                            transactionType: 'SWAP',
+                            otherPartyId: requester?.id,
+                            otherPartyName: requester?.full_name,
+                            listingId: swap.listing_id,
+                            swapListingId: swap.offered_listing_id,
+                          })}
+                          className="font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 rounded-xl cursor-pointer shadow-md shadow-emerald-600/20"
+                        >
+                          <QrCode className="h-4 w-4" />
+                          {lang === 'ar' ? 'تأكيد المقابلة برمز QR 📱' : 'Verify Meetup with QR'}
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
 

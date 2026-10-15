@@ -78,6 +78,14 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   let outgoingSwaps: any[] = []
 
   if (isOwnProfile) {
+    // 1. Get listing IDs owned by this user to fetch all incoming swap requests accurately
+    const { data: userListingsForSwaps } = await supabase
+      .from('book_listings')
+      .select('id')
+      .eq('seller_id', profile.id)
+
+    const userListingIds = (userListingsForSwaps || []).map(l => l.id)
+
     const [
       { data: inTx },
       { data: outTx },
@@ -87,9 +95,16 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
       supabase
         .from('transactions')
         .select(`
-          id, transaction_type, status, price, delivery_method, buyer_note, created_at,
-          buyer:profiles!transactions_buyer_id_fkey(id, full_name, full_name_ar, avatar_url),
-          listing:book_listings!transactions_listing_id_fkey(id, price, book:books(id, title, title_ar, author, cover_image_url), images:book_images(url, is_primary))
+          id, transaction_type, status, price, delivery_method, buyer_note, seller_note,
+          meetup_location, meetup_at, deposit_amount, borrow_due_date,
+          seller_id, buyer_id, listing_id, swap_listing_id, created_at, completed_at,
+          buyer:profiles!transactions_buyer_id_fkey(id, full_name, full_name_ar, avatar_url, rating_average),
+          seller:profiles!transactions_seller_id_fkey(id, full_name, full_name_ar, avatar_url, rating_average),
+          listing:book_listings!transactions_listing_id_fkey(
+            id, seller_id, price, condition,
+            book:books(id, title, title_ar, author, cover_image_url),
+            images:book_images(url, is_primary)
+          )
         `)
         .eq('seller_id', profile.id)
         .order('created_at', { ascending: false })
@@ -98,31 +113,64 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
       supabase
         .from('transactions')
         .select(`
-          id, transaction_type, status, price, delivery_method, buyer_note, created_at,
-          seller:profiles!transactions_seller_id_fkey(id, full_name, full_name_ar, avatar_url),
-          listing:book_listings!transactions_listing_id_fkey(id, price, book:books(id, title, title_ar, author, cover_image_url), images:book_images(url, is_primary))
+          id, transaction_type, status, price, delivery_method, buyer_note, seller_note,
+          meetup_location, meetup_at, deposit_amount, borrow_due_date,
+          seller_id, buyer_id, listing_id, swap_listing_id, created_at, completed_at,
+          buyer:profiles!transactions_buyer_id_fkey(id, full_name, full_name_ar, avatar_url, rating_average),
+          seller:profiles!transactions_seller_id_fkey(id, full_name, full_name_ar, avatar_url, rating_average),
+          listing:book_listings!transactions_listing_id_fkey(
+            id, seller_id, price, condition,
+            book:books(id, title, title_ar, author, cover_image_url),
+            images:book_images(url, is_primary)
+          )
         `)
         .eq('buyer_id', profile.id)
         .order('created_at', { ascending: false })
         .limit(50),
 
-      supabase
-        .from('swap_requests')
-        .select(`
-          id, status, message, created_at,
-          requester:profiles!swap_requests_requester_id_fkey(id, full_name, full_name_ar, avatar_url),
-          listing:book_listings!swap_requests_listing_id_fkey(id, seller_id, book:books(id, title, title_ar, author, cover_image_url), images:book_images(url, is_primary)),
-          offered_listing:book_listings!swap_requests_offered_listing_id_fkey(id, book:books(id, title, title_ar, author, cover_image_url), images:book_images(url, is_primary))
-        `)
-        .order('created_at', { ascending: false })
-        .limit(50),
+      userListingIds.length > 0
+        ? supabase
+            .from('swap_requests')
+            .select(`
+              id, status, message, response_message, responded_at, created_at,
+              proposed_meetup_location, agreed_meetup_location, agreed_meetup_at, preferred_delivery,
+              requester_id, listing_id, offered_listing_id,
+              requester:profiles!swap_requests_requester_id_fkey(id, full_name, full_name_ar, avatar_url, rating_average),
+              listing:book_listings!swap_requests_listing_id_fkey(
+                id, seller_id,
+                seller:profiles!book_listings_seller_id_fkey(id, full_name, full_name_ar, avatar_url, rating_average),
+                book:books(id, title, title_ar, author, cover_image_url),
+                images:book_images(url, is_primary)
+              ),
+              offered_listing:book_listings!swap_requests_offered_listing_id_fkey(
+                id, seller_id,
+                book:books(id, title, title_ar, author, cover_image_url),
+                images:book_images(url, is_primary)
+              )
+            `)
+            .in('listing_id', userListingIds)
+            .order('created_at', { ascending: false })
+            .limit(50)
+        : Promise.resolve({ data: [] }),
 
       supabase
         .from('swap_requests')
         .select(`
-          id, status, message, created_at,
-          listing:book_listings!swap_requests_listing_id_fkey(id, seller_id, seller:profiles!book_listings_seller_id_fkey(id, full_name, full_name_ar, avatar_url), book:books(id, title, title_ar, author, cover_image_url), images:book_images(url, is_primary)),
-          offered_listing:book_listings!swap_requests_offered_listing_id_fkey(id, book:books(id, title, title_ar, author, cover_image_url), images:book_images(url, is_primary))
+          id, status, message, response_message, responded_at, created_at,
+          proposed_meetup_location, agreed_meetup_location, agreed_meetup_at, preferred_delivery,
+          requester_id, listing_id, offered_listing_id,
+          requester:profiles!swap_requests_requester_id_fkey(id, full_name, full_name_ar, avatar_url, rating_average),
+          listing:book_listings!swap_requests_listing_id_fkey(
+            id, seller_id,
+            seller:profiles!book_listings_seller_id_fkey(id, full_name, full_name_ar, avatar_url, rating_average),
+            book:books(id, title, title_ar, author, cover_image_url),
+            images:book_images(url, is_primary)
+          ),
+          offered_listing:book_listings!swap_requests_offered_listing_id_fkey(
+            id, seller_id,
+            book:books(id, title, title_ar, author, cover_image_url),
+            images:book_images(url, is_primary)
+          )
         `)
         .eq('requester_id', profile.id)
         .order('created_at', { ascending: false })
@@ -131,8 +179,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
     incomingTransactions = inTx || []
     outgoingTransactions = outTx || []
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    incomingSwaps = (inSwaps || []).filter((s: any) => s.listing?.seller_id === profile.id)
+    incomingSwaps = inSwaps || []
     outgoingSwaps = outSwaps || []
   }
 
