@@ -1267,6 +1267,31 @@ export async function verifyCommunityBookIntakeQr(params: {
       parsedPayload = null
     }
 
+    // Support URL payloads (e.g. if QR is a URL with search params)
+    if (!parsedPayload && (raw.startsWith('http://') || raw.startsWith('https://'))) {
+      try {
+        const url = new URL(raw)
+        const pinFromUrl =
+          url.searchParams.get('intakePin') ||
+          url.searchParams.get('pin') ||
+          url.searchParams.get('code')
+        const bookIdFromUrl = url.searchParams.get('bookId') || url.searchParams.get('id')
+        const submitterFromUrl =
+          url.searchParams.get('submitterId') || url.searchParams.get('userId')
+        if (pinFromUrl || bookIdFromUrl || submitterFromUrl) {
+          parsedPayload = {
+            communityId: url.searchParams.get('communityId') || params.communityId,
+            code: pinFromUrl,
+            communityBookId: bookIdFromUrl,
+            submitterId: submitterFromUrl,
+            allSubmitterBooks: true,
+          }
+        }
+      } catch {
+        // Not a URL
+      }
+    }
+
     // If QR payload contains a specific communityId, verify it matches
     if (parsedPayload?.communityId && parsedPayload.communityId !== params.communityId) {
       return {
@@ -1289,36 +1314,42 @@ export async function verifyCommunityBookIntakeQr(params: {
       : targetBookId
       ? [targetBookId]
       : []
+    const targetSubmitterId = parsedPayload?.submitterId || parsedPayload?.addedBy || null
     const targetCode = (parsedPayload?.code || raw).replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
 
     if (isDemoCommunityId(params.communityId)) {
-      const demoTitle = parsedPayload?.title || 'كتاب رف المجتمع'
-      const demoCount = parsedPayload?.count || targetListingIds.length || 1
-      const demoId = parsedPayload?.communityBookId || `cb-${Date.now()}`
-      const primaryBook: CommunityShelfBook = {
-        id: demoId,
-        listing_id: parsedPayload?.listingId || demoId,
+      const demoTitles: string[] =
+        parsedPayload?.titles && Array.isArray(parsedPayload.titles) && parsedPayload.titles.length > 0
+          ? parsedPayload.titles
+          : [parsedPayload?.title || 'كتاب رف المجتمع']
+      const demoCount = parsedPayload?.count || demoTitles.length || 1
+
+      const demoBooks: CommunityShelfBook[] = demoTitles.map((t, idx) => ({
+        id: parsedPayload?.bookIds?.[idx] || `cb-demo-${Date.now()}-${idx}`,
+        listing_id: parsedPayload?.listingIds?.[idx] || `listing-demo-${idx}`,
         listing_type: 'SWAP',
-        title: demoTitle,
-        author: 'كاتب',
+        title: t,
+        author: 'قارئ المجتمع',
         cover_image_url:
           'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=400&q=80',
         owner_name: 'عضو بالمجتمع',
         status: 'APPROVED',
         community_id: params.communityId,
-      }
+      }))
+      const primaryBook = demoBooks[0]
+
       return {
         success: true,
         messageAr:
           demoCount > 1
-            ? `تم اعتماد واستلام ${demoCount} كتب بنجاح وإدراجها في رف ومخزن المجتمع! 📚✅`
-            : `تم اعتماد واستلام كتاب "${demoTitle}" بنجاح وإدراجه في رف المجتمع! 📚✅`,
+            ? `تم اعتماد واستلام جميع الكتب (${demoCount}) بنجاح وإدراجها في رف ومخزن المجتمع! 📚✅`
+            : `تم اعتماد واستلام كتاب "${primaryBook.title}" بنجاح وإدراجه في رف المجتمع! 📚✅`,
         messageEn:
           demoCount > 1
-            ? `Successfully verified and added ${demoCount} books to community shelf! 📚✅`
-            : `Book "${demoTitle}" has been verified and added to the community shelf! 📚✅`,
+            ? `Successfully verified and added all ${demoCount} books to community shelf! 📚✅`
+            : `Book "${primaryBook.title}" has been verified and added to the community shelf! 📚✅`,
         book: primaryBook,
-        books: [primaryBook],
+        books: demoBooks,
       }
     }
 
@@ -1350,6 +1381,11 @@ export async function verifyCommunityBookIntakeQr(params: {
 
     // Find all matching book records
     const matchedRows = pendingList.filter(row => {
+      // Direct Submitter match (when scanning user's unified drop-off QR)
+      if (targetSubmitterId && row.added_by && row.added_by === targetSubmitterId) {
+        return true
+      }
+
       // Direct ID array matches
       if (
         targetBookIds.length > 0 &&
@@ -1392,18 +1428,28 @@ export async function verifyCommunityBookIntakeQr(params: {
       return false
     })
 
-    // Expand matches if any matched row belongs to a batch
+    // Expand matches: 1) by BATCH tag, and 2) by Submitter ID so ONE QR code approves all books of the user
     const batchTags = new Set<string>()
+    const submitterIds = new Set<string>()
+    if (targetSubmitterId) submitterIds.add(targetSubmitterId)
+
     for (const r of matchedRows) {
+      if (r.added_by) submitterIds.add(r.added_by)
       const match = (r.note || '').match(/\[(BATCH-[a-zA-Z0-9_-]+)\]/)
       if (match) {
         batchTags.add(match[1])
       }
     }
 
-    if (batchTags.size > 0) {
+    if (batchTags.size > 0 || submitterIds.size > 0) {
       for (const r of pendingList) {
         if (!matchedRows.some(m => m.id === r.id)) {
+          // Check if same submitter
+          if (r.added_by && submitterIds.has(r.added_by)) {
+            matchedRows.push(r)
+            continue
+          }
+          // Check if same batch tag
           const match = (r.note || '').match(/\[(BATCH-[a-zA-Z0-9_-]+)\]/)
           if (match && batchTags.has(match[1])) {
             matchedRows.push(r)

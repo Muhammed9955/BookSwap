@@ -113,25 +113,27 @@ export function CommunityIntakeQrModal({
     (book?.id ? generateCommunityIntakePin(book.id) : null) ||
     (book?.listing_id ? generateCommunityIntakePin(book.listing_id) : 'COMM-8821')
 
-  // Generate Voucher QR
+  // Generate Voucher QR (Unified for all books)
   useEffect(() => {
     if (!isOpen || mode !== 'VOUCHER' || !book) return
 
-    const isBatch = Boolean(book.items && book.items.length > 1)
+    const allItems = book.items && book.items.length > 0 ? book.items : [book]
+    const allBookIds = allItems.map(i => i.id).filter(Boolean) as string[]
+    const allListingIds = allItems.map(i => i.listing_id || i.id).filter(Boolean) as string[]
+    const allTitles = allItems.map(i => i.title).filter(Boolean) as string[]
+
     const payload = {
       v: 1,
       type: 'COMMUNITY_INTAKE',
       communityId,
-      communityBookId: book.id,
-      listingId: book.listing_id,
-      listingIds:
-        book.items?.map(i => i.listing_id || i.id).filter(Boolean) ||
-        (book.listing_id ? [book.listing_id] : []),
-      bookIds:
-        book.items?.map(i => i.id).filter(Boolean) ||
-        (book.id ? [book.id] : []),
-      count: book.bookCount || book.items?.length || 1,
-      titles: book.items?.map(i => i.title) || [book.title],
+      submitterId: currentUserId || (book as any).owner_id || (book as any).added_by,
+      allSubmitterBooks: true,
+      communityBookId: book.id || allBookIds[0],
+      listingId: book.listing_id || allListingIds[0],
+      listingIds: allListingIds,
+      bookIds: allBookIds,
+      count: allItems.length,
+      titles: allTitles,
       code: calculatedPin,
       title: book.title,
     }
@@ -146,7 +148,7 @@ export function CommunityIntakeQrModal({
     })
       .then(url => setVoucherQrUrl(url))
       .catch(err => console.error('Error generating QR:', err))
-  }, [isOpen, mode, communityId, book, calculatedPin])
+  }, [isOpen, mode, communityId, book, calculatedPin, currentUserId])
 
   // Audio & Haptic Feedback on Verification Success
   const triggerSuccessFeedback = () => {
@@ -198,15 +200,31 @@ export function CommunityIntakeQrModal({
     setErrorMessage(null)
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode },
-      })
+      let stream: MediaStream
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: facingMode },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        })
+      } catch {
+        // Fallback to basic video constraint if ideal fails on certain devices/browsers
+        stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      }
+
       streamRef.current = stream
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         videoRef.current.setAttribute('playsinline', 'true')
-        await videoRef.current.play()
+        videoRef.current.muted = true
+        try {
+          await videoRef.current.play()
+        } catch (playErr) {
+          console.warn('Video play error:', playErr)
+        }
         setIsCameraActive(true)
         scanVideoFrame()
       }
@@ -227,13 +245,27 @@ export function CommunityIntakeQrModal({
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d', { willReadFrequently: true })
 
-    if (video.readyState === video.HAVE_ENOUGH_DATA && ctx) {
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-      const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: 'dontInvert',
+    if (video.readyState >= 2 && video.videoWidth > 0 && ctx) {
+      // Downsample high-res video frames to 640px max dimension for fast, smooth 60fps QR scanning
+      const maxDim = 640
+      let w = video.videoWidth
+      let h = video.videoHeight
+      if (w > maxDim || h > maxDim) {
+        if (w > h) {
+          h = Math.round((h * maxDim) / w)
+          w = maxDim
+        } else {
+          w = Math.round((w * maxDim) / h)
+          h = maxDim
+        }
+      }
+
+      canvas.width = w
+      canvas.height = h
+      ctx.drawImage(video, 0, 0, w, h)
+      const imageData = ctx.getImageData(0, 0, w, h)
+      const qrCode = jsQR(imageData.data, w, h, {
+        inversionAttempts: 'attemptBoth',
       })
 
       if (qrCode && qrCode.data) {
@@ -265,20 +297,34 @@ export function CommunityIntakeQrModal({
     reader.onload = ev => {
       const img = new window.Image()
       img.onload = () => {
+        // Downscale large smartphone photos/screenshots to max 1000px so jsQR processes in milliseconds
+        const maxDim = 1000
+        let w = img.width
+        let h = img.height
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w)
+            w = maxDim
+          } else {
+            w = Math.round((w * maxDim) / h)
+            h = maxDim
+          }
+        }
+
         const canvas = document.createElement('canvas')
-        canvas.width = img.width
-        canvas.height = img.height
+        canvas.width = w
+        canvas.height = h
         const ctx = canvas.getContext('2d')
         if (ctx) {
-          ctx.drawImage(img, 0, 0)
-          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-          const qr = jsQR(imgData.data, imgData.width, imgData.height)
+          ctx.drawImage(img, 0, 0, w, h)
+          const imgData = ctx.getImageData(0, 0, w, h)
+          const qr = jsQR(imgData.data, w, h, { inversionAttempts: 'attemptBoth' })
           if (qr && qr.data) {
             handleExecuteVerification(qr.data)
           } else {
             setErrorMessage(
               lang === 'ar'
-                ? 'لم يتم العثور على رمز QR واضح في الصورة. يرجى تجربة صورة أوضح أو إدخال الكود يدوياً.'
+                ? 'لم يتم العثور على رمز QR واضح في الصورة. يرجى تجربة صورة أوضح أو إدخال كود التحقق يدوياً.'
                 : 'No clear QR code detected in the image. Please try a clearer screenshot or enter the code.'
             )
           }
@@ -781,6 +827,11 @@ export function CommunityIntakeQrModal({
                           type="text"
                           value={manualCode}
                           onChange={e => setManualCode(e.target.value.toUpperCase())}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && manualCode.trim() && !isVerifying) {
+                              handleExecuteVerification(manualCode)
+                            }
+                          }}
                           placeholder="COMM-8821"
                           maxLength={12}
                           className="w-full text-center text-xl font-mono font-black tracking-widest uppercase rounded-2xl border-2 border-emerald-500/50 bg-background px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500"
@@ -794,7 +845,7 @@ export function CommunityIntakeQrModal({
                         className="w-full max-w-xs mx-auto rounded-2xl font-black text-xs py-5 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-md shadow-emerald-600/20"
                       >
                         <Check className="h-4 w-4 me-1.5" />
-                        <span>{lang === 'ar' ? 'تحقق واعتماد الكتاب للرف' : 'Verify & Approve'}</span>
+                        <span>{lang === 'ar' ? 'تحقق واعتماد الكتب للرف' : 'Verify & Approve Books'}</span>
                       </Button>
                     </div>
                   )}
