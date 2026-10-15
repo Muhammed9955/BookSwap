@@ -47,17 +47,27 @@ export default async function TransactionsPage() {
         meetup_at,
         deposit_amount,
         borrow_due_date,
+        borrow_returned_at,
         seller_id,
         buyer_id,
         listing_id,
         completed_at,
         created_at,
-        buyer:profiles!transactions_buyer_id_fkey(id, full_name, full_name_ar, avatar_url, rating_average),
+        buyer:profiles!transactions_buyer_id_fkey(
+          id, full_name, full_name_ar, avatar_url, rating_average,
+          whatsapp_number, show_whatsapp,
+          city:cities(name_ar, name_en), area:areas(name_ar, name_en)
+        ),
         listing:book_listings!transactions_listing_id_fkey(
           id,
           price,
           condition,
-          book:books(id, title, title_ar, author, cover_image_url),
+          description,
+          book:books(
+            id, title, title_ar, author, cover_image_url,
+            page_count, language,
+            category:categories(name_ar, name_en, icon)
+          ),
           images:book_images(url, is_primary)
         )
       `)
@@ -82,17 +92,27 @@ export default async function TransactionsPage() {
         meetup_at,
         deposit_amount,
         borrow_due_date,
+        borrow_returned_at,
         seller_id,
         buyer_id,
         listing_id,
         completed_at,
         created_at,
-        seller:profiles!transactions_seller_id_fkey(id, full_name, full_name_ar, avatar_url, rating_average),
+        seller:profiles!transactions_seller_id_fkey(
+          id, full_name, full_name_ar, avatar_url, rating_average,
+          whatsapp_number, show_whatsapp,
+          city:cities(name_ar, name_en), area:areas(name_ar, name_en)
+        ),
         listing:book_listings!transactions_listing_id_fkey(
           id,
           price,
           condition,
-          book:books(id, title, title_ar, author, cover_image_url),
+          description,
+          book:books(
+            id, title, title_ar, author, cover_image_url,
+            page_count, language,
+            category:categories(name_ar, name_en, icon)
+          ),
           images:book_images(url, is_primary)
         )
       `)
@@ -116,16 +136,32 @@ export default async function TransactionsPage() {
         requester_id,
         listing_id,
         offered_listing_id,
-        requester:profiles!swap_requests_requester_id_fkey(id, full_name, full_name_ar, avatar_url),
+        requester:profiles!swap_requests_requester_id_fkey(
+          id, full_name, full_name_ar, avatar_url, rating_average,
+          whatsapp_number, show_whatsapp,
+          city:cities(name_ar, name_en), area:areas(name_ar, name_en)
+        ),
         listing:book_listings!swap_requests_listing_id_fkey(
           id,
           seller_id,
-          book:books(id, title, title_ar, author, cover_image_url),
+          condition,
+          description,
+          book:books(
+            id, title, title_ar, author, cover_image_url,
+            page_count, language,
+            category:categories(name_ar, name_en, icon)
+          ),
           images:book_images(url, is_primary)
         ),
         offered_listing:book_listings!swap_requests_offered_listing_id_fkey(
           id,
-          book:books(id, title, title_ar, author, cover_image_url),
+          condition,
+          description,
+          book:books(
+            id, title, title_ar, author, cover_image_url,
+            page_count, language,
+            category:categories(name_ar, name_en, icon)
+          ),
           images:book_images(url, is_primary)
         )
       `)
@@ -151,13 +187,29 @@ export default async function TransactionsPage() {
         listing:book_listings!swap_requests_listing_id_fkey(
           id,
           seller_id,
-          seller:profiles!book_listings_seller_id_fkey(id, full_name, full_name_ar, avatar_url),
-          book:books(id, title, title_ar, author, cover_image_url),
+          condition,
+          description,
+          seller:profiles!book_listings_seller_id_fkey(
+            id, full_name, full_name_ar, avatar_url, rating_average,
+            whatsapp_number, show_whatsapp,
+            city:cities(name_ar, name_en), area:areas(name_ar, name_en)
+          ),
+          book:books(
+            id, title, title_ar, author, cover_image_url,
+            page_count, language,
+            category:categories(name_ar, name_en, icon)
+          ),
           images:book_images(url, is_primary)
         ),
         offered_listing:book_listings!swap_requests_offered_listing_id_fkey(
           id,
-          book:books(id, title, title_ar, author, cover_image_url),
+          condition,
+          description,
+          book:books(
+            id, title, title_ar, author, cover_image_url,
+            page_count, language,
+            category:categories(name_ar, name_en, icon)
+          ),
           images:book_images(url, is_primary)
         )
       `)

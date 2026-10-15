@@ -21,6 +21,7 @@ import { cn, formatPrice, formatRelativeTime } from '@/lib/utils'
 import { acceptTransaction, rejectTransaction, acceptSwapRequest, rejectSwapRequest, createTestIncomingTransaction } from '@/lib/transactions/lifecycle'
 import { MeetupDetailBadge } from '@/components/ui/meetup-badge'
 import { MeetupQrModal } from '@/components/transactions/meetup-qr-modal'
+import { DetailedDealCard } from '@/components/transactions/detailed-deal-card'
 import { EditProfileModal } from '@/components/profile/edit-profile-modal'
 import { getAvatarUrl } from '@/lib/utils'
 import type { BookListing, Profile, Rating } from '@/types'
@@ -414,6 +415,38 @@ export function ProfileClient({
     }
   }
 
+  const handleCancelTx = async (tx: any) => {
+    setActionLoading(`tx-cancel-${tx.id}`)
+    try {
+      await supabase.from('transactions').update({
+        status: 'CANCELLED',
+        cancelled_at: new Date().toISOString(),
+      }).eq('id', tx.id)
+      setOutgoingTxList(prev => prev.map((t: any) => t.id === tx.id ? { ...t, status: 'CANCELLED' } : t))
+      showFeedback(lang === 'ar' ? 'تم إلغاء الطلب بنجاح.' : 'Request cancelled.')
+    } catch {
+      showFeedback(lang === 'ar' ? 'حدث خطأ أثناء إلغاء الطلب' : 'Failed to cancel request', 'error')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleCancelSwap = async (swap: any) => {
+    setActionLoading(`swap-cancel-${swap.id}`)
+    try {
+      await supabase.from('swap_requests').update({
+        status: 'REJECTED',
+        responded_at: new Date().toISOString(),
+      }).eq('id', swap.id)
+      setOutgoingSwapsList(prev => prev.map((s: any) => s.id === swap.id ? { ...s, status: 'REJECTED' } : s))
+      showFeedback(lang === 'ar' ? 'تم إلغاء طلب المبادلة.' : 'Swap request cancelled.')
+    } catch {
+      showFeedback(lang === 'ar' ? 'حدث خطأ أثناء إلغاء الطلب' : 'Failed to cancel swap', 'error')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
   // Count pending incoming requests waiting for this user's action
   const pendingIncomingCount =
     incomingTxList.filter(t => t.status === 'PENDING').length +
@@ -481,6 +514,16 @@ export function ProfileClient({
     ...acceptedIncomingTx,
     ...acceptedOutgoingTx,
   ]
+
+  const getCleanBuyerNote = (note?: string | null) => {
+    if (!note) return null
+    try {
+      const d = JSON.parse(note)
+      return d.note || d.buyer_note || d.message || null
+    } catch {
+      return note
+    }
+  }
 
   const tabs = isOwnProfile
     ? ['books', 'requests', 'reviews', 'about']
@@ -1016,238 +1059,57 @@ export function ProfileClient({
                     {acceptedDeals.map((deal: any) => {
                       const isSwap = deal._kind === 'SWAP'
                       const loan = !isSwap ? parseLoanInfo(deal.buyer_note) : null
-                      const isBorrow = Boolean(loan)
-                      const isBuy = !isSwap && !isBorrow
-                      const isLenderOrSeller = deal._role === 'SELLER_OR_LENDER' || deal._role === 'LISTING_OWNER'
+                      const isBorrow = Boolean(loan) || deal.transaction_type === 'BORROW'
+                      const isListingOwner = deal._role === 'LISTING_OWNER' || deal._role === 'SELLER_OR_LENDER'
 
-                      // Books Info
-                      let myBook: any = null
-                      let otherBook: any = null
-                      let myCover: string | null = null
-                      let otherCover: string | null = null
-                      let counterparty: any = null
-                      let counterpartyRoleText = ''
+                      const counterparty = isSwap
+                        ? (isListingOwner ? deal.requester : deal.listing?.seller)
+                        : (isListingOwner ? deal.buyer : deal.seller)
 
-                      if (isSwap) {
-                        if (deal._role === 'LISTING_OWNER') {
-                          myBook = extractBook(deal.listing)
-                          otherBook = extractBook(deal.offered_listing)
-                          myCover = deal.listing?.images?.[0]?.url || myBook?.cover_image_url
-                          otherCover = deal.offered_listing?.images?.[0]?.url || otherBook?.cover_image_url
-                          counterparty = deal.requester
-                          counterpartyRoleText = lang === 'ar' ? 'طالب المبادلة' : 'Requester'
-                        } else {
-                          myBook = extractBook(deal.offered_listing)
-                          otherBook = extractBook(deal.listing)
-                          myCover = deal.offered_listing?.images?.[0]?.url || myBook?.cover_image_url
-                          otherCover = deal.listing?.images?.[0]?.url || otherBook?.cover_image_url
-                          counterparty = deal.listing?.seller
-                          counterpartyRoleText = lang === 'ar' ? 'مالك الكتاب' : 'Book Owner'
-                        }
-                      } else {
-                        myBook = extractBook(deal.listing)
-                        myCover = deal.listing?.images?.[0]?.url || myBook?.cover_image_url
-                        if (isLenderOrSeller) {
-                          counterparty = deal.buyer
-                          counterpartyRoleText = isBorrow ? (lang === 'ar' ? 'المستعير' : 'Borrower') : (lang === 'ar' ? 'المشتري' : 'Buyer')
-                        } else {
-                          counterparty = deal.seller
-                          counterpartyRoleText = isBorrow ? (lang === 'ar' ? 'صاحب الكتاب (المُعير)' : 'Lender') : (lang === 'ar' ? 'البائع' : 'Seller')
-                        }
-                      }
-
-                      const meetupInfo = parseMeetupInfo(deal)
-                      const countdown = loan ? getLoanCountdown(loan.due_date) : null
+                      const meetup = parseMeetupInfo(deal)
+                      const myBook = extractBook(deal.listing)
 
                       return (
-                        <div
+                        <DetailedDealCard
                           key={`accepted-${deal._kind}-${deal.id}`}
-                          className="rounded-3xl border-2 border-emerald-500/50 bg-card p-5 sm:p-6 shadow-sm hover:border-emerald-500 transition-all space-y-4"
-                        >
-                          {/* Header: Deal Type & Counterparty */}
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-3.5">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {isSwap && (
-                                <Badge variant="swap" className="text-xs font-black">
-                                  🔄 {lang === 'ar' ? 'صفقة تبادل مقبولة' : 'Accepted Swap Deal'}
-                                </Badge>
-                              )}
-                              {isBorrow && (
-                                <Badge className="text-xs font-black bg-emerald-600 text-white">
-                                  ⏳ {isLenderOrSeller ? (lang === 'ar' ? 'كتابك المُعار' : 'Book Lent') : (lang === 'ar' ? 'كتاب استعرته' : 'Book Borrowed')}
-                                </Badge>
-                              )}
-                              {isBuy && (
-                                <Badge variant="sell" className="text-xs font-black">
-                                  💰 {isLenderOrSeller ? (lang === 'ar' ? 'بيع مقبول' : 'Accepted Sale') : (lang === 'ar' ? 'شراء مقبول' : 'Accepted Buy')}
-                                </Badge>
-                              )}
-
-                              <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/30 text-[11px] font-black">
-                                {deal.status === 'BORROWED'
-                                  ? (lang === 'ar' ? 'مُعار حالياً ⏱️' : 'Currently Borrowed')
-                                  : (lang === 'ar' ? 'مقبول — بانتظار المقابلة والتسليم 🤝' : 'Accepted — Ready for Meetup 🤝')}
-                              </Badge>
-                            </div>
-
-                            {/* Counterparty Pill */}
-                            <div className="flex items-center gap-2.5">
-                              <div className="h-8 w-8 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center font-bold text-xs text-primary ring-2 ring-primary/20 shrink-0">
-                                {counterparty?.avatar_url ? (
-                                  <Image src={counterparty.avatar_url} alt="" width={32} height={32} className="h-full w-full object-cover" />
-                                ) : (
-                                  counterparty?.full_name?.charAt(0) || '👤'
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <span className="text-[10px] font-bold text-muted-foreground block">{counterpartyRoleText}:</span>
-                                <span className="text-xs font-black text-foreground truncate block">
-                                  {counterparty?.full_name_ar || counterparty?.full_name || 'قارئ'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Body: Books Showcase */}
-                          {isSwap ? (
-                            /* SWAP: Side-by-side books */
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center bg-muted/20 p-4 rounded-2xl border border-border/60">
-                              {/* My Book */}
-                              <div className="flex items-center gap-3">
-                                <div className="relative h-18 w-13 shrink-0 rounded-xl overflow-hidden bg-muted border border-border/80">
-                                  {myCover ? <Image src={myCover} alt="" fill className="object-cover" /> : <div className="h-full w-full flex items-center justify-center text-sm">📖</div>}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <span className="text-[10px] font-bold text-muted-foreground uppercase block">
-                                    {deal._role === 'LISTING_OWNER' ? (lang === 'ar' ? 'كتابك المطلوب منك تسليمه' : 'Your Book (to give)') : (lang === 'ar' ? 'كتابك المعروض بالمقابل' : 'Your Offered Book')}
-                                  </span>
-                                  <p className="text-sm font-black text-foreground truncate">{myBook?.title_ar || myBook?.title || 'كتاب'}</p>
-                                  <p className="text-xs text-muted-foreground truncate">{myBook?.author}</p>
-                                </div>
-                              </div>
-
-                              {/* Their Book */}
-                              <div className="flex items-center gap-3 border-t sm:border-t-0 sm:border-s border-border/80 pt-3 sm:pt-0 sm:ps-4">
-                                <div className="relative h-18 w-13 shrink-0 rounded-xl overflow-hidden bg-muted border border-border/80">
-                                  {otherCover ? <Image src={otherCover} alt="" fill className="object-cover" /> : <div className="h-full w-full flex items-center justify-center text-sm">📚</div>}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <span className="text-[10px] font-bold text-emerald-600 uppercase block">
-                                    {deal._role === 'LISTING_OWNER' ? (lang === 'ar' ? 'كتاب القارئ المطلوب استلامه' : 'Their Book (to receive)') : (lang === 'ar' ? 'الكتاب المطلوب من المالك' : 'Requested Book')}
-                                  </span>
-                                  <p className="text-sm font-black text-foreground truncate">{otherBook?.title_ar || otherBook?.title || 'كتاب'}</p>
-                                  <p className="text-xs text-muted-foreground truncate">{otherBook?.author}</p>
-                                </div>
-                              </div>
-                            </div>
-                          ) : isBorrow ? (
-                            /* BORROW: Book + Loan Details */
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-muted/20 p-4 rounded-2xl border border-border/60">
-                              <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                                <div className="relative h-18 w-13 shrink-0 rounded-xl overflow-hidden bg-muted border border-border/80">
-                                  {myCover ? <Image src={myCover} alt="" fill className="object-cover" /> : <div className="h-full w-full flex items-center justify-center text-sm">📖</div>}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-black text-foreground truncate">{myBook?.title_ar || myBook?.title || 'كتاب'}</p>
-                                  <p className="text-xs text-muted-foreground truncate">{myBook?.author}</p>
-                                  <div className="flex flex-wrap items-center gap-2 mt-2 text-xs font-bold text-foreground">
-                                    <span className="text-primary font-black">
-                                      {lang === 'ar' ? 'المدة:' : 'Duration:'} {loan?.loan_days} {lang === 'ar' ? 'يوم' : 'days'}
-                                    </span>
-                                    <span>•</span>
-                                    <span className="text-emerald-600 dark:text-emerald-400">
-                                      {lang === 'ar' ? 'تأمين مسترد:' : 'Deposit:'} {loan?.deposit || deal.deposit_amount || 0} ج.م
-                                    </span>
-                                    <span>•</span>
-                                    <span className="text-muted-foreground">
-                                      {lang === 'ar' ? 'الرسم:' : 'Fee:'} {loan?.borrow_fee ? `${loan.borrow_fee} ج.م` : (lang === 'ar' ? 'مجاناً' : 'Free')}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Due Date Countdown Pill */}
-                              {countdown && (
-                                <div className="w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
-                                  <Badge className={cn('text-xs font-black py-1.5 px-3 rounded-xl border', countdown.color)}>
-                                    <Calendar className="h-3.5 w-3.5 me-1.5" />
-                                    <span>{lang === 'ar' ? countdown.textAr : countdown.textEn}</span>
-                                  </Badge>
-                                </div>
-                              )}
-                            </div>
-                          ) : (
-                            /* BUY: Book + Agreed Price */
-                            <div className="flex items-center gap-3.5 bg-muted/20 p-4 rounded-2xl border border-border/60">
-                              <div className="relative h-18 w-13 shrink-0 rounded-xl overflow-hidden bg-muted border border-border/80">
-                                {myCover ? <Image src={myCover} alt="" fill className="object-cover" /> : <div className="h-full w-full flex items-center justify-center text-sm">📖</div>}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-black text-foreground truncate">{myBook?.title_ar || myBook?.title || 'كتاب'}</p>
-                                <p className="text-xs text-muted-foreground truncate">{myBook?.author}</p>
-                                <div className="flex flex-wrap items-center gap-3 text-xs mt-2 font-bold">
-                                  <span className="text-primary font-black">
-                                    {lang === 'ar' ? 'السعر المتفق عليه:' : 'Agreed Price:'} {deal.price ? formatPrice(deal.price) : (lang === 'ar' ? 'حسب الاتفاق' : 'Agreed')}
-                                  </span>
-                                  <span className="text-muted-foreground">
-                                    • {lang === 'ar' ? 'الدفع نقداً عند المقابلة والتسليم' : 'Cash on Handover'}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Meetup Details Badge */}
-                          <MeetupDetailBadge meetup={meetupInfo} lang={lang} />
-
-                          {/* Action Buttons */}
-                          <div className="flex flex-wrap items-center justify-end gap-2.5 pt-1 border-t border-border/50">
-                            {/* Message / Chat Button */}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleChatWithUser(counterparty?.id, deal.listing_id || deal.listing?.id, `chat-${deal.id}`)}
-                              loading={chatLoadingKey === `chat-${deal.id}`}
-                              className="font-bold text-xs gap-1.5 rounded-xl cursor-pointer"
-                            >
-                              <MessageCircle className="h-4 w-4" />
-                              <span>{lang === 'ar' ? 'محادثة' : 'Message'}</span>
-                            </Button>
-
-                            {/* Details Hub Link */}
-                            <Link href={`/transactions?id=${deal.id}`} className="shrink-0">
-                              <Button variant="outline" size="sm" className="font-bold text-xs gap-1 rounded-xl cursor-pointer">
-                                <span>{isBorrow ? (lang === 'ar' ? 'إدارة الإرجاع والتأمين ↗' : 'Manage Return ↗') : (lang === 'ar' ? 'مركز المعاملات ↗' : 'Deal Hub ↗')}</span>
-                              </Button>
-                            </Link>
-
-                            {/* In-Person Meetup QR Pass Trigger */}
-                            <Button
-                              size="sm"
-                              onClick={() => setQrModalData({
-                                isOpen: true,
-                                transactionId: !isSwap ? deal.id : undefined,
-                                swapId: isSwap ? deal.id : undefined,
-                                bookTitle: (myBook?.title_ar || myBook?.title || 'كتاب'),
-                                meetupLocation: meetupInfo?.location || undefined,
-                                transactionType: isSwap ? 'SWAP' : (isBorrow ? 'BORROW' : 'BUY'),
-                                isBorrowReturn: deal.status === 'BORROWED',
-                                otherPartyId: counterparty?.id,
-                                otherPartyName: counterparty?.full_name,
-                                listingId: deal.listing_id || deal.listing?.id,
-                                swapListingId: deal.offered_listing_id || deal.offered_listing?.id,
-                              })}
-                              className="font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 rounded-xl cursor-pointer shadow-md shadow-emerald-600/20"
-                            >
-                              <QrCode className="h-4 w-4" />
-                              <span>
-                                {isBorrow && deal.status === 'BORROWED'
-                                  ? (lang === 'ar' ? 'رمز QR لإرجاع الكتاب واسترداد التأمين 📱' : 'QR Return & Deposit Pass 📱')
-                                  : (lang === 'ar' ? 'رمز QR للمقابلة والتسليم 📱' : 'Meetup QR Pass 📱')}
-                              </span>
-                            </Button>
-                          </div>
-                        </div>
+                          id={deal.id}
+                          type={isSwap ? 'SWAP' : (isBorrow ? 'BORROW' : (deal.transaction_type || 'BUY'))}
+                          status={deal.status}
+                          createdAt={deal.created_at}
+                          completedAt={deal.completed_at || deal.responded_at}
+                          isIncoming={isListingOwner}
+                          counterparty={counterparty}
+                          primaryListing={deal.listing}
+                          offeredListing={isSwap ? deal.offered_listing : undefined}
+                          loanDays={loan?.loan_days}
+                          dueDate={loan?.due_date || deal.borrow_due_date}
+                          returnedAt={deal.borrow_returned_at}
+                          depositAmount={loan?.deposit || deal.deposit_amount}
+                          price={deal.price || deal.listing?.price}
+                          meetupLocation={deal.meetup_location || deal.agreed_meetup_location || deal.proposed_meetup_location || meetup?.location}
+                          meetupAt={deal.meetup_at || deal.agreed_meetup_at || meetup?.at}
+                          proposedTimes={meetup?.times}
+                          deliveryMethod={deal.delivery_method || deal.preferred_delivery || meetup?.deliveryMethod || 'MEETUP'}
+                          buyerNote={isSwap ? deal.message : getCleanBuyerNote(deal.buyer_note)}
+                          sellerNote={isSwap ? deal.response_message : deal.seller_note}
+                          isBorrowReturn={deal.status === 'BORROWED'}
+                          onChat={counterparty?.id ? () => handleChatWithUser(counterparty.id, deal.listing_id || deal.listing?.id, `chat-${deal.id}`) : undefined}
+                          isChatLoading={chatLoadingKey === `chat-${deal.id}`}
+                          onOpenQrModal={() => setQrModalData({
+                            isOpen: true,
+                            transactionId: !isSwap ? deal.id : undefined,
+                            swapId: isSwap ? deal.id : undefined,
+                            bookTitle: (myBook?.title_ar || myBook?.title || 'كتاب'),
+                            meetupLocation: meetup?.location || undefined,
+                            transactionType: isSwap ? 'SWAP' : (isBorrow ? 'BORROW' : 'BUY'),
+                            isBorrowReturn: deal.status === 'BORROWED',
+                            otherPartyId: counterparty?.id,
+                            otherPartyName: counterparty?.full_name,
+                            listingId: deal.listing_id || deal.listing?.id,
+                            swapListingId: deal.offered_listing_id || deal.offered_listing?.id,
+                          })}
+                          lang={lang}
+                        />
                       )
                     })}
                   </div>
@@ -1299,149 +1161,75 @@ export function ProfileClient({
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {/* Incoming transactions (Borrow & Buy) */}
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {incomingTxList.filter((t: any) => t.status === 'PENDING').map((tx: any) => {
                       const loan = parseLoanInfo(tx.buyer_note)
-                      const book = tx.listing?.book
-                      const buyer = tx.buyer
-                      const cover = tx.listing?.images?.[0]?.url || book?.cover_image_url
+                      const isBorrow = Boolean(loan) || tx.transaction_type === 'BORROW'
+                      const meetup = parseMeetupInfo(tx)
 
                       return (
-                        <div
-                          key={tx.id}
-                          className="p-4 sm:p-5 rounded-2xl border border-primary/40 shadow-xs ring-1 ring-primary/20 bg-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all"
-                        >
-                          <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                            <div className="relative h-16 w-12 shrink-0 rounded-xl overflow-hidden bg-muted border">
-                              {cover ? (
-                                <Image src={cover} alt="" fill className="object-cover" />
-                              ) : (
-                                <div className="h-full w-full flex items-center justify-center text-xs">📖</div>
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                {loan ? (
-                                  <Badge variant="outline" className="text-[10px] border-emerald-500 text-emerald-600 bg-emerald-500/10 font-bold">
-                                    ⏳ {lang === 'ar' ? 'طلب استعارة' : 'Borrow Request'}
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="sell" className="text-[10px] font-bold">
-                                    💰 {lang === 'ar' ? 'طلب شراء' : 'Buy Request'}
-                                  </Badge>
-                                )}
-                                <Badge className="text-[10px] font-bold bg-amber-500/10 text-amber-600 border-amber-500/30">
-                                  {lang === 'ar' ? 'قيد الانتظار ⏳' : 'Pending ⏳'}
-                                </Badge>
-                              </div>
-                              <p className="text-xs font-black text-foreground mt-1 truncate">{book?.title || 'كتاب'}</p>
-                              <p className="text-[11px] text-muted-foreground mt-0.5">
-                                {lang === 'ar' ? 'من:' : 'From:'} <span className="font-bold text-foreground">{buyer?.full_name || 'قارئ'}</span> • {formatRelativeTime(tx.created_at, lang)}
-                                {loan && ` • تأمين: ${loan.deposit} ج.م (المدة: ${loan.loan_days} يوم)`}
-                                {!loan && tx.price && ` • السعر: ${tx.price} ج.م`}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Action Buttons for the Owner */}
-                          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleRejectTx(tx)}
-                              loading={actionLoading === `tx-reject-${tx.id}`}
-                              className="text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl cursor-pointer"
-                            >
-                              {lang === 'ar' ? 'رفض' : 'Decline'}
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleAcceptTx(tx)}
-                              loading={actionLoading === `tx-accept-${tx.id}`}
-                              className="text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs cursor-pointer gap-1"
-                            >
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                              <span>{lang === 'ar' ? 'قبول الطلب' : 'Accept'}</span>
-                            </Button>
-                            <Link href={`/transactions?tab=incoming&id=${tx.id}`} className="w-full sm:w-auto">
-                              <Button size="sm" variant="outline" className="text-xs font-bold gap-1 rounded-xl w-full sm:w-auto cursor-pointer">
-                                {lang === 'ar' ? 'تفاصيل' : 'Details'}
-                              </Button>
-                            </Link>
-                          </div>
-                        </div>
+                        <DetailedDealCard
+                          key={`incoming-tx-${tx.id}`}
+                          id={tx.id}
+                          type={isBorrow ? 'BORROW' : (tx.transaction_type || 'BUY')}
+                          status={tx.status}
+                          createdAt={tx.created_at}
+                          isIncoming={true}
+                          counterparty={tx.buyer}
+                          primaryListing={tx.listing}
+                          loanDays={loan?.loan_days}
+                          dueDate={loan?.due_date}
+                          depositAmount={loan?.deposit}
+                          price={tx.price || tx.listing?.price}
+                          meetupLocation={tx.meetup_location || meetup?.location}
+                          meetupAt={tx.meetup_at || meetup?.at}
+                          proposedTimes={meetup?.times}
+                          deliveryMethod={tx.delivery_method || meetup?.deliveryMethod || 'MEETUP'}
+                          buyerNote={getCleanBuyerNote(tx.buyer_note)}
+                          sellerNote={tx.seller_note}
+                          onAccept={() => handleAcceptTx(tx)}
+                          onReject={() => handleRejectTx(tx)}
+                          isAcceptLoading={actionLoading === `tx-accept-${tx.id}`}
+                          isRejectLoading={actionLoading === `tx-reject-${tx.id}`}
+                          onChat={tx.buyer?.id ? () => handleChatWithUser(tx.buyer.id, tx.listing_id || tx.listing?.id, `chat-${tx.id}`) : undefined}
+                          isChatLoading={chatLoadingKey === `chat-${tx.id}`}
+                          lang={lang}
+                        />
                       )
                     })}
 
                     {/* Incoming Swaps */}
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {incomingSwapsList.filter((s: any) => s.status === 'PENDING').map((s: any) => {
-                      const book = s.listing?.book
-                      const offeredBook = s.offered_listing?.book
-                      const requester = s.requester
-                      const cover = s.listing?.images?.[0]?.url || book?.cover_image_url
+                      const meetup = parseMeetupInfo(s)
 
                       return (
-                        <div
-                          key={s.id}
-                          className="p-4 sm:p-5 rounded-2xl border border-primary/40 shadow-xs ring-1 ring-primary/20 bg-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all"
-                        >
-                          <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                            <div className="relative h-16 w-12 shrink-0 rounded-lg overflow-hidden bg-muted border">
-                              {cover ? (
-                                <Image src={cover} alt="" fill className="object-cover" />
-                              ) : (
-                                <div className="h-full w-full flex items-center justify-center text-xs">🔄</div>
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <Badge variant="swap" className="text-[10px] font-bold">
-                                  🔄 {lang === 'ar' ? 'طلب مبادلة وارد' : 'Incoming Swap'}
-                                </Badge>
-                                <Badge className="text-[10px] font-bold bg-amber-500/10 text-amber-600 border-amber-500/30">
-                                  {lang === 'ar' ? 'قيد الانتظار ⏳' : 'Pending ⏳'}
-                                </Badge>
-                              </div>
-                              <p className="text-xs font-black text-foreground mt-1 truncate">{book?.title || 'كتاب'}</p>
-                              <p className="text-[11px] text-muted-foreground mt-0.5">
-                                {lang === 'ar' ? 'عرض مبادلة بكتاب:' : 'Offered book:'} <span className="font-bold text-foreground truncate">{offeredBook?.title || 'كتاب آخر'}</span>
-                              </p>
-                              <p className="text-[11px] text-muted-foreground">
-                                {lang === 'ar' ? 'من:' : 'From:'} <span className="font-bold text-foreground">{requester?.full_name || 'قارئ'}</span> • {formatRelativeTime(s.created_at, lang)}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Action Buttons for the Owner */}
-                          <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleRejectSwap(s)}
-                              loading={actionLoading === `swap-reject-${s.id}`}
-                              className="text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl cursor-pointer"
-                            >
-                              {lang === 'ar' ? 'رفض' : 'Decline'}
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleAcceptSwap(s)}
-                              loading={actionLoading === `swap-accept-${s.id}`}
-                              className="text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs cursor-pointer gap-1"
-                            >
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                              <span>{lang === 'ar' ? 'قبول المبادلة' : 'Accept'}</span>
-                            </Button>
-                            <Link href={`/transactions?tab=incoming&id=${s.id}`} className="w-full sm:w-auto">
-                              <Button size="sm" variant="outline" className="text-xs font-bold gap-1 rounded-xl w-full sm:w-auto cursor-pointer">
-                                {lang === 'ar' ? 'تفاصيل' : 'Details'}
-                              </Button>
-                            </Link>
-                          </div>
-                        </div>
+                        <DetailedDealCard
+                          key={`incoming-swap-${s.id}`}
+                          id={s.id}
+                          type="SWAP"
+                          status={s.status}
+                          createdAt={s.created_at}
+                          isIncoming={true}
+                          counterparty={s.requester}
+                          primaryListing={s.listing}
+                          offeredListing={s.offered_listing}
+                          meetupLocation={s.agreed_meetup_location || s.proposed_meetup_location || meetup?.location}
+                          meetupAt={s.agreed_meetup_at || meetup?.at}
+                          proposedTimes={meetup?.times}
+                          deliveryMethod={s.preferred_delivery || meetup?.deliveryMethod || 'MEETUP'}
+                          buyerNote={s.message}
+                          sellerNote={s.response_message}
+                          onAccept={() => handleAcceptSwap(s)}
+                          onReject={() => handleRejectSwap(s)}
+                          isAcceptLoading={actionLoading === `swap-accept-${s.id}`}
+                          isRejectLoading={actionLoading === `swap-reject-${s.id}`}
+                          onChat={s.requester?.id ? () => handleChatWithUser(s.requester.id, s.listing_id || s.listing?.id, `chat-swap-${s.id}`) : undefined}
+                          isChatLoading={chatLoadingKey === `chat-swap-${s.id}`}
+                          lang={lang}
+                        />
                       )
                     })}
                   </div>
@@ -1458,60 +1246,52 @@ export function ProfileClient({
                   <span>⏳ {lang === 'ar' ? 'الاستعارات النشطة ومواعيد الإرجاع:' : 'Active Loans & Deadlines:'}</span>
                   <span className="text-xs font-bold text-emerald-600">({activeLoans.length})</span>
                 </h3>
-                <div className="space-y-2.5">
+                <div className="space-y-4">
                   {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                   {activeLoans.map((tx: any) => {
                     const loan = parseLoanInfo(tx.buyer_note)
                     const isLender = tx.seller_id === profile.id
+                    const counterparty = isLender ? tx.buyer : tx.seller
                     const book = tx.listing?.book
-                    const countdown = loan ? getLoanCountdown(loan.due_date) : null
+                    const meetup = parseMeetupInfo(tx)
 
                     return (
-                      <div key={tx.id} className="p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <Badge className="bg-emerald-600 text-white font-bold text-[10px]">
-                              {isLender ? (lang === 'ar' ? 'كتابك المُعار' : 'Book Lent') : (lang === 'ar' ? 'كتاب استعرته' : 'Book Borrowed')}
-                            </Badge>
-                            <span className="text-xs font-bold text-foreground">{book?.title}</span>
-                          </div>
-                          <p className="text-[11px] text-muted-foreground flex items-center gap-2 flex-wrap">
-                            <Calendar className="h-3 w-3 text-emerald-600" />
-                            <span>{lang === 'ar' ? 'موعد الإرجاع:' : 'Due Date:'} {loan?.due_date ? new Date(loan.due_date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US') : 'قريباً'}</span>
-                            <span>• التأمين: {loan?.deposit} ج.م</span>
-                            {countdown && (
-                              <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded-md border', countdown.color)}>
-                                {lang === 'ar' ? countdown.textAr : countdown.textEn}
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                          <Button
-                            size="sm"
-                            onClick={() => setQrModalData({
-                              isOpen: true,
-                              transactionId: tx.id,
-                              bookTitle: book?.title || 'كتاب',
-                              meetupLocation: tx.meetup_location,
-                              transactionType: 'BORROW',
-                              isBorrowReturn: true,
-                              otherPartyId: isLender ? tx.buyer?.id : tx.seller?.id,
-                              otherPartyName: isLender ? tx.buyer?.full_name : tx.seller?.full_name,
-                              listingId: tx.listing_id || tx.listing?.id,
-                            })}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs gap-1.5 cursor-pointer"
-                          >
-                            <QrCode className="h-3.5 w-3.5" />
-                            <span>{lang === 'ar' ? 'رمز QR للإرجاع' : 'Return QR Pass'}</span>
-                          </Button>
-                          <Link href="/transactions">
-                            <Button size="sm" variant="outline" className="font-bold text-xs rounded-xl">
-                              {lang === 'ar' ? 'إدارة التأمين' : 'Manage'}
-                            </Button>
-                          </Link>
-                        </div>
-                      </div>
+                      <DetailedDealCard
+                        key={`loan-${tx.id}`}
+                        id={tx.id}
+                        type="BORROW"
+                        status={tx.status}
+                        createdAt={tx.created_at}
+                        isIncoming={isLender}
+                        counterparty={counterparty}
+                        primaryListing={tx.listing}
+                        loanDays={loan?.loan_days}
+                        dueDate={loan?.due_date || tx.borrow_due_date}
+                        returnedAt={tx.borrow_returned_at}
+                        depositAmount={loan?.deposit || tx.deposit_amount}
+                        price={tx.price || tx.listing?.price}
+                        meetupLocation={tx.meetup_location || meetup?.location}
+                        meetupAt={tx.meetup_at || meetup?.at}
+                        proposedTimes={meetup?.times}
+                        deliveryMethod={tx.delivery_method || meetup?.deliveryMethod || 'MEETUP'}
+                        buyerNote={getCleanBuyerNote(tx.buyer_note)}
+                        sellerNote={tx.seller_note}
+                        isBorrowReturn={true}
+                        onChat={counterparty?.id ? () => handleChatWithUser(counterparty.id, tx.listing_id || tx.listing?.id, `chat-${tx.id}`) : undefined}
+                        isChatLoading={chatLoadingKey === `chat-${tx.id}`}
+                        onOpenQrModal={() => setQrModalData({
+                          isOpen: true,
+                          transactionId: tx.id,
+                          bookTitle: book?.title || 'كتاب',
+                          meetupLocation: tx.meetup_location || meetup?.location,
+                          transactionType: 'BORROW',
+                          isBorrowReturn: true,
+                          otherPartyId: counterparty?.id,
+                          otherPartyName: counterparty?.full_name,
+                          listingId: tx.listing_id || tx.listing?.id,
+                        })}
+                        lang={lang}
+                      />
                     )
                   })}
                 </div>
@@ -1533,62 +1313,51 @@ export function ProfileClient({
                     {lang === 'ar' ? 'لم ترسل أي طلبات شراء أو مبادلة أو استعارة بعد.' : 'No sent requests yet.'}
                   </div>
                 ) : (
-                  <div className="space-y-2.5">
+                  <div className="space-y-4">
                     {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                     {outgoingTxList.map((tx: any) => {
                       const loan = parseLoanInfo(tx.buyer_note)
+                      const isBorrow = Boolean(loan) || tx.transaction_type === 'BORROW'
                       const book = tx.listing?.book
                       const seller = tx.seller
+                      const meetup = parseMeetupInfo(tx)
 
                       return (
-                        <div key={tx.id} className="p-4 rounded-2xl border bg-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              {loan ? (
-                                <Badge variant="outline" className="text-[10px] border-emerald-500 text-emerald-600 bg-emerald-500/10 font-bold">
-                                  ⏳ {lang === 'ar' ? 'طلب استعارة أرسلته' : 'Sent Borrow Request'}
-                                </Badge>
-                              ) : (
-                                <Badge variant="sell" className="text-[10px] font-bold">
-                                  💰 {lang === 'ar' ? 'طلب شراء أرسلته' : 'Sent Buy Order'}
-                                </Badge>
-                              )}
-                              <Badge className={cn('text-[10px] font-bold', tx.status === 'ACCEPTED' ? 'bg-emerald-500/10 text-emerald-600' : tx.status === 'REJECTED' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600 border-amber-500/30')}>
-                                {tx.status === 'ACCEPTED' ? (lang === 'ar' ? 'تم القبول ✅' : 'Accepted') : tx.status === 'REJECTED' ? (lang === 'ar' ? 'مرفوض ❌' : 'Declined') : (lang === 'ar' ? 'قيد الانتظار ⏳' : 'Pending')}
-                              </Badge>
-                            </div>
-                            <p className="text-xs font-black text-foreground mt-1 truncate max-w-xs">{book?.title || 'كتاب'}</p>
-                            <p className="text-[11px] text-muted-foreground">
-                              {lang === 'ar' ? 'المالك:' : 'Owner:'} {seller?.full_name || 'قارئ'} • {formatRelativeTime(tx.created_at, lang)}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {tx.status === 'ACCEPTED' && (
-                              <Button
-                                size="sm"
-                                onClick={() => setQrModalData({
-                                  isOpen: true,
-                                  transactionId: tx.id,
-                                  bookTitle: book?.title || 'كتاب',
-                                  meetupLocation: tx.meetup_location,
-                                  transactionType: loan ? 'BORROW' : 'BUY',
-                                  otherPartyId: seller?.id,
-                                  otherPartyName: seller?.full_name,
-                                  listingId: tx.listing_id || tx.listing?.id,
-                                })}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs gap-1.5 rounded-xl cursor-pointer"
-                              >
-                                <QrCode className="h-3.5 w-3.5" />
-                                <span>{lang === 'ar' ? 'رمز QR للمقابلة' : 'Meetup QR'}</span>
-                              </Button>
-                            )}
-                            <Link href="/transactions">
-                              <Button size="sm" variant="outline" className="text-xs font-bold gap-1 rounded-xl">
-                                {lang === 'ar' ? 'تفاصيل الطلب' : 'Details'}
-                              </Button>
-                            </Link>
-                          </div>
-                        </div>
+                        <DetailedDealCard
+                          key={`outgoing-tx-${tx.id}`}
+                          id={tx.id}
+                          type={isBorrow ? 'BORROW' : (tx.transaction_type || 'BUY')}
+                          status={tx.status}
+                          createdAt={tx.created_at}
+                          isIncoming={false}
+                          counterparty={seller}
+                          primaryListing={tx.listing}
+                          loanDays={loan?.loan_days}
+                          dueDate={loan?.due_date}
+                          depositAmount={loan?.deposit}
+                          price={tx.price || tx.listing?.price}
+                          meetupLocation={tx.meetup_location || meetup?.location}
+                          meetupAt={tx.meetup_at || meetup?.at}
+                          proposedTimes={meetup?.times}
+                          deliveryMethod={tx.delivery_method || meetup?.deliveryMethod || 'MEETUP'}
+                          buyerNote={getCleanBuyerNote(tx.buyer_note)}
+                          sellerNote={tx.seller_note}
+                          onCancel={tx.status === 'PENDING' ? () => handleCancelTx(tx) : undefined}
+                          isCancelLoading={actionLoading === `tx-cancel-${tx.id}`}
+                          onChat={seller?.id ? () => handleChatWithUser(seller.id, tx.listing_id || tx.listing?.id, `chat-out-${tx.id}`) : undefined}
+                          isChatLoading={chatLoadingKey === `chat-out-${tx.id}`}
+                          onOpenQrModal={tx.status === 'ACCEPTED' ? () => setQrModalData({
+                            isOpen: true,
+                            transactionId: tx.id,
+                            bookTitle: book?.title || 'كتاب',
+                            meetupLocation: tx.meetup_location || meetup?.location,
+                            transactionType: isBorrow ? 'BORROW' : (tx.transaction_type || 'BUY'),
+                            otherPartyId: seller?.id,
+                            otherPartyName: seller?.full_name,
+                            listingId: tx.listing_id || tx.listing?.id,
+                          }) : undefined}
+                          lang={lang}
+                        />
                       )
                     })}
 
@@ -1596,51 +1365,42 @@ export function ProfileClient({
                     {outgoingSwapsList.map((s: any) => {
                       const book = s.listing?.book
                       const seller = s.listing?.seller
+                      const meetup = parseMeetupInfo(s)
 
                       return (
-                        <div key={s.id} className="p-4 rounded-2xl border bg-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="swap" className="text-[10px] font-bold">
-                                🔄 {lang === 'ar' ? 'طلب مبادلة أرسلته' : 'Sent Swap Request'}
-                              </Badge>
-                              <Badge className={cn('text-[10px] font-bold', s.status === 'ACCEPTED' ? 'bg-emerald-500/10 text-emerald-600' : s.status === 'REJECTED' ? 'bg-red-500/10 text-red-600' : 'bg-amber-500/10 text-amber-600 border-amber-500/30')}>
-                                {s.status === 'ACCEPTED' ? (lang === 'ar' ? 'تم القبول ✅' : 'Accepted') : s.status === 'REJECTED' ? (lang === 'ar' ? 'مرفوض ❌' : 'Declined') : (lang === 'ar' ? 'قيد الانتظار ⏳' : 'Pending')}
-                              </Badge>
-                            </div>
-                            <p className="text-xs font-black text-foreground mt-1 truncate max-w-xs">{book?.title || 'كتاب'}</p>
-                            <p className="text-[11px] text-muted-foreground">
-                              {lang === 'ar' ? 'المالك:' : 'Owner:'} {seller?.full_name || 'قارئ'} • {formatRelativeTime(s.created_at, lang)}
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {s.status === 'ACCEPTED' && (
-                              <Button
-                                size="sm"
-                                onClick={() => setQrModalData({
-                                  isOpen: true,
-                                  swapId: s.id,
-                                  bookTitle: book?.title || 'كتاب',
-                                  meetupLocation: s.agreed_meetup_location || s.proposed_meetup_location,
-                                  transactionType: 'SWAP',
-                                  otherPartyId: seller?.id,
-                                  otherPartyName: seller?.full_name,
-                                  listingId: s.listing_id || s.listing?.id,
-                                  swapListingId: s.offered_listing_id || s.offered_listing?.id,
-                                })}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs gap-1.5 rounded-xl cursor-pointer"
-                              >
-                                <QrCode className="h-3.5 w-3.5" />
-                                <span>{lang === 'ar' ? 'رمز QR للمقابلة' : 'Meetup QR'}</span>
-                              </Button>
-                            )}
-                            <Link href="/transactions">
-                              <Button size="sm" variant="outline" className="text-xs font-bold gap-1 rounded-xl">
-                                {lang === 'ar' ? 'تفاصيل الطلب' : 'Details'}
-                              </Button>
-                            </Link>
-                          </div>
-                        </div>
+                        <DetailedDealCard
+                          key={`outgoing-swap-${s.id}`}
+                          id={s.id}
+                          type="SWAP"
+                          status={s.status}
+                          createdAt={s.created_at}
+                          isIncoming={false}
+                          counterparty={seller}
+                          primaryListing={s.listing}
+                          offeredListing={s.offered_listing}
+                          meetupLocation={s.agreed_meetup_location || s.proposed_meetup_location || meetup?.location}
+                          meetupAt={s.agreed_meetup_at || meetup?.at}
+                          proposedTimes={meetup?.times}
+                          deliveryMethod={s.preferred_delivery || meetup?.deliveryMethod || 'MEETUP'}
+                          buyerNote={s.message}
+                          sellerNote={s.response_message}
+                          onCancel={s.status === 'PENDING' ? () => handleCancelSwap(s) : undefined}
+                          isCancelLoading={actionLoading === `swap-cancel-${s.id}`}
+                          onChat={seller?.id ? () => handleChatWithUser(seller.id, s.listing_id || s.listing?.id, `chat-swap-out-${s.id}`) : undefined}
+                          isChatLoading={chatLoadingKey === `chat-swap-out-${s.id}`}
+                          onOpenQrModal={s.status === 'ACCEPTED' ? () => setQrModalData({
+                            isOpen: true,
+                            swapId: s.id,
+                            bookTitle: book?.title || 'كتاب',
+                            meetupLocation: s.agreed_meetup_location || s.proposed_meetup_location || meetup?.location,
+                            transactionType: 'SWAP',
+                            otherPartyId: seller?.id,
+                            otherPartyName: seller?.full_name,
+                            listingId: s.listing_id || s.listing?.id,
+                            swapListingId: s.offered_listing_id || s.offered_listing?.id,
+                          }) : undefined}
+                          lang={lang}
+                        />
                       )
                     })}
                   </div>
