@@ -130,16 +130,29 @@ export function MeetupQrModal({
 
   // Start Camera Scanning
   const startCamera = async () => {
+    stopCamera()
     setCameraError(null)
     setVerificationError(null)
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-      })
+      let stream: MediaStream
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+        })
+      } catch {
+        // Fallback for laptops/webcams or browsers without environment camera
+        stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      }
+
       streamRef.current = stream
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         videoRef.current.setAttribute('playsinline', 'true')
+        videoRef.current.muted = true
         await videoRef.current.play()
         setIsCameraActive(true)
         scanFrame()
@@ -162,13 +175,27 @@ export function MeetupQrModal({
     const canvas = canvasRef.current
     const ctx = canvas.getContext('2d', { willReadFrequently: true })
 
-    if (video.readyState === video.HAVE_ENOUGH_DATA && ctx) {
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-      const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: 'dontInvert',
+    if (video.readyState >= 2 && video.videoWidth > 0 && ctx) {
+      // Downsample high-res video frames to 640px max dimension for smooth 60fps scanning
+      const maxDim = 640
+      let w = video.videoWidth
+      let h = video.videoHeight
+      if (w > maxDim || h > maxDim) {
+        if (w > h) {
+          h = Math.round((h * maxDim) / w)
+          w = maxDim
+        } else {
+          w = Math.round((w * maxDim) / h)
+          h = maxDim
+        }
+      }
+
+      canvas.width = w
+      canvas.height = h
+      ctx.drawImage(video, 0, 0, w, h)
+      const imageData = ctx.getImageData(0, 0, w, h)
+      const code = jsQR(imageData.data, w, h, {
+        inversionAttempts: 'attemptBoth',
       })
 
       if (code && code.data) {
@@ -190,14 +217,28 @@ export function MeetupQrModal({
     reader.onload = event => {
       const img = new Image()
       img.onload = () => {
+        // Downscale large smartphone photos/screenshots to max 1000px so jsQR processes in milliseconds
+        const maxDim = 1000
+        let w = img.width
+        let h = img.height
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w)
+            w = maxDim
+          } else {
+            w = Math.round((w * maxDim) / h)
+            h = maxDim
+          }
+        }
+
         const canvas = document.createElement('canvas')
-        canvas.width = img.width
-        canvas.height = img.height
+        canvas.width = w
+        canvas.height = h
         const ctx = canvas.getContext('2d')
         if (ctx) {
-          ctx.drawImage(img, 0, 0)
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-          const code = jsQR(imageData.data, imageData.width, imageData.height)
+          ctx.drawImage(img, 0, 0, w, h)
+          const imageData = ctx.getImageData(0, 0, w, h)
+          const code = jsQR(imageData.data, w, h, { inversionAttempts: 'attemptBoth' })
           if (code && code.data) {
             handleConfirmVerification(code.data)
           } else {
