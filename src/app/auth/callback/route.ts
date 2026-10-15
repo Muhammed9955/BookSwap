@@ -31,11 +31,12 @@ export async function GET(request: Request) {
         .eq('id', data.user.id)
         .maybeSingle()
 
+      const meta = data.user.user_metadata || {}
+      const fullName = meta.full_name || meta.name || ''
+      const avatarUrl = meta.avatar_url || meta.picture || ''
+
       // If user profile doesn't exist yet, create it from Google user metadata
       if (!profile) {
-        const meta = data.user.user_metadata || {}
-        const fullName = meta.full_name || meta.name || ''
-        const avatarUrl = meta.avatar_url || meta.picture || ''
         const referralCode = 'BOOK-' + Math.random().toString(36).substring(2, 8).toUpperCase()
 
         await supabase.from('profiles').insert({
@@ -49,6 +50,18 @@ export async function GET(request: Request) {
         })
 
         return NextResponse.redirect(`${origin}/onboarding`)
+      }
+
+      // If profile exists but is missing avatar or full name, sync it from Google OAuth
+      const updates: Record<string, string> = {}
+      if (!profile.avatar_url && avatarUrl) {
+        updates.avatar_url = avatarUrl
+      }
+      if (!profile.full_name && fullName) {
+        updates.full_name = fullName
+      }
+      if (Object.keys(updates).length > 0) {
+        await supabase.from('profiles').update(updates).eq('id', data.user.id)
       }
 
       if (!profile.onboarding_completed) {

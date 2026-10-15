@@ -74,7 +74,16 @@ export function AuthProvider({
       ])
 
       if (profileRes.data) {
-        const p = profileRes.data as UserProfile
+        const p = { ...(profileRes.data as UserProfile) }
+        if (!p.avatar_url) {
+          const { data: { session } } = await supabase.auth.getSession()
+          const meta = session?.user?.user_metadata || {}
+          const googleAvatar = meta.avatar_url || meta.picture || ''
+          if (googleAvatar) {
+            p.avatar_url = googleAvatar
+            supabase.from('profiles').update({ avatar_url: googleAvatar }).eq('id', userId).then()
+          }
+        }
         setProfile(p)
         setAnalyticsUser(userId, {
           role: p.role,

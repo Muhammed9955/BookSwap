@@ -38,6 +38,17 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
   if (!profile) notFound()
 
+  const isOwnProfile = currentUser ? currentUser.id === profile.id : false
+
+  if (isOwnProfile && !profile.avatar_url && currentUser) {
+    const meta = currentUser.user_metadata || {}
+    const googleAvatar = meta.avatar_url || meta.picture || ''
+    if (googleAvatar) {
+      profile.avatar_url = googleAvatar
+      await supabase.from('profiles').update({ avatar_url: googleAvatar }).eq('id', currentUser.id)
+    }
+  }
+
   const [{ data: listings }, { data: ratings }, { count: followerCount }] = await Promise.all([
     supabase.from('book_listings')
       .select('*, book:books(title, title_ar, author, cover_image_url), images:book_images(url, is_primary), area:areas(name_ar, name_en)')
@@ -56,7 +67,6 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   ])
 
   let isFollowing = false
-  const isOwnProfile = currentUser ? currentUser.id === profile.id : false
 
   if (currentUser && !isOwnProfile) {
     const { data: followData } = await supabase

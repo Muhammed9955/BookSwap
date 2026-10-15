@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -80,11 +80,25 @@ export function ProfileSettingsClient({
   const [selectedAreaId, setSelectedAreaId] = useState(profile?.area_id || '')
   const [selectedGenreIds, setSelectedGenreIds] = useState<string[]>(initialGenreIds)
 
+  const [googleAvatarUrl, setGoogleAvatarUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [passwordResetSent, setPasswordResetSent] = useState(false)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      const meta = user?.user_metadata || {}
+      const gAvatar = meta.avatar_url || meta.picture || null
+      if (gAvatar) {
+        setGoogleAvatarUrl(gAvatar)
+        if (!profile?.avatar_url) {
+          setAvatarUrl(gAvatar)
+        }
+      }
+    })
+  }, [profile?.avatar_url, supabase])
 
   const selectedCity = cities.find(c => c.id === selectedCityId)
   const areas = selectedCity?.areas ?? []
@@ -418,6 +432,18 @@ export function ProfileSettingsClient({
                             )}
                             {lang === 'ar' ? 'رفع صورة من جهازك' : 'Upload photo'}
                           </Button>
+                          {googleAvatarUrl && avatarUrl !== googleAvatarUrl && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setAvatarUrl(googleAvatarUrl)}
+                              className="gap-1.5 text-xs font-bold border-primary/40 text-primary hover:bg-primary/5"
+                            >
+                              <Sparkles className="h-3.5 w-3.5 text-primary" />
+                              {lang === 'ar' ? 'استخدام صورة حساب Google' : 'Use Google photo'}
+                            </Button>
+                          )}
                           {avatarUrl && (
                             <Button
                               type="button"

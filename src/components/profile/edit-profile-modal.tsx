@@ -73,6 +73,7 @@ export function EditProfileModal({
   const [selectedAreaId, setSelectedAreaId] = useState(profile?.area_id || '')
   const [selectedGenreIds, setSelectedGenreIds] = useState<string[]>([])
 
+  const [googleAvatarUrl, setGoogleAvatarUrl] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -84,7 +85,7 @@ export function EditProfileModal({
 
     async function loadData() {
       try {
-        const [{ data: citiesData }, { data: categoriesData }, { data: genresData }] =
+        const [{ data: citiesData }, { data: categoriesData }, { data: genresData }, { data: authData }] =
           await Promise.all([
             supabase
               .from('cities')
@@ -100,18 +101,28 @@ export function EditProfileModal({
               .from('profile_genres')
               .select('category_id')
               .eq('profile_id', profile.id),
+            supabase.auth.getUser(),
           ])
 
         if (citiesData) setCities(citiesData as Array<City & { areas: Area[] }>)
         if (categoriesData) setCategories(categoriesData as Category[])
         if (genresData) setSelectedGenreIds(genresData.map(g => g.category_id))
+
+        const meta = authData?.user?.user_metadata || {}
+        const gAvatar = meta.avatar_url || meta.picture || null
+        if (gAvatar) {
+          setGoogleAvatarUrl(gAvatar)
+          if (!profile?.avatar_url) {
+            setAvatarUrl(gAvatar)
+          }
+        }
       } catch (err) {
         console.error('Failed to load edit profile options:', err)
       }
     }
 
     loadData()
-  }, [isOpen, profile?.id, supabase])
+  }, [isOpen, profile?.id, profile?.avatar_url, supabase])
 
   // Sync state if profile prop changes
   useEffect(() => {
@@ -431,6 +442,18 @@ export function EditProfileModal({
                         )}
                         {lang === 'ar' ? 'رفع صورة من جهازك' : 'Upload from device'}
                       </Button>
+                      {googleAvatarUrl && avatarUrl !== googleAvatarUrl && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setAvatarUrl(googleAvatarUrl)}
+                          className="gap-1.5 text-xs font-bold border-primary/40 text-primary hover:bg-primary/5"
+                        >
+                          <Sparkles className="h-3.5 w-3.5 text-primary" />
+                          {lang === 'ar' ? 'استخدام صورة حساب Google' : 'Use Google photo'}
+                        </Button>
+                      )}
                       {avatarUrl && (
                         <Button
                           type="button"
