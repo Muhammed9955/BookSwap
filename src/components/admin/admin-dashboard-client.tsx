@@ -5,7 +5,8 @@ import Link from 'next/link'
 import {
   Users, BookOpen, ShoppingBag, AlertTriangle, Star, TrendingUp,
   BarChart2, Shield, Eye, EyeOff, Trash2, CheckCircle2, Clock,
-  Edit3, MapPin, Search, Plus, X, Check, Coffee, Building
+  Edit3, MapPin, Search, Plus, X, Check, Coffee, Building,
+  Smartphone, Download, ExternalLink, Activity, Calendar, ArrowUpRight
 } from 'lucide-react'
 import type { DashboardStats, Community, CommunityOrgType } from '@/types'
 import { Button } from '@/components/ui/button'
@@ -29,6 +30,7 @@ interface AdminDashboardClientProps {
 
 const navItems = [
   { id: 'overview', labelAr: 'نظرة عامة', labelEn: 'Overview', icon: BarChart2 },
+  { id: 'analytics', labelAr: 'المستخدمون والاحتفاظ', labelEn: 'Active Users & Retention', icon: TrendingUp },
   { id: 'communities', labelAr: 'المجتمعات', labelEn: 'Communities', icon: Users },
   { id: 'listings', labelAr: 'الإعلانات', labelEn: 'Listings', icon: BookOpen },
   { id: 'users', labelAr: 'المستخدمون', labelEn: 'Users', icon: Shield },
@@ -168,13 +170,69 @@ export function AdminDashboardClient({
     return matchesType && matchesSearch
   })
 
-  const kpis = [
-    { labelAr: 'إجمالي المستخدمين', labelEn: 'Total Users', value: stats.total_users, icon: Users, color: 'text-blue-500' },
-    { labelAr: 'المجتمعات', labelEn: 'Communities', value: communities.length, icon: Users, color: 'text-emerald-500' },
-    { labelAr: 'الإعلانات النشطة', labelEn: 'Active Listings', value: stats.active_listings, icon: BookOpen, color: 'text-green-500' },
-    { labelAr: 'المعاملات', labelEn: 'Transactions', value: stats.total_transactions, icon: ShoppingBag, color: 'text-purple-500' },
-    { labelAr: 'بلاغات معلقة', labelEn: 'Pending Reports', value: stats.pending_reports, icon: AlertTriangle, color: 'text-red-500' },
-    { labelAr: 'مميزة', labelEn: 'Featured', value: stats.featured_listings, icon: Star, color: 'text-amber-500' },
+  const kpis: Array<{
+    labelAr: string
+    labelEn: string
+    value: string | number
+    icon: any
+    color: string
+    subtextAr?: string
+    subtextEn?: string
+  }> = [
+    {
+      labelAr: 'مستخدمون فريدون',
+      labelEn: 'Unique Users',
+      value: stats.total_users,
+      icon: Users,
+      color: 'text-blue-500',
+      subtextAr: `+${stats.new_users_today || 0} اليوم`,
+      subtextEn: `+${stats.new_users_today || 0} today`,
+    },
+    {
+      labelAr: 'نشطون اليوم (DAU)',
+      labelEn: 'Daily Active (DAU)',
+      value: stats.dau || stats.active_users,
+      icon: Activity,
+      color: 'text-emerald-500',
+      subtextAr: 'آخر 24 ساعة',
+      subtextEn: 'Last 24 hours',
+    },
+    {
+      labelAr: 'نشطون شهرياً (MAU)',
+      labelEn: 'Monthly Active (MAU)',
+      value: stats.mau || stats.total_users,
+      icon: TrendingUp,
+      color: 'text-teal-500',
+      subtextAr: 'آخر 30 يوماً',
+      subtextEn: 'Last 30 days',
+    },
+    {
+      labelAr: 'معدل الاحتفاظ والتفاعل',
+      labelEn: 'Stickiness Ratio',
+      value: `${stats.stickiness_ratio || 0}%`,
+      icon: Star,
+      color: 'text-amber-500',
+      subtextAr: 'DAU / MAU',
+      subtextEn: 'DAU / MAU',
+    },
+    {
+      labelAr: 'الإعلانات النشطة',
+      labelEn: 'Active Listings',
+      value: stats.active_listings,
+      icon: BookOpen,
+      color: 'text-green-500',
+      subtextAr: `من ${stats.total_listings}`,
+      subtextEn: `of ${stats.total_listings}`,
+    },
+    {
+      labelAr: 'المعاملات',
+      labelEn: 'Transactions',
+      value: stats.total_transactions,
+      icon: ShoppingBag,
+      color: 'text-purple-500',
+      subtextAr: `${stats.completed_transactions} مكتملة`,
+      subtextEn: `${stats.completed_transactions} done`,
+    },
   ]
 
   const hideListing = async (id: string) => {
@@ -288,10 +346,17 @@ export function AdminDashboardClient({
                       <div className={cn('mb-2', kpi.color)}>
                         <kpi.icon className="h-5 w-5" />
                       </div>
-                      <p className="text-2xl font-extrabold">{kpi.value.toLocaleString()}</p>
+                      <p className="text-2xl font-extrabold">
+                        {typeof kpi.value === 'number' ? kpi.value.toLocaleString() : kpi.value}
+                      </p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {lang === 'ar' ? kpi.labelAr : kpi.labelEn}
                       </p>
+                      {(kpi.subtextAr || kpi.subtextEn) && (
+                        <p className="text-[10px] text-muted-foreground/75 mt-0.5 font-medium">
+                          {lang === 'ar' ? kpi.subtextAr : kpi.subtextEn}
+                        </p>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
@@ -368,6 +433,289 @@ export function AdminDashboardClient({
                   </CardContent>
                 </Card>
               )}
+            </div>
+          )}
+
+          {/* Analytics & Retention Tab */}
+          {activeTab === 'analytics' && (
+            <div className="space-y-6">
+              {/* Header & GA4 Quick Action */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 rounded-2xl border border-primary/20 bg-primary/5">
+                <div>
+                  <h2 className="text-lg font-bold flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                    <span>{lang === 'ar' ? 'تحليلات المستخدمين النشطين ومعدل الاحتفاظ' : 'Active Users, Unique Users & Retention'}</span>
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {lang === 'ar'
+                      ? 'مؤشرات حية للنشاط اليومي والأسبوعي والشهري، معدل الالتصاق، وتتبع تنزيل التطبيق عبر Google Analytics 4 (GA4)'
+                      : 'Live DAU/WAU/MAU metrics, stickiness ratio, and app download tracking powered by Google Analytics 4 (GA4)'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <a
+                    href="https://analytics.google.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs hover:bg-primary/90 transition-all"
+                  >
+                    <span>{lang === 'ar' ? 'فتح Google Analytics 4' : 'Open Google Analytics 4'}</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                </div>
+              </div>
+
+              {/* 1. Active Users Overview (DAU / WAU / MAU) */}
+              <div>
+                <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-emerald-500" />
+                  <span>{lang === 'ar' ? 'المستخدمون النشطون (Active Users)' : 'Active Users (DAU / WAU / MAU)'}</span>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <Card className="border border-border/80">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-muted-foreground">
+                          {lang === 'ar' ? 'نشطون اليوم (DAU)' : 'Daily Active Users (DAU)'}
+                        </span>
+                        <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      </div>
+                      <p className="text-3xl font-extrabold text-foreground mt-2">
+                        {(stats.dau || stats.active_users || 0).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {lang === 'ar' ? 'مستخدمون تفاعلوا خلال آخر 24 ساعة' : 'Users active within last 24 hours'}
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border border-border/80">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-muted-foreground">
+                          {lang === 'ar' ? 'نشطون أسبوعياً (WAU)' : 'Weekly Active Users (WAU)'}
+                        </span>
+                        <Calendar className="h-4 w-4 text-teal-500" />
+                      </div>
+                      <p className="text-3xl font-extrabold text-foreground mt-2">
+                        {(stats.wau || 0).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {lang === 'ar' ? 'مستخدمون تفاعلوا خلال آخر 7 أيام' : 'Users active within last 7 days'}
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="border border-border/80">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-muted-foreground">
+                          {lang === 'ar' ? 'نشطون شهرياً (MAU)' : 'Monthly Active Users (MAU)'}
+                        </span>
+                        <TrendingUp className="h-4 w-4 text-primary" />
+                      </div>
+                      <p className="text-3xl font-extrabold text-foreground mt-2">
+                        {(stats.mau || stats.total_users || 0).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {lang === 'ar' ? 'مستخدمون تفاعلوا خلال آخر 30 يوماً' : 'Users active within last 30 days'}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* 2. Retention & Stickiness Index */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <Card className="border border-border/80">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-bold flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <Star className="h-4 w-4 text-amber-500" />
+                        <span>{lang === 'ar' ? 'معدل الالتصاق والاحتفاظ (Stickiness Ratio)' : 'User Stickiness Ratio (DAU / MAU)'}</span>
+                      </span>
+                      <Badge variant="outline" className="text-xs font-bold text-primary">
+                        DAU / MAU
+                      </Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-2">
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-4xl font-extrabold text-foreground">
+                        {stats.stickiness_ratio || 0}%
+                      </span>
+                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        {(stats.stickiness_ratio || 0) >= 30
+                          ? (lang === 'ar' ? 'تفاعل ممتاز 🚀' : 'Exceptional 🚀')
+                          : (stats.stickiness_ratio || 0) >= 15
+                          ? (lang === 'ar' ? 'جيد ومستقر ✅' : 'Healthy ✅')
+                          : (lang === 'ar' ? 'قيد النمو والتحفيز 🌱' : 'Growing 🌱')}
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-muted rounded-full h-2.5 mt-3 overflow-hidden">
+                      <div
+                        className="bg-primary h-2.5 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(100, Math.max(5, stats.stickiness_ratio || 0))}%` }}
+                      />
+                    </div>
+
+                    <p className="text-xs text-muted-foreground mt-3 leading-relaxed">
+                      {lang === 'ar'
+                        ? 'معدل الالتصاق يوضح نسبة القراء الذين يعودون يومياً مقارنة بالمستخدمين النشطين شهرياً. المعيار الذهبي للتطبيقات الاجتماعية الناجحة يتراوح بين 20% و 50%.'
+                        : 'Stickiness ratio calculates the percentage of monthly users returning daily. A ratio of 20%+ represents healthy habit-forming engagement.'}
+                    </p>
+                  </CardContent>
+                </Card>
+
+                {/* 3. Unique Users & Acquisition */}
+                <Card className="border border-border/80">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2">
+                      <Users className="h-4 w-4 text-blue-500" />
+                      <span>{lang === 'ar' ? 'المستخدمون الفريدون ونمو الحسابات' : 'Unique Users & Account Growth'}</span>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-2">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 rounded-xl bg-muted/40 border border-border/60">
+                        <span className="text-[11px] text-muted-foreground font-medium">
+                          {lang === 'ar' ? 'إجمالي المستخدمين الفريدين' : 'Total Unique Users'}
+                        </span>
+                        <p className="text-xl font-bold mt-1 text-foreground">
+                          {stats.total_users.toLocaleString()}
+                        </p>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-muted/40 border border-border/60">
+                        <span className="text-[11px] text-muted-foreground font-medium">
+                          {lang === 'ar' ? 'مستخدمون جدد اليوم' : 'New Users Today'}
+                        </span>
+                        <p className="text-xl font-bold mt-1 text-emerald-600 dark:text-emerald-400">
+                          +{stats.new_users_today || 0}
+                        </p>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-muted/40 border border-border/60">
+                        <span className="text-[11px] text-muted-foreground font-medium">
+                          {lang === 'ar' ? 'جدد خلال 7 أيام' : 'New Users (7 Days)'}
+                        </span>
+                        <p className="text-xl font-bold mt-1 text-foreground">
+                          +{stats.new_users_week || 0}
+                        </p>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-muted/40 border border-border/60">
+                        <span className="text-[11px] text-muted-foreground font-medium">
+                          {lang === 'ar' ? 'جدد خلال 30 يوماً' : 'New Users (30 Days)'}
+                        </span>
+                        <p className="text-xl font-bold mt-1 text-foreground">
+                          +{stats.new_users_month || 0}
+                        </p>
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] text-muted-foreground mt-3">
+                      {lang === 'ar'
+                        ? 'يتم ربط كل مستخدم بحساب ثابت (User-ID) في Google Analytics 4 لمنع تكرار نفس المستخدم عند دخوله من أجهزة مختلفة.'
+                        : 'Every user is tied to their User-ID in Google Analytics 4 for cross-device deduplication.'}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* 4. App Download & PWA Tracking Actions */}
+              <Card className="border border-border/80">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-bold flex items-center gap-2">
+                    <Download className="h-4 w-4 text-primary" />
+                    <span>{lang === 'ar' ? 'تتبع تثبيت وتنزيل التطبيق (Google Tag Actions)' : 'PWA App Install & Download Tracking'}</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 pt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="p-3 rounded-xl border border-border/60 bg-muted/20">
+                      <div className="flex items-center gap-2 font-bold text-xs text-foreground">
+                        <Smartphone className="h-4 w-4 text-primary" />
+                        <span>app_install</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1.5">
+                        {lang === 'ar'
+                          ? 'حدث قياسي يتم إرساله إلى GA4 تلقائياً عند إتمام المستخدم تثبيت تطبيق وَرَق على شاشة هاتفه أو حاسوبه.'
+                          : 'Standard GA4 event sent automatically when the user confirms app installation on their device.'}
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-xl border border-border/60 bg-muted/20">
+                      <div className="flex items-center gap-2 font-bold text-xs text-foreground">
+                        <Download className="h-4 w-4 text-emerald-500" />
+                        <span>app_download</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1.5">
+                        {lang === 'ar'
+                          ? 'حدث مخصص يسجل النقر على أزرار التنزيل وبانر الـ PWA لمعرفة نسبة تحول الزوار إلى مستخدمين للتطبيق.'
+                          : 'Custom event tracking clicks on install buttons & PWA prompts to measure install conversion rate.'}
+                      </p>
+                    </div>
+
+                    <div className="p-3 rounded-xl border border-border/60 bg-muted/20">
+                      <div className="flex items-center gap-2 font-bold text-xs text-foreground">
+                        <Users className="h-4 w-4 text-blue-500" />
+                        <span>user_identified (User-ID)</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1.5">
+                        {lang === 'ar'
+                          ? 'ربط جلسة الزائر بهويته الدائمة في GA4 لتتبع رحلة عودته ونسبة احتفاظه (Retention Cohorts).'
+                          : 'Links sessions to unique User-ID in GA4 for persistent cohort retention analysis.'}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* 5. Google Analytics 4 (GA4) Practical Guide */}
+              <Card className="border border-primary/20 bg-muted/20">
+                <CardHeader>
+                  <CardTitle className="text-sm font-bold flex items-center justify-between">
+                    <span>{lang === 'ar' ? 'دليل استخراج تقارير الاحتفاظ والمستخدمين من Google Analytics 4' : 'GA4 Step-by-Step Reporting Guide'}</span>
+                    <Badge variant="outline" className="text-xs">GA4 Guide</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-xs text-muted-foreground">
+                  <div className="p-3 rounded-xl bg-card border border-border">
+                    <p className="font-bold text-foreground mb-1">
+                      {lang === 'ar' ? '1. تقرير الاحتفاظ بالدفعات (Cohort Retention):' : '1. Cohort Retention Report:'}
+                    </p>
+                    <p>
+                      {lang === 'ar'
+                        ? 'ادخل إلى GA4 > التقارير (Reports) > دورة الحياة (Lifecycle) > الاحتفاظ (Retention). ستجد رسماً بيانياً يوضح نسبة عودة المستخدمين في اليوم 1، اليوم 7، اليوم 14، واليوم 30.'
+                        : 'Navigate to GA4 > Reports > Lifecycle > Retention to view cohort curves for Day 1, Day 7, Day 14, and Day 30.'}
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-card border border-border">
+                    <p className="font-bold text-foreground mb-1">
+                      {lang === 'ar' ? '2. توحيد المستخدمين الفريدين (User-ID Reporting Identity):' : '2. Deduplicate Unique Users (User-ID):'}
+                    </p>
+                    <p>
+                      {lang === 'ar'
+                        ? 'في GA4 ادخل إلى المسؤول (Admin) > هوية التقارير (Reporting Identity) > اختر "مدمج" (Blended). هذا يدمج زيارات نفس العضو عبر هاتفه والكمبيوتر كشخص فريد واحد.'
+                        : 'In GA4 Admin > Reporting Identity, select "Blended" to stitch visits across mobile web, desktop, and installed PWA.'}
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-card border border-border">
+                    <p className="font-bold text-foreground mb-1">
+                      {lang === 'ar' ? '3. إحصائيات تنزيل التطبيق (App Download Events):' : '3. App Download & Install Conversions:'}
+                    </p>
+                    <p>
+                      {lang === 'ar'
+                        ? 'في GA4 ادخل إلى التقارير > المشاركة (Engagement) > الأحداث (Events) > ابحث عن حدث app_install أو app_download، ويمكنك تعيينه كـ "هدف / تحويل" (Conversion).'
+                        : 'In GA4 Reports > Engagement > Events, inspect app_install and app_download events, and mark them as Key Events / Conversions.'}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 

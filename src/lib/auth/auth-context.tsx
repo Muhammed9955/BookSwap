@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, use
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
+import { setAnalyticsUser } from '@/lib/analytics/gtag'
 
 export interface UserProfile {
   id: string
@@ -73,7 +74,15 @@ export function AuthProvider({
       ])
 
       if (profileRes.data) {
-        setProfile(profileRes.data as UserProfile)
+        const p = profileRes.data as UserProfile
+        setProfile(p)
+        setAnalyticsUser(userId, {
+          role: p.role,
+          city_id: p.city_id,
+          is_verified: p.is_verified,
+        })
+      } else {
+        setAnalyticsUser(userId)
       }
       setUnreadNotifications(notifRes.count ?? 0)
 
@@ -129,6 +138,7 @@ export function AuthProvider({
           setProfile(null)
           setUnreadNotifications(0)
           setUnreadMessages(0)
+          setAnalyticsUser(null)
         }
         setLoading(false)
       }

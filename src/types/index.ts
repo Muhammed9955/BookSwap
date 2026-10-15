@@ -642,6 +642,14 @@ export interface DashboardStats {
   featured_listings: number
   total_messages: number
   gmv: number
+  // Active Users & Retention Metrics
+  dau?: number
+  wau?: number
+  mau?: number
+  new_users_week?: number
+  new_users_month?: number
+  retention_rate?: number
+  stickiness_ratio?: number
 }
 
 // ============================================================

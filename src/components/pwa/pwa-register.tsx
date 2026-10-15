@@ -12,6 +12,7 @@ import {
   showLocalPwaNotification,
   NotificationPermissionState,
 } from '@/lib/notifications/pwa-push'
+import { trackWaraqEvent } from '@/lib/analytics/gtag'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -57,7 +58,15 @@ export function PwaRegister() {
       }
     }
 
+    // Capture browser appinstalled event
+    const handleAppInstalled = () => {
+      console.log('WARAQ PWA was installed on the device')
+      trackWaraqEvent.downloadApp({ method: 'browser_install' })
+      setShowInstallBanner(false)
+    }
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstall)
+    window.addEventListener('appinstalled', handleAppInstalled)
 
     // Check notification permission state
     const currentPerm = getNotificationPermission()
@@ -73,12 +82,14 @@ export function PwaRegister() {
         return () => {
           clearTimeout(timer)
           window.removeEventListener('beforeinstallprompt', handleBeforeInstall)
+          window.removeEventListener('appinstalled', handleAppInstalled)
         }
       }
     }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstall)
+      window.removeEventListener('appinstalled', handleAppInstalled)
     }
   }, [])
 
@@ -141,6 +152,7 @@ export function PwaRegister() {
     const { outcome } = await deferredPrompt.userChoice
     if (outcome === 'accepted') {
       console.log('User accepted the PWA install')
+      trackWaraqEvent.downloadApp({ method: 'pwa_prompt' })
     }
     setDeferredPrompt(null)
     setShowInstallBanner(false)
