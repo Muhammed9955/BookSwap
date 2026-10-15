@@ -824,9 +824,9 @@ async function notifyCommunityAdminOfIntake(
       await pushNotificationSafe(supabase, {
         user_id: comm.admin_id,
         type: 'COMMUNITY_INTAKE_REQUEST',
-        title: `طلب إيداع كتب جديدة بالفرع (${count}) 📦`,
+        title: count > 1 ? `New book drop-off request (${count} books) 📦` : 'New book drop-off request 📦',
         title_ar: `طلب إيداع كتب جديدة بالفرع (${count}) 📦`,
-        body: `طلب عضو إيداع ${countText} في رف مجتمع "${commName}". التعليمات: عند حضور العضو إلى مقر "${hubName}"، افتح ماسح الـ QR أو أدخل كود التحقق [${params.intakePin}] لاعتماد واستلام الكتب دفعة واحدة وإضافتها للرف.`,
+        body: `A member requested to deposit ${count > 1 ? `${count} books` : 'a book'} on the shelf of "${comm.name || commName}". Instructions: When the member visits "${hubName}", open the QR scanner or enter PIN [${params.intakePin}] to verify and approve.`,
         body_ar: `طلب عضو إيداع ${countText} في رف مجتمع "${commName}". التعليمات: عند حضور العضو إلى مقر "${hubName}"، افتح ماسح الـ QR أو أدخل كود التحقق [${params.intakePin}] لاعتماد واستلام الكتب دفعة واحدة وإضافتها للرف.`,
         action_url: `/communities/${comm.slug}?tab=admin&scan=true`,
         data: {
@@ -838,6 +838,79 @@ async function notifyCommunityAdminOfIntake(
     }
   } catch (err) {
     console.warn('[notifyCommunityAdminOfIntake] warning:', err)
+  }
+}
+
+/**
+ * Notify submitter(s) when their book(s) are approved and placed live on the community shelf
+ */
+async function notifySubmittersOfApproval(
+  supabase: any,
+  params: {
+    communityId: string
+    approvedRows: Array<{
+      added_by?: string | null
+      listing?: any
+    }>
+    method?: string
+  }
+) {
+  try {
+    const { data: comm } = await supabase
+      .from('communities')
+      .select('id, name, name_ar, slug')
+      .eq('id', params.communityId)
+      .maybeSingle()
+
+    const commName = comm?.name_ar || comm?.name || 'المجتمع'
+    const commSlug = comm?.slug || params.communityId
+
+    // Group rows by submitter (added_by)
+    const booksBySubmitter = new Map<string, any[]>()
+    for (const row of params.approvedRows) {
+      if (row.added_by) {
+        const list = booksBySubmitter.get(row.added_by) || []
+        list.push(row)
+        booksBySubmitter.set(row.added_by, list)
+      }
+    }
+
+    for (const [submitterId, rows] of booksBySubmitter.entries()) {
+      const count = rows.length
+      const firstRow = rows[0]
+      const rawListing: any = Array.isArray(firstRow?.listing) ? firstRow.listing[0] : firstRow?.listing
+      const rawBook: any = Array.isArray(rawListing?.book) ? rawListing?.book[0] : rawListing?.book
+      const firstTitle = rawListing?.title || rawBook?.title_ar || rawBook?.title_en || 'كتابك'
+
+      await pushNotificationSafe(supabase, {
+        user_id: submitterId,
+        type: 'COMMUNITY_BOOK_APPROVED',
+        title:
+          count > 1
+            ? `Your ${count} books were approved on the shelf! 📚✅`
+            : `Book "${firstTitle}" approved on shelf! 📚✅`,
+        title_ar:
+          count > 1
+            ? `تم اعتماد واستلام ${count} كتب في رف المجتمع! 📚✅`
+            : `تم اعتماد واستلام كتاب "${firstTitle}" في رف المجتمع! 📚✅`,
+        body:
+          count > 1
+            ? `Great news! The admin has verified and placed your ${count} books on the shelf at "${comm?.name || commName}". Members can now read and borrow them.`
+            : `Great news! The admin has verified and placed your book "${firstTitle}" on the shelf at "${comm?.name || commName}". Members can now read and borrow it.`,
+        body_ar:
+          count > 1
+            ? `بشرى سارة! قام مسؤول المجتمع باعتماد واستلام ${count} كتب وإدراجها في رف مجتمع "${commName}". أصبحت كتبك متاحة الآن للقراء والأعضاء!`
+            : `بشرى سارة! قام مسؤول المجتمع باعتماد واستلام كتاب "${firstTitle}" وإدراجه في رف مجتمع "${commName}". أصبح كتابك متاحاً الآن للقراء والأعضاء!`,
+        action_url: `/communities/${commSlug}?tab=shelf`,
+        data: {
+          communityId: params.communityId,
+          count,
+          method: params.method || 'APPROVAL',
+        },
+      })
+    }
+  } catch (err) {
+    console.warn('[notifySubmittersOfApproval] warning:', err)
   }
 }
 
@@ -986,6 +1059,67 @@ export async function updateCommunityBookApproval(params: {
       .eq('id', params.communityBookId)
 
     if (error) throw error
+
+    // Notify submitter of approval or rejection
+    try {
+      let submitterId = params.sellerId
+      let bookTitle = params.bookTitle
+      let commName = params.communityName
+      let commSlug = ''
+
+      if (!submitterId || !bookTitle || !commName) {
+        const { data: cbRow } = await supabase
+          .from('community_books')
+          .select('added_by, community_id, listing:book_listings(title, book:books(title_ar, title_en)), community:communities(name, name_ar, slug)')
+          .eq('id', params.communityBookId)
+          .maybeSingle()
+
+        if (cbRow) {
+          submitterId = submitterId || cbRow.added_by
+          const rawListing: any = Array.isArray(cbRow.listing) ? cbRow.listing[0] : cbRow.listing
+          const rawBook: any = Array.isArray(rawListing?.book) ? rawListing?.book[0] : rawListing?.book
+          bookTitle = bookTitle || rawListing?.title || rawBook?.title_ar || rawBook?.title_en || 'كتابك'
+          const rawComm: any = Array.isArray(cbRow.community) ? cbRow.community[0] : cbRow.community
+          commName = commName || rawComm?.name_ar || rawComm?.name || 'المجتمع'
+          commSlug = rawComm?.slug || cbRow.community_id
+        }
+      }
+
+      if (submitterId && submitterId !== params.adminId) {
+        if (params.status === 'APPROVED') {
+          await pushNotificationSafe(supabase, {
+            user_id: submitterId,
+            type: 'COMMUNITY_BOOK_APPROVED',
+            title: `Book "${bookTitle}" approved on shelf! 📚✅`,
+            title_ar: `تمت الموافقة على كتاب "${bookTitle}" في الرف! 📚✅`,
+            body: `The community admin has approved your book "${bookTitle}". It is now available on the shelf at "${commName}".`,
+            body_ar: `وافق مسؤول المجتمع على إضافة كتاب "${bookTitle}". أصبح متاحاً الآن في رف مجتمع "${commName}"!`,
+            action_url: commSlug ? `/communities/${commSlug}?tab=shelf` : '/communities',
+            data: {
+              communityBookId: params.communityBookId,
+              status: 'APPROVED',
+            },
+          })
+        } else if (params.status === 'REJECTED') {
+          await pushNotificationSafe(supabase, {
+            user_id: submitterId,
+            type: 'COMMUNITY_BOOK_REJECTED',
+            title: `Update regarding "${bookTitle}"`,
+            title_ar: `تحديث بخصوص كتاب "${bookTitle}"`,
+            body: `Your book "${bookTitle}" could not be accepted for the shelf of "${commName}".`,
+            body_ar: `نعتذر، لم يتم قبول كتاب "${bookTitle}" في رف مجتمع "${commName}".`,
+            action_url: '/communities',
+            data: {
+              communityBookId: params.communityBookId,
+              status: 'REJECTED',
+              note: params.adminNote,
+            },
+          })
+        }
+      }
+    } catch (notifErr) {
+      console.warn('[updateCommunityBookApproval] Submitter notification notice:', notifErr)
+    }
 
     return true
   } catch (err) {
@@ -1225,6 +1359,13 @@ export async function approveAllPendingCommunityBooks(params: {
       .in('id', ids)
 
     if (updateErr) throw updateErr
+
+    // Notify all submitters about their approved books
+    await notifySubmittersOfApproval(supabase, {
+      communityId: params.communityId,
+      approvedRows: pending,
+      method: 'BATCH_ADMIN_APPROVAL',
+    })
 
     const mapped = pending.map(mapListingToShelfBook).filter(Boolean) as CommunityShelfBook[]
     return { success: true, count: ids.length, approvedBooks: mapped }
@@ -1487,6 +1628,13 @@ export async function verifyCommunityBookIntakeQr(params: {
         messageEn: 'Failed to update approval status in database.',
       }
     }
+
+    // Notify the submitter(s) that their books have been approved and placed live on the shelf
+    await notifySubmittersOfApproval(supabase, {
+      communityId: params.communityId,
+      approvedRows: matchedRows,
+      method: 'QR_SCAN',
+    })
 
     const mappedBooks = matchedRows
       .map(mapListingToShelfBook)

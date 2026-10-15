@@ -143,7 +143,13 @@ export async function pushNotificationSafe(
 ) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await supabase.from('notifications').insert(payload as any)
+    let { error } = await supabase.from('notifications').insert(payload as any)
+    if (error && (error.message?.includes('enum') || error.code === '22P02')) {
+      // If remote Postgres DB doesn't have custom notification_type enum values yet, fallback to a standard enum
+      const fallbackPayload = { ...payload, type: 'TRANSACTION_COMPLETED' }
+      const res = await supabase.from('notifications').insert(fallbackPayload as any)
+      error = res.error
+    }
     if (error) {
       console.warn('[pushNotificationSafe] Notice from database:', error.message, error.details || '')
     }

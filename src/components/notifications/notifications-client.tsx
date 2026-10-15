@@ -1,13 +1,20 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Check, BellOff } from 'lucide-react'
+import { Check, BellOff, Bell, BellRing, Smartphone, Sparkles } from 'lucide-react'
 import { Notification } from '@/types'
 import { Button } from '@/components/ui/button'
 import { useLanguage } from '@/i18n/language-context'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatRelativeTime } from '@/lib/utils'
 import Link from 'next/link'
+import {
+  isPushNotificationSupported,
+  getNotificationPermission,
+  requestNotificationPermission,
+  showLocalPwaNotification,
+  NotificationPermissionState,
+} from '@/lib/notifications/pwa-push'
 
 const NOTIFICATION_ICONS: Record<string, string> = {
   WISHLIST_MATCH: '🔔',
@@ -31,6 +38,8 @@ const NOTIFICATION_ICONS: Record<string, string> = {
   FOLLOW: '👤',
   COMMUNITY_INTAKE_REQUEST: '📦',
   COMMUNITY_HANDOVER_REQUEST: '☕',
+  COMMUNITY_BOOK_APPROVED: '📚✅',
+  COMMUNITY_BOOK_REJECTED: 'ℹ️',
 }
 
 interface NotificationsClientProps {
@@ -88,10 +97,83 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
     setNotifications(prev => prev.map(n => (n.id === id ? { ...n, is_read: true } : n)))
   }
 
+  const [notifPermission, setNotifPermission] = useState<NotificationPermissionState>('default')
+  const [requestingPerm, setRequestingPerm] = useState(false)
+
+  useEffect(() => {
+    setNotifPermission(getNotificationPermission())
+  }, [])
+
+  const handleEnablePush = async () => {
+    setRequestingPerm(true)
+    try {
+      const res = await requestNotificationPermission()
+      setNotifPermission(res)
+      if (res === 'granted') {
+        showLocalPwaNotification(
+          lang === 'ar' ? 'تم تفعيل إشعارات الهاتف بنجاح! 🔔' : 'Push notifications enabled! 🔔',
+          {
+            body:
+              lang === 'ar'
+                ? 'ستصلك هنا تنبيهات فورية عند اعتماد كتبك بالرف أو طلبات التبادل والشراء.'
+                : 'Instant alerts will be sent when your books are approved or requests arrive.',
+            url: '/notifications',
+          }
+        )
+      }
+    } finally {
+      setRequestingPerm(false)
+    }
+  }
+
   const unreadCount = notifications.filter(n => !n.is_read).length
 
   return (
     <div className="page-container py-6 max-w-2xl">
+      {/* PWA & Native Push Notification Banner */}
+      {isPushNotificationSupported() && notifPermission === 'default' && (
+        <div className="mb-6 rounded-2xl border border-primary/25 bg-primary/5 p-4 backdrop-blur-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <BellRing className="h-5 w-5 animate-pulse" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                <span>{lang === 'ar' ? 'تفعيل إشعارات الهاتف الفورية' : 'Enable Instant Push Notifications'}</span>
+                <span className="rounded-full bg-primary/15 px-1.5 py-0.2 text-[10px] font-bold text-primary">
+                  PWA
+                </span>
+              </h4>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {lang === 'ar'
+                  ? 'احصل على تنبيهات فورية على هاتفك عند اعتماد كتبك، أو وصول طلبات استعارة وتبادل'
+                  : 'Receive native alerts when your books are approved on the shelf or deals arrive'}
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={handleEnablePush}
+            disabled={requestingPerm}
+            className="shrink-0 rounded-xl font-bold shadow-xs flex items-center gap-1.5"
+          >
+            <Bell className="h-4 w-4" />
+            {lang === 'ar' ? 'تفعيل الآن' : 'Enable Now'}
+          </Button>
+        </div>
+      )}
+
+      {isPushNotificationSupported() && notifPermission === 'granted' && (
+        <div className="mb-4 flex items-center justify-between px-3 py-1.5 rounded-xl bg-muted/40 border border-border/60 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span>{lang === 'ar' ? 'إشعارات الهاتف وتطبيق الـ PWA مفعّلة' : 'Mobile & PWA Push Notifications Active'}</span>
+          </div>
+          <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+            {lang === 'ar' ? 'تصلك التنبيهات فوراً ✅' : 'Live Alerts Active ✅'}
+          </span>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold">{lang === 'ar' ? 'الإشعارات' : 'Notifications'}</h1>
