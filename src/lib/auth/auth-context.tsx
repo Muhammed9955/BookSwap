@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import { setAnalyticsUser } from '@/lib/analytics/gtag'
+import { playNotificationChime, showLocalPwaNotification } from '@/lib/notifications/pwa-push'
 
 export interface UserProfile {
   id: string
@@ -166,8 +167,30 @@ export function AuthProvider({
             table: 'notifications',
             filter: `user_id=eq.${user.id}`,
           },
-          () => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (payload: any) => {
             setUnreadNotifications(prev => prev + 1)
+            playNotificationChime()
+            if (payload?.new) {
+              const n = payload.new
+              showLocalPwaNotification(n.title_ar || n.title, {
+                body: n.body_ar || n.body || undefined,
+                url: n.action_url || '/notifications',
+                tag: n.id,
+              })
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            if (user?.id) fetchProfileAndCounts(user.id)
           }
         )
         .subscribe()

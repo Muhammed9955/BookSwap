@@ -30,6 +30,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { getAvatarUrl, cn, formatPrice, formatPriceEn } from '@/lib/utils'
+import { BookQuickViewModal } from '@/components/books/book-quick-view-modal'
 
 export interface DealCounterparty {
   id: string
@@ -182,6 +183,12 @@ export function DetailedDealCard({
 }: DetailedDealCardProps) {
   const [selectedPhotoUrl, setSelectedPhotoUrl] = useState<string | null>(null)
   const [showNotes, setShowNotes] = useState(false)
+  const [selectedModalBook, setSelectedModalBook] = useState<{
+    listing?: DealListing | null
+    book?: DealBook | null
+    roleLabel?: string
+    owner?: DealCounterparty | null
+  } | null>(null)
 
   const isAccepted = status === 'ACCEPTED'
   const isPending = status === 'PENDING'
@@ -458,12 +465,26 @@ export function DetailedDealCard({
         /* SWAP: SIDE-BY-SIDE BOOKS COMPARISON */
         <div className="space-y-2">
           <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-            {lang === 'ar' ? 'مقارنة الكتابين المتبادلين:' : 'Books Being Swapped:'}
+            {lang === 'ar' ? 'مقارنة الكتابين المتبادلين (اضغط على أي كتاب لعرض تفاصيله):' : 'Books Being Swapped (Click book to view details):'}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Book 1: My Book / The Book on Offer */}
-            <div className="flex gap-3.5 p-3.5 rounded-2xl border border-blue-500/30 bg-blue-500/5">
-              <div className="relative h-24 w-16 shrink-0 rounded-xl overflow-hidden bg-muted border border-border shadow-xs">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() =>
+                setSelectedModalBook({
+                  listing: primaryListing,
+                  book: primaryBook,
+                  roleLabel: isIncoming
+                    ? (lang === 'ar' ? '📖 كتابك المطلوب منك' : 'Your Book (You give)')
+                    : (lang === 'ar' ? '📖 الكتاب الذي طلبته' : 'The Book You Want (You get)'),
+                  owner: isIncoming ? null : counterparty,
+                })
+              }
+              className="flex gap-3.5 p-3.5 rounded-2xl border border-blue-500/30 bg-blue-500/5 hover:border-blue-500 hover:shadow-md transition-all cursor-pointer group select-none"
+            >
+              <div className="relative h-24 w-16 shrink-0 rounded-xl overflow-hidden bg-muted border border-border shadow-xs group-hover:scale-105 transition-transform">
                 <Image src={primaryCover} alt="" fill className="object-cover" unoptimized />
               </div>
               <div className="min-w-0 flex-1 space-y-1">
@@ -472,7 +493,7 @@ export function DetailedDealCard({
                     ? (lang === 'ar' ? '📖 كتابك المطلوب منك' : 'Your Book (You give)')
                     : (lang === 'ar' ? '📖 الكتاب الذي طلبته' : 'The Book You Want (You get)')}
                 </span>
-                <h4 className="text-sm font-black text-foreground truncate">
+                <h4 className="text-sm font-black text-foreground truncate group-hover:text-primary transition-colors">
                   {primaryBook?.title_ar || primaryBook?.title || 'الكتاب'}
                 </h4>
                 <p className="text-xs text-muted-foreground truncate">{primaryBook?.author}</p>
@@ -486,12 +507,29 @@ export function DetailedDealCard({
                     </span>
                   )}
                 </div>
+                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-bold group-hover:underline flex items-center gap-1 pt-1">
+                  🔍 {lang === 'ar' ? 'عرض تفاصيل الكتاب' : 'View book details'}
+                </span>
               </div>
             </div>
 
             {/* Book 2: Offered Book */}
-            <div className="flex gap-3.5 p-3.5 rounded-2xl border border-purple-500/30 bg-purple-500/5">
-              <div className="relative h-24 w-16 shrink-0 rounded-xl overflow-hidden bg-muted border border-border shadow-xs">
+            <div
+              role="button"
+              tabIndex={0}
+              onClick={() =>
+                setSelectedModalBook({
+                  listing: offeredListing,
+                  book: offeredBook,
+                  roleLabel: isIncoming
+                    ? (lang === 'ar' ? '🔄 الكتاب المعروض عليك بالمقابل' : 'Offered Book (You get)')
+                    : (lang === 'ar' ? '🔄 كتابك المعروض بالمقابل' : 'Your Offered Book (You give)'),
+                  owner: isIncoming ? counterparty : null,
+                })
+              }
+              className="flex gap-3.5 p-3.5 rounded-2xl border border-purple-500/30 bg-purple-500/5 hover:border-purple-500 hover:shadow-md transition-all cursor-pointer group select-none"
+            >
+              <div className="relative h-24 w-16 shrink-0 rounded-xl overflow-hidden bg-muted border border-border shadow-xs group-hover:scale-105 transition-transform">
                 <Image src={offeredCover} alt="" fill className="object-cover" unoptimized />
               </div>
               <div className="min-w-0 flex-1 space-y-1">
@@ -500,7 +538,7 @@ export function DetailedDealCard({
                     ? (lang === 'ar' ? '🔄 الكتاب المعروض عليك بالمقابل' : 'Offered Book (You get)')
                     : (lang === 'ar' ? '🔄 كتابك المعروض بالمقابل' : 'Your Offered Book (You give)')}
                 </span>
-                <h4 className="text-sm font-black text-foreground truncate">
+                <h4 className="text-sm font-black text-foreground truncate group-hover:text-primary transition-colors">
                   {offeredBook?.title_ar || offeredBook?.title || 'كتاب الطرف الآخر'}
                 </h4>
                 <p className="text-xs text-muted-foreground truncate">{offeredBook?.author}</p>
@@ -514,13 +552,30 @@ export function DetailedDealCard({
                     </span>
                   )}
                 </div>
+                <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold group-hover:underline flex items-center gap-1 pt-1">
+                  🔍 {lang === 'ar' ? 'عرض تفاصيل الكتاب' : 'View book details'}
+                </span>
               </div>
             </div>
           </div>
         </div>
       ) : (
         /* SINGLE BOOK: BUY, BORROW, OR GIVEAWAY */
-        <div className="flex flex-col sm:flex-row gap-4 p-4 rounded-2xl border border-border bg-muted/10">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() =>
+            setSelectedModalBook({
+              listing: primaryListing,
+              book: primaryBook,
+              roleLabel: type === 'BORROW'
+                ? (lang === 'ar' ? 'كتاب الاستعارة ⏱️' : 'Borrow Book')
+                : (lang === 'ar' ? 'كتاب الشراء 🛒' : 'Purchase Book'),
+              owner: counterparty,
+            })
+          }
+          className="flex flex-col sm:flex-row gap-4 p-4 rounded-2xl border border-border bg-muted/10 hover:border-primary/50 hover:shadow-md transition-all cursor-pointer group select-none"
+        >
           {/* Main Book Cover */}
           <div className="flex sm:flex-col items-center gap-2">
             <div className="relative h-28 w-20 shrink-0 rounded-xl overflow-hidden bg-muted border border-border shadow-md">
@@ -556,8 +611,11 @@ export function DetailedDealCard({
           {/* Book Metadata */}
           <div className="flex-1 min-w-0 space-y-2">
             <div>
-              <h3 className="text-base font-black text-foreground">
-                {primaryBook?.title_ar || primaryBook?.title || 'عنوان الكتاب'}
+              <h3 className="text-base font-black text-foreground group-hover:text-primary transition-colors flex items-center justify-between">
+                <span>{primaryBook?.title_ar || primaryBook?.title || 'عنوان الكتاب'}</span>
+                <span className="text-[11px] font-bold text-primary group-hover:underline flex items-center gap-1">
+                  🔍 {lang === 'ar' ? 'عرض تفاصيل الكتاب' : 'View details'}
+                </span>
               </h3>
               <p className="text-xs font-bold text-muted-foreground mt-0.5">
                 {lang === 'ar' ? 'المؤلف:' : 'Author:'} {primaryBook?.author || 'غير محدد'}
@@ -621,76 +679,106 @@ export function DetailedDealCard({
 
       {/* ── 4. MEETUP, TIME, AND LOCATION DETAILS ── */}
       {(meetupLocation || formattedTimes.length > 0 || deliveryMethod) && (
-        <div className="rounded-2xl border border-border/80 bg-muted/20 p-4 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2">
+        <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card to-primary/5 p-4 sm:p-5 space-y-4 shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
             <div className="flex items-center gap-2">
-              {deliveryMethod === 'COMMUNITY_HUB' ? (
-                <span className="inline-flex items-center gap-1.5 text-xs font-black text-indigo-600 dark:text-indigo-400">
-                  <Building2 className="h-4 w-4" />
-                  {lang === 'ar' ? 'نقطة تسليم آمنة (Community Hub)' : 'Safe Community Hub Drop-off'}
+              <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <MapPin className="h-4 w-4" />
+              </div>
+              <div>
+                <span className="text-xs font-black text-foreground block">
+                  {lang === 'ar' ? 'تفاصيل المقابلة والتسليم' : 'Handover & Meetup Coordination'}
                 </span>
-              ) : deliveryMethod === 'COURIER' ? (
-                <span className="inline-flex items-center gap-1.5 text-xs font-black text-blue-600 dark:text-blue-400">
-                  <Truck className="h-4 w-4" />
-                  {lang === 'ar' ? 'توصيل عبر شركة شحن' : 'Courier Delivery'}
+                <span className="text-[10px] text-muted-foreground font-semibold">
+                  {deliveryMethod === 'COMMUNITY_HUB'
+                    ? (lang === 'ar' ? 'نقطة تسليم آمنة (Community Hub)' : 'Community Hub Drop-off')
+                    : deliveryMethod === 'COURIER'
+                    ? (lang === 'ar' ? 'شحن عبر شركة توصيل' : 'Courier Delivery')
+                    : (lang === 'ar' ? 'مقابلة شخصية مباشرة' : 'Direct In-Person Meetup')}
                 </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-600 dark:text-emerald-400">
-                  <MapPin className="h-4 w-4" />
-                  {lang === 'ar' ? 'مقابلة شخصية لتسليم الكتاب' : 'In-Person Handover Meetup'}
-                </span>
-              )}
+              </div>
             </div>
 
-            {isAccepted && (
-              <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                {lang === 'ar' ? 'موعد متفق عليه ومؤكد ✅' : 'Confirmed Handover ✅'}
+            {isAccepted ? (
+              <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/15 px-2.5 py-1 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                <span>{lang === 'ar' ? 'موعد متفق عليه ومؤكد ✅' : 'Confirmed Handover ✅'}</span>
+              </span>
+            ) : (
+              <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/15 px-2.5 py-1 rounded-full border border-amber-500/30">
+                {lang === 'ar' ? 'موعد مقترح بانتظار التأكيد' : 'Proposed Schedule'}
               </span>
             )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            {meetupLocation && (
-              <div className="flex items-start gap-2 bg-card p-3 rounded-xl border border-border/60">
-                <MapPin className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                <div className="min-w-0 flex-1">
-                  <span className="text-[10px] text-muted-foreground font-bold block">
-                    {lang === 'ar' ? 'مكان اللقاء المتفق عليه:' : 'Handover Location:'}
-                  </span>
-                  <p className="font-black text-foreground text-xs mt-0.5 truncate">{meetupLocation}</p>
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(meetupLocation)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-[10px] font-bold text-primary hover:underline mt-1"
-                  >
-                    <span>{lang === 'ar' ? 'فتح في خرائط Google 🗺️' : 'View on Google Maps 🗺️'}</span>
-                    <ExternalLink className="h-2.5 w-2.5" />
-                  </a>
-                </div>
+            {/* Scheduled Date & Time Card */}
+            <div className="flex items-start gap-3 bg-background/90 p-3.5 rounded-xl border border-border/80 shadow-xs">
+              <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                <Calendar className="h-4 w-4" />
               </div>
-            )}
-
-            {formattedTimes.length > 0 && (
-              <div className="flex items-start gap-2 bg-card p-3 rounded-xl border border-border/60">
-                <Calendar className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                <div className="min-w-0 flex-1">
-                  <span className="text-[10px] text-muted-foreground font-bold block">
-                    {lang === 'ar' ? 'الموعد المحدد / المقترح:' : 'Scheduled Date & Time:'}
-                  </span>
-                  <div className="flex flex-wrap gap-1 mt-1">
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider block">
+                  {lang === 'ar' ? 'تاريخ ووقت اللقاء:' : 'Scheduled Date & Time:'}
+                </span>
+                {formattedTimes.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5 mt-1">
                     {formattedTimes.map((time, idx) => (
                       <span
                         key={idx}
-                        className="inline-block px-2 py-0.5 rounded-md bg-primary/10 text-primary font-black text-[11px]"
+                        className="inline-block px-2.5 py-1 rounded-lg bg-primary/10 text-primary font-black text-xs"
                       >
                         {time}
                       </span>
                     ))}
                   </div>
-                </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground font-bold mt-1">
+                    {lang === 'ar' ? 'لم يتم تحديد وقت دقيق بعد' : 'Time not scheduled yet'}
+                  </p>
+                )}
               </div>
-            )}
+            </div>
+
+            {/* Handover Location Card */}
+            <div className="flex items-start gap-3 bg-background/90 p-3.5 rounded-xl border border-border/80 shadow-xs">
+              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+                <MapPin className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider block">
+                  {lang === 'ar' ? 'مكان اللقاء المتفق عليه:' : 'Handover Location:'}
+                </span>
+                {meetupLocation ? (
+                  <>
+                    <p className="font-black text-foreground text-xs mt-1 truncate">{meetupLocation}</p>
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(meetupLocation)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline mt-1.5"
+                    >
+                      <span>{lang === 'ar' ? 'فتح الموقع في خرائط Google 🗺️' : 'View on Google Maps 🗺️'}</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </>
+                ) : (
+                  <p className="text-xs text-muted-foreground font-bold mt-1">
+                    {lang === 'ar' ? 'حدد مكان اللقاء بالتنسيق عبر المحادثة' : 'Coordinate location in chat'}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Safety Reminder Pill */}
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-muted/40 border border-border/60 text-[11px] text-muted-foreground">
+            <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span>
+              {lang === 'ar'
+                ? 'نصيحة أمان: احرص دائماً على أن تكون المقابلة نهاراً في مكان عام ومضاء كالمحطات أو المولات أو الكافيهات.'
+                : 'Safety Tip: Always meet during daylight in public, well-lit spaces like metro stations or cafes.'}
+            </span>
           </div>
 
           {/* Notes toggle */}
@@ -789,6 +877,17 @@ export function DetailedDealCard({
           )}
         </div>
       </div>
+
+      {/* Book Details Quick View Popup */}
+      <BookQuickViewModal
+        isOpen={!!selectedModalBook}
+        onClose={() => setSelectedModalBook(null)}
+        listing={selectedModalBook?.listing}
+        book={selectedModalBook?.book}
+        roleLabel={selectedModalBook?.roleLabel}
+        owner={selectedModalBook?.owner}
+        lang={lang}
+      />
     </div>
   )
 }

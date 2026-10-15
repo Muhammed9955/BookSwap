@@ -23,6 +23,7 @@ import { cn, formatPrice, getConditionLabel, getListingTypeLabel, formatRelative
 import { submitBuyRequest, submitBorrowRequest, submitSwapRequest, createTestIncomingTransaction } from '@/lib/transactions/lifecycle'
 import type { MeetupProposal } from '@/lib/transactions/lifecycle'
 import { MeetupPicker } from '@/components/ui/meetup-picker'
+import { BookQuickViewModal } from '@/components/books/book-quick-view-modal'
 
 export interface ExistingRequestInfo {
   id: string
@@ -118,6 +119,8 @@ export function BookDetailClient({
   )
   const [selectedUserListing, setSelectedUserListing] = useState('')
   const [swapBookSearch, setSwapBookSearch] = useState('')
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [previewModalListing, setPreviewModalListing] = useState<any | null>(null)
 
   const selectedListingObj = userListings.find(l => l.id === selectedUserListing)
   const filteredUserListings = userListings.filter(l => {
@@ -1407,8 +1410,12 @@ export function BookDetailClient({
                 <div className="relative rounded-2xl border-2 border-purple-500/25 bg-gradient-to-br from-purple-500/5 via-indigo-500/5 to-purple-500/10 p-3 sm:p-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 relative items-stretch">
                     {/* Book You Receive */}
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-white/85 dark:bg-slate-800/85 border border-purple-500/20 shadow-xs">
-                      <div className="relative h-14 w-11 rounded-lg overflow-hidden bg-muted shrink-0 border border-slate-200 dark:border-slate-700">
+                    <div
+                      onClick={() => setPreviewModalListing(listing)}
+                      className="flex items-center gap-3 p-3 rounded-xl bg-white/85 dark:bg-slate-800/85 border border-purple-500/20 shadow-xs cursor-pointer hover:border-purple-500/60 hover:shadow-md transition-all group"
+                      title={lang === 'ar' ? 'انقر لمعاينة تفاصيل الكتاب' : 'Click to preview book details'}
+                    >
+                      <div className="relative h-14 w-11 rounded-lg overflow-hidden bg-muted shrink-0 border border-slate-200 dark:border-slate-700 group-hover:scale-105 transition-transform">
                         {primaryImage ? (
                           <Image src={primaryImage} alt={book.title} fill className="object-cover" />
                         ) : (
@@ -1416,10 +1423,15 @@ export function BookDetailClient({
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-purple-700 dark:text-purple-300 bg-purple-500/15 px-1.5 py-0.5 rounded-md mb-1">
-                          {lang === 'ar' ? 'ستحصل على 📥' : 'You Receive 📥'}
-                        </span>
-                        <p className="text-xs font-black truncate text-foreground">{book.title}</p>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-purple-700 dark:text-purple-300 bg-purple-500/15 px-1.5 py-0.5 rounded-md">
+                            {lang === 'ar' ? 'ستحصل على 📥' : 'You Receive 📥'}
+                          </span>
+                          <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold group-hover:underline">
+                            {lang === 'ar' ? 'معاينة 🔍' : 'Preview 🔍'}
+                          </span>
+                        </div>
+                        <p className="text-xs font-black truncate text-foreground group-hover:text-purple-600 transition-colors">{book.title}</p>
                         <p className="text-[10px] text-muted-foreground truncate">{book.author || (lang === 'ar' ? 'كتاب المالك' : "Owner's book")}</p>
                       </div>
                     </div>
@@ -1430,15 +1442,19 @@ export function BookDetailClient({
                     </div>
 
                     {/* Book You Offer */}
-                    <div className={cn(
-                      'flex items-center gap-3 p-3 rounded-xl border transition-all',
-                      selectedListingObj
-                        ? 'bg-white/85 dark:bg-slate-800/85 border-indigo-500/30 shadow-xs'
-                        : 'bg-slate-100/70 dark:bg-slate-800/40 border-dashed border-slate-300 dark:border-slate-700'
-                    )}>
+                    <div
+                      onClick={() => selectedListingObj && setPreviewModalListing(selectedListingObj)}
+                      className={cn(
+                        'flex items-center gap-3 p-3 rounded-xl border transition-all',
+                        selectedListingObj
+                          ? 'bg-white/85 dark:bg-slate-800/85 border-indigo-500/30 shadow-xs cursor-pointer hover:border-indigo-500/60 hover:shadow-md group'
+                          : 'bg-slate-100/70 dark:bg-slate-800/40 border-dashed border-slate-300 dark:border-slate-700'
+                      )}
+                      title={selectedListingObj ? (lang === 'ar' ? 'انقر لمعاينة تفاصيل الكتاب' : 'Click to preview book details') : undefined}
+                    >
                       {selectedListingObj ? (
                         <>
-                          <div className="relative h-14 w-11 rounded-lg overflow-hidden bg-muted shrink-0 border border-slate-200 dark:border-slate-700">
+                          <div className="relative h-14 w-11 rounded-lg overflow-hidden bg-muted shrink-0 border border-slate-200 dark:border-slate-700 group-hover:scale-105 transition-transform">
                             {selectedListingObj.book.cover_image_url ? (
                               <Image src={selectedListingObj.book.cover_image_url} alt={selectedListingObj.book.title} fill className="object-cover" />
                             ) : (
@@ -1446,10 +1462,15 @@ export function BookDetailClient({
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-indigo-700 dark:text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded-md mb-1">
-                              {lang === 'ar' ? 'ستقدّم بدلاً منه 📤' : 'You Offer in Return 📤'}
-                            </span>
-                            <p className="text-xs font-black truncate text-foreground">{selectedListingObj.book.title}</p>
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase text-indigo-700 dark:text-indigo-300 bg-indigo-500/15 px-1.5 py-0.5 rounded-md">
+                                {lang === 'ar' ? 'ستقدّم بدلاً منه 📤' : 'You Offer in Return 📤'}
+                              </span>
+                              <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold group-hover:underline">
+                                {lang === 'ar' ? 'معاينة 🔍' : 'Preview 🔍'}
+                              </span>
+                            </div>
+                            <p className="text-xs font-black truncate text-foreground group-hover:text-indigo-600 transition-colors">{selectedListingObj.book.title}</p>
                             <p className="text-[10px] text-muted-foreground truncate">
                               {selectedListingObj.book.author || (lang === 'ar' ? 'من مكتبتك' : 'From your shelf')}
                             </p>
@@ -1506,19 +1527,18 @@ export function BookDetailClient({
                           filteredUserListings.map(l => {
                             const isSelected = selectedUserListing === l.id
                             return (
-                              <button
+                              <div
                                 key={l.id}
-                                type="button"
                                 onClick={() => setSelectedUserListing(l.id)}
                                 className={cn(
-                                  'w-full text-start p-2.5 sm:p-3 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3',
+                                  'w-full text-start p-2.5 sm:p-3 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3 group',
                                   isSelected
                                     ? 'border-purple-600 bg-purple-500/10 dark:bg-purple-950/40 text-purple-950 dark:text-purple-100 shadow-sm ring-1 ring-purple-500/40'
                                     : 'border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 text-foreground hover:border-purple-400/40'
                                 )}
                               >
                                 {/* Cover Thumbnail */}
-                                <div className="relative h-14 w-10 sm:h-16 sm:w-11 rounded-xl overflow-hidden bg-muted shrink-0 border border-slate-200 dark:border-slate-700">
+                                <div className="relative h-14 w-10 sm:h-16 sm:w-11 rounded-xl overflow-hidden bg-muted shrink-0 border border-slate-200 dark:border-slate-700 group-hover:scale-105 transition-transform">
                                   {l.book.cover_image_url ? (
                                     <Image src={l.book.cover_image_url} alt={l.book.title} fill className="object-cover" />
                                   ) : (
@@ -1541,6 +1561,19 @@ export function BookDetailClient({
                                   )}
                                 </div>
 
+                                {/* Preview Button */}
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setPreviewModalListing(l)
+                                  }}
+                                  className="p-1.5 rounded-lg text-muted-foreground hover:text-purple-600 hover:bg-purple-500/15 transition-colors shrink-0 cursor-pointer"
+                                  title={lang === 'ar' ? 'معاينة تفاصيل الكتاب' : 'Preview book details'}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </button>
+
                                 {/* Radio Check Indicator */}
                                 <div className={cn(
                                   'h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 transition-all',
@@ -1550,7 +1583,7 @@ export function BookDetailClient({
                                 )}>
                                   {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
                                 </div>
-                              </button>
+                              </div>
                             )
                           })
                         ) : (
@@ -1695,6 +1728,33 @@ export function BookDetailClient({
 
               {/* Scrollable Body */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
+                {/* Book & Owner Summary Card with Preview */}
+                <div
+                  onClick={() => setPreviewModalListing(listing)}
+                  className="p-3.5 rounded-2xl bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/25 flex items-center justify-between text-xs cursor-pointer hover:border-emerald-500/60 hover:shadow-xs transition-all group"
+                  title={lang === 'ar' ? 'انقر لمعاينة تفاصيل وصور الكتاب' : 'Click to preview book details & photos'}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="relative h-12 w-9 rounded-lg overflow-hidden bg-muted shrink-0 border border-emerald-500/30 group-hover:scale-105 transition-transform">
+                      {primaryImage ? (
+                        <Image src={primaryImage} alt={book.title} fill className="object-cover" />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center text-base">📖</div>
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-black text-foreground group-hover:text-emerald-600 transition-colors">{book.title}</p>
+                      <p className="text-[11px] text-muted-foreground">{book.author} — المالك: {seller.full_name || 'قارئ'}</p>
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold group-hover:underline">
+                        {lang === 'ar' ? 'معاينة تفاصيل الكتاب 🔍' : 'Quick preview 🔍'}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-xs font-black text-emerald-700 dark:text-emerald-300 px-2.5 py-1 rounded-xl bg-emerald-500/15">
+                    {lang === 'ar' ? 'استعارة' : 'Borrow'}
+                  </span>
+                </div>
+
                 {/* Loan Duration Selector */}
                 <div className="space-y-2">
                   <label className="text-xs font-black text-foreground block">
@@ -1934,12 +1994,25 @@ export function BookDetailClient({
               {/* Body */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
                 {/* Book & Seller Summary Box */}
-                <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs">
+                <div
+                  onClick={() => setPreviewModalListing(listing)}
+                  className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-between text-xs cursor-pointer hover:border-primary/50 hover:shadow-xs transition-all group"
+                  title={lang === 'ar' ? 'انقر لمعاينة تفاصيل وصور الكتاب' : 'Click to preview book details & photos'}
+                >
                   <div className="flex items-center gap-2.5">
-                    <span className="text-xl">📖</span>
+                    <div className="relative h-12 w-9 rounded-lg overflow-hidden bg-muted shrink-0 border border-slate-200 dark:border-slate-700 group-hover:scale-105 transition-transform">
+                      {primaryImage ? (
+                        <Image src={primaryImage} alt={book.title} fill className="object-cover" />
+                      ) : (
+                        <div className="h-full w-full flex items-center justify-center text-base">📖</div>
+                      )}
+                    </div>
                     <div>
-                      <p className="font-black text-foreground">{book.title}</p>
+                      <p className="font-black text-foreground group-hover:text-primary transition-colors">{book.title}</p>
                       <p className="text-[11px] text-muted-foreground">{book.author} — البائع: {seller.full_name || 'قارئ'}</p>
+                      <span className="text-[10px] text-primary font-bold group-hover:underline">
+                        {lang === 'ar' ? 'معاينة تفاصيل الكتاب 🔍' : 'Quick preview 🔍'}
+                      </span>
                     </div>
                   </div>
                   <span className="text-sm font-black text-primary px-3 py-1 rounded-xl bg-primary/10">
@@ -2273,6 +2346,14 @@ export function BookDetailClient({
             </div>
           </section>
         )}
+
+        {/* Book Details Quick View Popup Modal */}
+        <BookQuickViewModal
+          isOpen={!!previewModalListing}
+          onClose={() => setPreviewModalListing(null)}
+          listing={previewModalListing}
+          lang={lang}
+        />
       </div>
     </MainLayout>
   )

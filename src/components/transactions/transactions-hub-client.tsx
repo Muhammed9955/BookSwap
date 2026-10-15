@@ -216,7 +216,10 @@ export function TransactionsHubClient({
     setActionLoading(`swap-${swapId}`)
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const swap = incomingSwaps.find((s: any) => s.id === swapId)
+      const swap = [...incomingSwaps, ...outgoingSwaps].find((s: any) => s.id === swapId)
+      const requesterId = swap?.requester?.id || swap?.requester_id
+      const ownerId = swap?.listing?.seller_id || swap?.seller_id || swap?.seller?.id
+      const bookTitle = swap?.listing?.book?.title || 'الكتاب'
 
       const { error } = await supabase
         .from('swap_requests')
@@ -229,6 +232,8 @@ export function TransactionsHubClient({
       if (!error) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         setIncomingSwaps(prev => prev.map((s: any) => (s.id === swapId ? { ...s, status: newStatus } : s)))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        setOutgoingSwaps(prev => prev.map((s: any) => (s.id === swapId ? { ...s, status: newStatus } : s)))
 
         if (newStatus === 'ACCEPTED') {
           // Reserve BOTH listings when swap is accepted
@@ -239,9 +244,9 @@ export function TransactionsHubClient({
           if (listingIds.length) {
             await supabase.from('book_listings').update({ status: 'RESERVED' }).in('id', listingIds)
           }
-          if (swap?.requester?.id) {
+          if (requesterId) {
             await pushNotificationSafe(supabase, {
-              user_id: swap.requester.id,
+              user_id: requesterId,
               type: 'SWAP_ACCEPTED',
               title: 'تمت الموافقة على طلب المبادلة! 🔄',
               title_ar: 'تمت الموافقة على طلب المبادلة! 🔄',
@@ -250,7 +255,7 @@ export function TransactionsHubClient({
             })
           }
         } else {
-          // Re-activate BOTH listings if swap rejected
+          // Re-activate BOTH listings if swap rejected or cancelled
           const listingIds = [
             swap?.listing?.id,
             swap?.offered_listing?.id,
@@ -258,9 +263,22 @@ export function TransactionsHubClient({
           if (listingIds.length) {
             await supabase.from('book_listings').update({ status: 'ACTIVE' }).in('id', listingIds)
           }
-          if (swap?.requester?.id) {
+
+          // Distinguish between owner declining vs requester withdrawing:
+          if (currentUserId === requesterId && ownerId) {
+            // Requester withdrew/cancelled their offer -> notify owner
             await pushNotificationSafe(supabase, {
-              user_id: swap.requester.id,
+              user_id: ownerId,
+              type: 'SWAP_REJECTED',
+              title: 'تم سحب عرض المبادلة',
+              title_ar: 'تم سحب عرض المبادلة',
+              body: `قام القارئ بإلغاء وسحب عرض المبادلة لكتاب "${bookTitle}".`,
+              action_url: '/transactions',
+            })
+          } else if (requesterId) {
+            // Owner declined -> notify requester
+            await pushNotificationSafe(supabase, {
+              user_id: requesterId,
               type: 'SWAP_REJECTED',
               title: 'اعتذار عن طلب المبادلة',
               title_ar: 'اعتذار عن طلب المبادلة',
@@ -273,7 +291,7 @@ export function TransactionsHubClient({
         showToast(
           newStatus === 'ACCEPTED'
             ? lang === 'ar' ? 'تمت الموافقة على طلب المبادلة بنجاح! تم إشعار القارئ.' : 'Swap request accepted! Reader notified.'
-            : lang === 'ar' ? 'تم رفض طلب المبادلة وإعادة الكتب للمتاح.' : 'Swap request declined. Books re-listed.'
+            : lang === 'ar' ? 'تم تحديث طلب المبادلة وإعادة الكتب للمتاح.' : 'Swap request updated. Books re-listed.'
         )
       }
     } catch (err) {
@@ -327,6 +345,25 @@ export function TransactionsHubClient({
           status: 'CANCELLED',
           cancelled_at: new Date().toISOString(),
         }).eq('id', txId)
+
+        if (listingId) {
+          await supabase.from('book_listings').update({ status: 'ACTIVE' }).eq('id', listingId)
+        }
+
+        const targetNotifyId = currentUserId === sellerId ? buyerId : sellerId
+        if (targetNotifyId) {
+          await pushNotificationSafe(supabase, {
+            user_id: targetNotifyId,
+            type: 'SWAP_REJECTED',
+            title: lang === 'ar' ? 'تم إلغاء الطلب' : 'Request Cancelled',
+            title_ar: 'تم إلغاء الطلب',
+            body: lang === 'ar'
+              ? `تم إلغاء طلب كتاب "${bookTitle || 'الكتاب'}" من قبل الطرف الآخر.`
+              : `The request for book "${bookTitle || 'Book'}" was cancelled by the other party.`,
+            body_ar: `تم إلغاء طلب كتاب "${bookTitle || 'الكتاب'}" من قبل الطرف الآخر.`,
+            action_url: '/transactions',
+          })
+        }
       }
 
       const updates: Record<string, unknown> = { status: newStatus }

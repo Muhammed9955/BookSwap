@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Check, BellOff, Bell, BellRing, Smartphone, Sparkles } from 'lucide-react'
+import { Check, BellOff, Bell, BellRing, Smartphone, Sparkles, Trash2, CheckCheck, Eye, EyeOff } from 'lucide-react'
 import { Notification } from '@/types'
 import { Button } from '@/components/ui/button'
 import { useLanguage } from '@/i18n/language-context'
@@ -13,6 +13,7 @@ import {
   getNotificationPermission,
   requestNotificationPermission,
   showLocalPwaNotification,
+  playNotificationChime,
   NotificationPermissionState,
 } from '@/lib/notifications/pwa-push'
 
@@ -51,8 +52,9 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
   const { lang } = useLanguage()
   const supabase = createClient()
   const [notifications, setNotifications] = useState(initial)
+  const [activeFilter, setActiveFilter] = useState<'all' | 'unread'>('all')
 
-  // Realtime subscription for incoming notifications while on page
+  // Realtime subscription for incoming, updated, or deleted notifications
   useEffect(() => {
     if (!userId) return
 
@@ -69,7 +71,40 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (payload: any) => {
           if (payload.new) {
-            setNotifications(prev => [payload.new as Notification, ...prev])
+            const newItem = payload.new as Notification
+            setNotifications(prev => [newItem, ...prev.filter(n => n.id !== newItem.id)])
+            playNotificationChime()
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          if (payload.new) {
+            const updated = payload.new as Notification
+            setNotifications(prev => prev.map(n => (n.id === updated.id ? updated : n)))
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (payload: any) => {
+          if (payload.old?.id) {
+            setNotifications(prev => prev.filter(n => n.id !== payload.old.id))
           }
         }
       )
@@ -81,20 +116,38 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
   }, [supabase, userId])
 
   const markAllRead = async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
     await supabase
       .from('notifications')
       .update({ is_read: true, read_at: new Date().toISOString() })
       .eq('user_id', userId)
       .eq('is_read', false)
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
   }
 
   const markRead = async (id: string) => {
+    setNotifications(prev => prev.map(n => (n.id === id ? { ...n, is_read: true } : n)))
     await supabase
       .from('notifications')
       .update({ is_read: true, read_at: new Date().toISOString() })
       .eq('id', id)
-    setNotifications(prev => prev.map(n => (n.id === id ? { ...n, is_read: true } : n)))
+  }
+
+  const toggleReadStatus = async (id: string, currentIsRead: boolean, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const nextStatus = !currentIsRead
+    setNotifications(prev => prev.map(n => (n.id === id ? { ...n, is_read: nextStatus } : n)))
+    await supabase
+      .from('notifications')
+      .update({ is_read: nextStatus, read_at: nextStatus ? new Date().toISOString() : null })
+      .eq('id', id)
+  }
+
+  const deleteNotification = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setNotifications(prev => prev.filter(n => n.id !== id))
+    await supabase.from('notifications').delete().eq('id', id)
   }
 
   const [notifPermission, setNotifPermission] = useState<NotificationPermissionState>('default')
@@ -127,6 +180,9 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
   }
 
   const unreadCount = notifications.filter(n => !n.is_read).length
+  const displayedNotifications = activeFilter === 'unread'
+    ? notifications.filter(n => !n.is_read)
+    : notifications
 
   return (
     <div className="page-container py-6 max-w-2xl">
@@ -174,27 +230,73 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
           </span>
         </div>
       )}
-      <div className="flex items-center justify-between mb-5">
+
+      {/* Header & Filter Controls */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
         <div>
           <h1 className="text-xl font-bold">{lang === 'ar' ? 'الإشعارات' : 'Notifications'}</h1>
-          {unreadCount > 0 && (
-            <p className="text-sm text-muted-foreground">
-              {lang === 'ar' ? `${unreadCount} غير مقروء` : `${unreadCount} unread`}
+          {unreadCount > 0 ? (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {lang === 'ar' ? `${unreadCount} إشعار جديد بانتظارك` : `${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}`}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {lang === 'ar' ? 'أنت على اطلاع بكل جديد ✨' : 'All caught up ✨'}
             </p>
           )}
         </div>
-        {unreadCount > 0 && (
-          <Button size="sm" variant="outline" onClick={markAllRead}>
-            <Check className="h-4 w-4 me-1" />
-            {lang === 'ar' ? 'تعليم كمقروء' : 'Mark all read'}
-          </Button>
-        )}
+
+        <div className="flex items-center gap-2">
+          {/* Unread / All Filter Tabs */}
+          <div className="flex items-center p-1 rounded-xl bg-muted/60 border border-border text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setActiveFilter('all')}
+              className={cn(
+                'px-3 py-1 rounded-lg transition-all cursor-pointer',
+                activeFilter === 'all'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {lang === 'ar' ? 'الكل' : 'All'} ({notifications.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveFilter('unread')}
+              className={cn(
+                'px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1',
+                activeFilter === 'unread'
+                  ? 'bg-primary text-white shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <span>{lang === 'ar' ? 'غير مقروء' : 'Unread'}</span>
+              {unreadCount > 0 && (
+                <span className="h-4 w-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-black">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {unreadCount > 0 && (
+            <Button size="sm" variant="outline" onClick={markAllRead} className="rounded-xl text-xs font-bold">
+              <CheckCheck className="h-3.5 w-3.5 me-1 text-primary" />
+              {lang === 'ar' ? 'تعليم الكل' : 'Mark all read'}
+            </Button>
+          )}
+        </div>
       </div>
 
-      {notifications.length === 0 ? (
+      {displayedNotifications.length === 0 ? (
         <div className="empty-state">
           <BellOff className="h-12 w-12 text-muted-foreground mb-3" />
-          <p className="font-medium">{lang === 'ar' ? 'مفيش إشعارات لحد دلوقتي' : 'No notifications yet'}</p>
+          <p className="font-medium">
+            {activeFilter === 'unread'
+              ? (lang === 'ar' ? 'لا توجد إشعارات غير مقروءة' : 'No unread notifications')
+              : (lang === 'ar' ? 'مفيش إشعارات لحد دلوقتي' : 'No notifications yet')}
+          </p>
           <p className="text-sm text-muted-foreground mt-1 text-center max-w-xs">
             {lang === 'ar'
               ? 'ستظهر هنا إشعارات طلبات الشراء والاستعارة والمبادلة عند وصولها'
@@ -208,44 +310,73 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
           </Link>
         </div>
       ) : (
-        <div className="space-y-2">
-          {notifications.map(notif => {
-            const cardContent = (
+        <div className="space-y-2.5">
+          {displayedNotifications.map(notif => {
+            const cardInner = (
               <div
-                onClick={() => !notif.is_read && markRead(notif.id)}
                 className={cn(
-                  'flex items-start gap-3 p-4 rounded-xl border transition-all cursor-pointer hover:bg-muted/30 hover:shadow-sm',
+                  'group relative flex items-start gap-3 p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer',
                   !notif.is_read
-                    ? 'bg-primary/5 border-primary/20'
-                    : 'bg-card border-border'
+                    ? 'bg-primary/5 border-primary/30 shadow-xs hover:border-primary/50'
+                    : 'bg-card border-border hover:bg-muted/30 hover:border-border/80'
                 )}
+                onClick={() => !notif.is_read && markRead(notif.id)}
               >
-                <span className="text-2xl flex-shrink-0 mt-0.5">
+                {/* Notification Emoji Icon */}
+                <div className="h-10 w-10 rounded-xl bg-muted/60 dark:bg-slate-800 flex items-center justify-center text-xl shrink-0 border border-border/40">
                   {NOTIFICATION_ICONS[notif.type] ?? '🔔'}
-                </span>
+                </div>
+
+                {/* Content */}
                 <div className="flex-1 min-w-0">
-                  <p className={cn('text-sm', !notif.is_read ? 'font-semibold' : 'font-medium')}>
-                    {lang === 'ar' ? (notif.title_ar ?? notif.title) : notif.title}
-                  </p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className={cn('text-xs sm:text-sm', !notif.is_read ? 'font-black text-foreground' : 'font-medium text-foreground')}>
+                      {lang === 'ar' ? (notif.title_ar ?? notif.title) : notif.title}
+                    </p>
+                    {!notif.is_read && (
+                      <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5 animate-pulse" />
+                    )}
+                  </div>
+
                   {(notif.body_ar || notif.body) && (
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">
                       {lang === 'ar' ? (notif.body_ar ?? notif.body) : notif.body}
                     </p>
                   )}
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <p className="text-[11px] text-muted-foreground">
-                      {formatRelativeTime(notif.created_at, lang)}
-                    </p>
-                    {notif.action_url && (
-                      <span className="text-[11px] font-bold text-primary">
-                        {lang === 'ar' ? '← اضغط لعرض التفاصيل' : 'Tap to view details →'}
+
+                  <div className="flex items-center justify-between gap-2 mt-2 pt-1 border-t border-border/30">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-muted-foreground">
+                        {formatRelativeTime(notif.created_at, lang)}
                       </span>
-                    )}
+                      {notif.action_url && (
+                        <span className="text-[10px] font-bold text-primary group-hover:underline">
+                          {lang === 'ar' ? 'عرض الطلب ←' : 'View Request →'}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Inline Quick Actions (Toggle Read & Delete) */}
+                    <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={(e) => toggleReadStatus(notif.id, notif.is_read, e)}
+                        className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                        title={notif.is_read ? (lang === 'ar' ? 'تحديد كغير مقروء' : 'Mark unread') : (lang === 'ar' ? 'تحديد كمقروء' : 'Mark read')}
+                      >
+                        {notif.is_read ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5 text-primary" />}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => deleteNotification(notif.id, e)}
+                        className="p-1 rounded-lg text-muted-foreground hover:text-red-600 hover:bg-red-500/10 transition-colors cursor-pointer"
+                        title={lang === 'ar' ? 'حذف الإشعار' : 'Delete notification'}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-                {!notif.is_read && (
-                  <div className="h-2.5 w-2.5 rounded-full bg-primary flex-shrink-0 mt-1.5 animate-pulse" />
-                )}
               </div>
             )
 
@@ -256,17 +387,18 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
                   key={notif.id}
                   href={notif.action_url}
                   onClick={() => !notif.is_read && markRead(notif.id)}
-                  className="block"
+                  className="block focus:outline-none"
                 >
-                  {cardContent}
+                  {cardInner}
                 </Link>
               )
             }
 
-            return <div key={notif.id}>{cardContent}</div>
+            return <div key={notif.id}>{cardInner}</div>
           })}
         </div>
       )}
     </div>
   )
 }
+
