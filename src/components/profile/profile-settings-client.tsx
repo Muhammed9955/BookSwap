@@ -35,6 +35,7 @@ import { useLanguage } from '@/i18n/language-context'
 import { useAuth } from '@/lib/auth/auth-context'
 import { createClient } from '@/lib/supabase/client'
 import { getAvatarUrl, cn } from '@/lib/utils'
+import { compressImageForAvatar } from '@/lib/image-utils'
 import type { Category, City, Area, Profile } from '@/types'
 
 const CURATED_AVATARS = [
@@ -115,22 +116,22 @@ export function ProfileSettingsClient({
     setUploadingAvatar(true)
     setError(null)
     try {
-      const ext = file.name.split('.').pop() || 'jpg'
+      // Compress avatar to lightweight 400x400 WebP (<25KB)
+      const { file: compressedFile, dataUrl } = await compressImageForAvatar(file)
+      const ext = 'webp'
       const filePath = `${profile.id}/avatar-${Date.now()}.${ext}`
 
       const { error: uploadErr } = await supabase.storage
         .from('avatars')
-        .upload(filePath, file, { cacheControl: '3600', upsert: true })
+        .upload(filePath, compressedFile, {
+          cacheControl: '3600',
+          upsert: true,
+          contentType: 'image/webp',
+        })
 
       if (uploadErr) {
-        console.warn('Storage upload error, using fallback reader:', uploadErr)
-        const reader = new FileReader()
-        reader.onload = () => {
-          if (typeof reader.result === 'string') {
-            setAvatarUrl(reader.result)
-          }
-        }
-        reader.readAsDataURL(file)
+        console.warn('Storage upload error, using compact compressed dataUrl:', uploadErr)
+        setAvatarUrl(dataUrl)
       } else {
         const { data: { publicUrl } } = supabase.storage
           .from('avatars')

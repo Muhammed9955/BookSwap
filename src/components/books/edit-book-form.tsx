@@ -22,7 +22,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { useLanguage } from '@/i18n/language-context'
 import { cn } from '@/lib/utils'
-import { compressImageForAi } from '@/lib/image-utils'
+import { compressImageForAi, compressImageForBook } from '@/lib/image-utils'
 
 const editBookSchema = z.object({
   title: z.string().min(1, 'عنوان الكتاب مطلوب'),
@@ -415,30 +415,48 @@ export function EditBookForm({ listing, userId, categories, cities }: EditBookFo
 
       const remainingExisting = existingImages.filter(img => !deletedImageIds.includes(img.id))
 
-      // 5. Upload any newly added images
+      // 5. Compress and Upload any newly added images
       if (newImages.length > 0) {
         const currentSort = remainingExisting.length
         for (let i = 0; i < newImages.length; i++) {
           const img = newImages[i]
-          const ext = img.file.name.split('.').pop()
+
+          // Client-side compression to WebP (<100KB)
+          const { file: compressedFile, dataUrl } = await compressImageForBook(img.file)
+          const ext = 'webp'
           const path = `${userId}/${listing.id}/${currentSort + i}-${Date.now()}.${ext}`
 
           const { error: uploadErr } = await supabase.storage
             .from('book-images')
-            .upload(path, img.file, { cacheControl: '3600' })
+            .upload(path, compressedFile, {
+              cacheControl: '3600',
+              contentType: 'image/webp',
+              upsert: true,
+            })
 
+          let finalImageUrl = ''
           if (!uploadErr) {
             const { data: { publicUrl } } = supabase.storage
               .from('book-images')
               .getPublicUrl(path)
+            finalImageUrl = publicUrl
+          } else {
+            console.warn('Storage upload error for book image, saving compact compressed fallback to db:', uploadErr)
+            finalImageUrl = dataUrl
+          }
 
+          if (finalImageUrl) {
             await supabase.from('book_images').insert({
               listing_id: listing.id,
-              url: publicUrl,
-              storage_path: path,
+              url: finalImageUrl,
+              storage_path: uploadErr ? null : path,
               is_primary: remainingExisting.length === 0 && i === 0,
               sort_order: currentSort + i,
             })
+
+            if (remainingExisting.length === 0 && i === 0 && listing.book_id) {
+              await supabase.from('books').update({ cover_image_url: finalImageUrl }).eq('id', listing.book_id)
+            }
           }
         }
       } else if (remainingExisting.length > 0) {

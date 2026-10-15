@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { compressImageFile } from '@/lib/image-utils'
 
 export interface UploadImageResult {
   url: string
@@ -14,69 +15,19 @@ export async function optimizeImageFile(
   file: File,
   maxWidth = 1400,
   maxHeight = 900,
-  quality = 0.85
+  quality = 0.82
 ): Promise<File> {
   if (typeof window === 'undefined' || file.type === 'image/gif' || file.type === 'image/svg+xml') {
     return file
   }
 
-  return new Promise((resolve) => {
-    const img = new Image()
-    const objectUrl = URL.createObjectURL(file)
-
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl)
-      let { width, height } = img
-
-      if (width <= maxWidth && height <= maxHeight) {
-        resolve(file)
-        return
-      }
-
-      if (width > maxWidth) {
-        height = Math.round((height * maxWidth) / width)
-        width = maxWidth
-      }
-      if (height > maxHeight) {
-        width = Math.round((width * maxHeight) / height)
-        height = maxHeight
-      }
-
-      const canvas = document.createElement('canvas')
-      canvas.width = width
-      canvas.height = height
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        resolve(file)
-        return
-      }
-
-      ctx.drawImage(img, 0, 0, width, height)
-      canvas.toBlob(
-        (blob) => {
-          if (!blob) {
-            resolve(file)
-            return
-          }
-          const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name
-          const optimized = new File([blob], `${baseName}.webp`, {
-            type: 'image/webp',
-            lastModified: Date.now(),
-          })
-          resolve(optimized)
-        },
-        'image/webp',
-        quality
-      )
-    }
-
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl)
-      resolve(file)
-    }
-
-    img.src = objectUrl
-  })
+  try {
+    const res = await compressImageFile(file, { maxWidth, maxHeight, quality, format: 'image/webp' })
+    return res.file
+  } catch (err) {
+    console.warn('optimizeImageFile error, returning original file:', err)
+    return file
+  }
 }
 
 /**
