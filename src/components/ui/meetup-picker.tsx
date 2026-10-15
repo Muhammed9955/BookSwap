@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MapPin, Building2, Truck, Clock, Plus, X, Calendar, Phone, CheckCircle2, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { MeetupProposal, DeliveryPreference } from '@/lib/transactions/lifecycle'
@@ -53,6 +53,17 @@ export function MeetupPicker({ value, onChange, lang = 'ar', className }: Meetup
   const [timePickerMode, setTimePickerMode] = useState<'shortcuts' | 'specific'>(
     value.meetup_date ? 'specific' : 'shortcuts'
   )
+
+  // Auto-populate saved phone from previous requests or profile
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedPhone = localStorage.getItem('waraq_user_phone')
+      if (savedPhone && !value.contact_phone) {
+        onChange({ ...value, contact_phone: savedPhone })
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const getTodayISO = () => new Date().toISOString().split('T')[0]
   const getOffsetDateISO = (days: number) => {
@@ -490,10 +501,22 @@ export function MeetupPicker({ value, onChange, lang = 'ar', className }: Meetup
             dir="ltr"
             placeholder="010 1234 5678"
             value={value.contact_phone ?? ''}
-            onChange={e => onChange({ ...value, contact_phone: e.target.value })}
+            onChange={e => {
+              const val = e.target.value
+              onChange({ ...value, contact_phone: val })
+              if (typeof window !== 'undefined' && val.trim()) {
+                localStorage.setItem('waraq_user_phone', val.trim())
+              }
+            }}
             className="w-full rounded-xl border border-border bg-card px-3.5 py-2.5 text-xs font-mono font-bold placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary shadow-xs"
           />
         </div>
+        {value.contact_phone && (
+          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+            <CheckCircle2 className="h-3 w-3" />
+            <span>{t('محفوظ تلقائياً لجميع طلباتك القادمة', 'Automatically saved for your upcoming requests', lang)}</span>
+          </p>
+        )}
       </div>
 
       {/* ── 5. Live Selection Summary Pill ── */}

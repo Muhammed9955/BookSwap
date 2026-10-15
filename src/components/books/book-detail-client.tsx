@@ -142,7 +142,11 @@ export function BookDetailClient({
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
   // Shared meetup proposal — same picker for Buy, Borrow, and Swap
-  const defaultMeetup: MeetupProposal = { preferred_delivery: 'MEETUP' }
+  const savedUserPhone = (user?.profile as any)?.whatsapp_number || (typeof window !== 'undefined' ? localStorage.getItem('waraq_user_phone') || '' : '')
+  const defaultMeetup: MeetupProposal = {
+    preferred_delivery: 'MEETUP',
+    contact_phone: savedUserPhone || undefined,
+  }
   const [buyMeetup, setBuyMeetup] = useState<MeetupProposal>(defaultMeetup)
   const [borrowMeetup, setBorrowMeetup] = useState<MeetupProposal>(defaultMeetup)
   const [swapMeetup, setSwapMeetup] = useState<MeetupProposal>(defaultMeetup)

@@ -222,43 +222,136 @@ export function ProfileClient({
   const parseMeetupInfo = (item: any) => {
     if (!item) return null
 
-    if (item.meetup_location || item.proposed_meetup_location || item.agreed_meetup_location) {
-      return {
-        location: item.agreed_meetup_location || item.meetup_location || item.proposed_meetup_location,
-        deliveryMethod: item.preferred_delivery || item.delivery_method || 'MEETUP',
-        times: Array.isArray(item.proposed_times) ? item.proposed_times : [],
-        isConfirmed: Boolean(item.agreed_meetup_location || item.meetup_at),
-        at: item.agreed_meetup_at || item.meetup_at || null,
+    let location = ''
+    let deliveryMethod = 'MEETUP'
+    let times: Array<{ label: string; iso?: string }> = []
+    let phone: string | null = null
+    let isConfirmed = false
+    let at: string | null = null
+
+    // 1. Direct migration columns
+    if (item.agreed_meetup_location || item.meetup_location || item.proposed_meetup_location) {
+      location = item.agreed_meetup_location || item.meetup_location || item.proposed_meetup_location
+      deliveryMethod = item.preferred_delivery || item.delivery_method || 'MEETUP'
+      isConfirmed = Boolean(item.agreed_meetup_location || item.meetup_at)
+      at = item.agreed_meetup_at || item.meetup_at || item.proposed_meetup_at || null
+      if (Array.isArray(item.proposed_times)) {
+        times = [...item.proposed_times]
       }
+      if (at) {
+        try {
+          const dObj = new Date(at)
+          if (!isNaN(dObj.getTime())) {
+            const formatted = dObj.toLocaleDateString('ar-EG', {
+              weekday: 'short',
+              day: 'numeric',
+              month: 'short',
+            }) + ` الساعة ${dObj.getHours().toString().padStart(2, '0')}:${dObj.getMinutes().toString().padStart(2, '0')}`
+            if (!times.some(t => t.iso === at || t.label.includes(formatted))) {
+              times.unshift({ label: formatted, iso: at })
+            }
+          }
+        } catch {}
+      }
+      phone = item.contact_phone || null
     }
 
+    // 2. buyer_note JSON fallback (Buy & Borrow)
     if (item.buyer_note) {
       try {
         const d = JSON.parse(item.buyer_note)
         if (d?.meetup) {
-          return {
-            location: d.meetup.location,
-            deliveryMethod: d.meetup.preferred_delivery || 'MEETUP',
-            times: Array.isArray(d.meetup.proposed_times) ? d.meetup.proposed_times : [],
-            isConfirmed: false,
+          if (!location && d.meetup.location) location = d.meetup.location
+          if (d.meetup.preferred_delivery) deliveryMethod = d.meetup.preferred_delivery
+          if (!phone && (d.contact_phone || d.meetup.contact_phone)) {
+            phone = d.contact_phone || d.meetup.contact_phone
+          }
+          if (d.meetup.meetup_date) {
+            try {
+              const dDate = new Date(d.meetup.meetup_date).toLocaleDateString('ar-EG', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+              })
+              const timeFormatted = `${dDate}${d.meetup.meetup_time ? ` الساعة ${d.meetup.meetup_time}` : ''}`
+              if (!times.some(t => t.label.includes(timeFormatted))) {
+                times.unshift({
+                  label: timeFormatted,
+                  iso: `${d.meetup.meetup_date}T${d.meetup.meetup_time || '17:00'}:00`,
+                })
+              }
+            } catch {}
+          }
+          if (Array.isArray(d.meetup.proposed_times)) {
+            d.meetup.proposed_times.forEach((pt: any) => {
+              if (!times.some(t => t.label === pt.label)) times.push(pt)
+            })
           }
         }
       } catch {}
     }
 
-    if (typeof item.message === 'string' && item.message.includes('[المقابلة المقترحة:')) {
-      const match = item.message.match(/\[المقابلة المقترحة:\s*([^\]]+)\]/)
-      if (match) {
-        return {
-          location: match[1],
-          deliveryMethod: 'MEETUP',
-          times: [],
-          isConfirmed: false,
+    // 3. Swap message or combined text fallback
+    const rawMsg = typeof item.message === 'string' ? item.message : (typeof item.buyer_note === 'string' ? item.buyer_note : '')
+    if (rawMsg) {
+      const meetupTagMatch = rawMsg.match(/\[المقابلة المقترحة:\s*([^\]]+)\]/)
+      const candidateString = meetupTagMatch ? meetupTagMatch[1] : (rawMsg.includes('📍') || rawMsg.includes('📅') ? rawMsg : null)
+
+      if (candidateString) {
+        const locMatch = candidateString.match(/📍\s*(?:مكان اللقاء:)?\s*([^|]+)/)
+        if (locMatch && !location) {
+          location = locMatch[1].trim()
         }
+
+        const dateMatch = candidateString.match(/📅\s*الموعد:\s*([^|]+)/)
+        const timesMatch = candidateString.match(/🕐\s*الأوقات المقترحة:\s*([^|]+)/)
+        const timeVal = dateMatch ? dateMatch[1].trim() : (timesMatch ? timesMatch[1].trim() : null)
+        if (timeVal && !times.some(t => t.label === timeVal)) {
+          times.unshift({ label: timeVal, iso: '' })
+        }
+
+        const phoneMatch = candidateString.match(/📞\s*للتواصل السريع:\s*([0-9+\s-]+)/)
+        if (phoneMatch && !phone) {
+          phone = phoneMatch[1].trim()
+        }
+
+        if (candidateString.includes('🏪')) deliveryMethod = 'COMMUNITY_HUB'
+        if (candidateString.includes('🚚')) deliveryMethod = 'COURIER'
       }
     }
 
-    return null
+    // Sanitize location if it accidentally inherited full pipe-string
+    if (location && (location.includes('|') || location.includes('📅') || location.includes('📞') || location.includes('📍'))) {
+      const locMatch = location.match(/📍\s*(?:مكان اللقاء:)?\s*([^|]+)/)
+      const timeMatch = location.match(/📅\s*الموعد:\s*([^|]+)/)
+      const phoneMatch = location.match(/📞\s*للتواصل السريع:\s*([0-9+\s-]+)/)
+
+      if (locMatch) {
+        location = locMatch[1].trim()
+      } else {
+        location = location.split('|')[0].replace(/[📍📅📞]/g, '').trim()
+      }
+
+      if (timeMatch && !times.some(t => t.label === timeMatch[1].trim())) {
+        times.unshift({ label: timeMatch[1].trim(), iso: '' })
+      }
+      if (phoneMatch && !phone) {
+        phone = phoneMatch[1].trim()
+      }
+    }
+
+    if (!location && times.length === 0 && !deliveryMethod && !phone) {
+      return null
+    }
+
+    return {
+      location: location || null,
+      deliveryMethod,
+      times,
+      phone,
+      isConfirmed,
+      at,
+    }
   }
 
   // Helper: Due Date Countdown
@@ -525,9 +618,15 @@ export function ProfileClient({
     if (!note) return null
     try {
       const d = JSON.parse(note)
-      return d.note || d.buyer_note || d.message || null
+      const text = d.note || d.buyer_note || d.message || null
+      if (text && typeof text === 'string') {
+        const cleaned = text.replace(/\[المقابلة المقترحة:\s*[^\]]+\]/g, '').trim()
+        return cleaned || null
+      }
+      return null
     } catch {
-      return note
+      const cleaned = note.replace(/\[المقابلة المقترحة:\s*[^\]]+\]/g, '').trim()
+      return cleaned || null
     }
   }
 
@@ -1116,8 +1215,9 @@ export function ProfileClient({
                           meetupLocation={deal.meetup_location || deal.agreed_meetup_location || deal.proposed_meetup_location || meetup?.location}
                           meetupAt={deal.meetup_at || deal.agreed_meetup_at || meetup?.at}
                           proposedTimes={meetup?.times}
+                          contactPhone={meetup?.phone}
                           deliveryMethod={deal.delivery_method || deal.preferred_delivery || meetup?.deliveryMethod || 'MEETUP'}
-                          buyerNote={isSwap ? deal.message : getCleanBuyerNote(deal.buyer_note)}
+                          buyerNote={isSwap ? getCleanBuyerNote(deal.message) : getCleanBuyerNote(deal.buyer_note)}
                           sellerNote={isSwap ? deal.response_message : deal.seller_note}
                           isBorrowReturn={deal.status === 'BORROWED'}
                           onChat={counterparty?.id ? () => handleChatWithUser(counterparty.id, deal.listing_id || deal.listing?.id, `chat-${deal.id}`) : undefined}
@@ -1213,6 +1313,7 @@ export function ProfileClient({
                           meetupLocation={tx.meetup_location || meetup?.location}
                           meetupAt={tx.meetup_at || meetup?.at}
                           proposedTimes={meetup?.times}
+                          contactPhone={meetup?.phone}
                           deliveryMethod={tx.delivery_method || meetup?.deliveryMethod || 'MEETUP'}
                           buyerNote={getCleanBuyerNote(tx.buyer_note)}
                           sellerNote={tx.seller_note}
@@ -1246,8 +1347,9 @@ export function ProfileClient({
                           meetupLocation={s.agreed_meetup_location || s.proposed_meetup_location || meetup?.location}
                           meetupAt={s.agreed_meetup_at || meetup?.at}
                           proposedTimes={meetup?.times}
+                          contactPhone={meetup?.phone}
                           deliveryMethod={s.preferred_delivery || meetup?.deliveryMethod || 'MEETUP'}
-                          buyerNote={s.message}
+                          buyerNote={getCleanBuyerNote(s.message)}
                           sellerNote={s.response_message}
                           onAccept={() => handleAcceptSwap(s)}
                           onReject={() => handleRejectSwap(s)}
@@ -1300,6 +1402,7 @@ export function ProfileClient({
                         meetupLocation={tx.meetup_location || meetup?.location}
                         meetupAt={tx.meetup_at || meetup?.at}
                         proposedTimes={meetup?.times}
+                        contactPhone={meetup?.phone}
                         deliveryMethod={tx.delivery_method || meetup?.deliveryMethod || 'MEETUP'}
                         buyerNote={getCleanBuyerNote(tx.buyer_note)}
                         sellerNote={tx.seller_note}
@@ -1366,6 +1469,7 @@ export function ProfileClient({
                           meetupLocation={tx.meetup_location || meetup?.location}
                           meetupAt={tx.meetup_at || meetup?.at}
                           proposedTimes={meetup?.times}
+                          contactPhone={meetup?.phone}
                           deliveryMethod={tx.delivery_method || meetup?.deliveryMethod || 'MEETUP'}
                           buyerNote={getCleanBuyerNote(tx.buyer_note)}
                           sellerNote={tx.seller_note}
@@ -1408,8 +1512,9 @@ export function ProfileClient({
                           meetupLocation={s.agreed_meetup_location || s.proposed_meetup_location || meetup?.location}
                           meetupAt={s.agreed_meetup_at || meetup?.at}
                           proposedTimes={meetup?.times}
+                          contactPhone={meetup?.phone}
                           deliveryMethod={s.preferred_delivery || meetup?.deliveryMethod || 'MEETUP'}
-                          buyerNote={s.message}
+                          buyerNote={getCleanBuyerNote(s.message)}
                           sellerNote={s.response_message}
                           onCancel={s.status === 'PENDING' ? () => handleCancelSwap(s) : undefined}
                           isCancelLoading={actionLoading === `swap-cancel-${s.id}`}

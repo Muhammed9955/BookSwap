@@ -283,6 +283,16 @@ export async function submitBuyRequest(params: {
 
   const meetupLine = formatMeetupSummary(meetup)
 
+  // Auto-save contact phone to profile for future requests
+  if (meetup?.contact_phone) {
+    try {
+      await supabase
+        .from('profiles')
+        .update({ whatsapp_number: meetup.contact_phone.trim(), show_whatsapp: true })
+        .eq('id', buyerId)
+    } catch {}
+  }
+
   // 2. Push Notification to Seller
   await pushNotificationSafe(supabase, {
     user_id: sellerId,
@@ -435,8 +445,17 @@ export async function submitBorrowRequest(params: {
   } else {
     transaction = txData
   }
-
   const meetupLine = formatMeetupSummary(meetup)
+
+  // Auto-save contact phone to profile for future requests
+  if (meetup?.contact_phone) {
+    try {
+      await supabase
+        .from('profiles')
+        .update({ whatsapp_number: meetup.contact_phone.trim(), show_whatsapp: true })
+        .eq('id', borrowerId)
+    } catch {}
+  }
 
   // 2. Push Notification to Lender
   await pushNotificationSafe(supabase, {
@@ -594,7 +613,15 @@ export async function submitSwapRequest(params: {
     swap = swapData
   }
 
-  // 2. Push Notification to Owner
+  // Auto-save contact phone to profile for future requests
+  if (meetup?.contact_phone) {
+    try {
+      await supabase
+        .from('profiles')
+        .update({ whatsapp_number: meetup.contact_phone.trim(), show_whatsapp: true })
+        .eq('id', requesterId)
+    } catch {}
+  }
   await pushNotificationSafe(supabase, {
     user_id: ownerId,
     type: 'SWAP_REQUEST',

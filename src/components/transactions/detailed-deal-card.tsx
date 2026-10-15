@@ -86,6 +86,7 @@ export interface DetailedDealCardProps {
   meetupLocation?: string | null
   meetupAt?: string | null
   proposedTimes?: Array<{ label: string; iso?: string }> | string[] | null
+  contactPhone?: string | null
   deliveryMethod?: 'MEETUP' | 'COMMUNITY_HUB' | 'COURIER' | string | null
   buyerNote?: string | null
   sellerNote?: string | null
@@ -164,6 +165,7 @@ export function DetailedDealCard({
   meetupLocation,
   meetupAt,
   proposedTimes,
+  contactPhone,
   deliveryMethod = 'MEETUP',
   buyerNote,
   sellerNote,
@@ -224,16 +226,95 @@ export function DetailedDealCard({
       : counterparty.city.name_en
     : null
 
-  // Phone / WhatsApp Setup (with note fallback)
-  let fallbackPhone: string | null = null
-  if (!counterparty?.whatsapp_number && !counterparty?.phone) {
-    const noteText = `${buyerNote || ''} ${sellerNote || ''}`
-    const phoneMatch = noteText.match(/(?:01[0-25]\d{8}|\+?201[0-25]\d{8})/)
-    if (phoneMatch) {
-      fallbackPhone = phoneMatch[0]
+  // Meetup formatting with auto-sanitization for clean display
+  let cleanLocation = meetupLocation || ''
+  const formattedTimes: string[] = []
+  let cleanMeetupPhone = contactPhone || null
+
+  const fullNoteContext = `${cleanLocation} ${buyerNote || ''} ${sellerNote || ''}`
+
+  // If cleanLocation contains [المقابلة المقترحة: ...] or meetup markers
+  if (cleanLocation.includes('[المقابلة المقترحة:')) {
+    const tagMatch = cleanLocation.match(/\[المقابلة المقترحة:\s*([^\]]+)\]/)
+    if (tagMatch) cleanLocation = tagMatch[1]
+  }
+
+  // If location has concatenated pipe symbols or markers from older data or fallback strings
+  if (cleanLocation && (cleanLocation.includes('|') || cleanLocation.includes('📍') || cleanLocation.includes('📅') || cleanLocation.includes('📞'))) {
+    const locMatch = cleanLocation.match(/📍\s*(?:مكان اللقاء:)?\s*([^|]+)/)
+    const timeMatch = cleanLocation.match(/📅\s*الموعد:\s*([^|]+)/)
+    const timesAltMatch = cleanLocation.match(/🕐\s*الأوقات المقترحة:\s*([^|]+)/)
+    const phoneMatch = cleanLocation.match(/📞\s*للتواصل السريع:\s*([0-9+\s-]+)/)
+
+    if (locMatch) {
+      cleanLocation = locMatch[1].trim()
+    } else {
+      cleanLocation = cleanLocation.split('|')[0].replace(/[📍📅📞]/g, '').trim()
+    }
+
+    const extractedTime = timeMatch ? timeMatch[1].trim() : (timesAltMatch ? timesAltMatch[1].trim() : null)
+    if (extractedTime && !formattedTimes.includes(extractedTime)) {
+      formattedTimes.push(extractedTime)
+    }
+
+    if (phoneMatch && !cleanMeetupPhone) {
+      cleanMeetupPhone = phoneMatch[1].trim()
     }
   }
-  const phone = counterparty?.whatsapp_number || counterparty?.phone || fallbackPhone
+
+  // Fallback: check if buyerNote or sellerNote contains the [المقابلة المقترحة: ...] tag
+  if ((!cleanLocation || formattedTimes.length === 0 || !cleanMeetupPhone) && fullNoteContext.includes('المقابلة المقترحة')) {
+    const tagMatch = fullNoteContext.match(/\[المقابلة المقترحة:\s*([^\]]+)\]/)
+    if (tagMatch) {
+      const tagContent = tagMatch[1]
+      const locMatch = tagContent.match(/📍\s*(?:مكان اللقاء:)?\s*([^|]+)/)
+      const timeMatch = tagContent.match(/📅\s*الموعد:\s*([^|]+)/)
+      const timesAltMatch = tagContent.match(/🕐\s*الأوقات المقترحة:\s*([^|]+)/)
+      const phoneMatch = tagContent.match(/📞\s*للتواصل السريع:\s*([0-9+\s-]+)/)
+
+      if (!cleanLocation && locMatch) cleanLocation = locMatch[1].trim()
+      const extractedTime = timeMatch ? timeMatch[1].trim() : (timesAltMatch ? timesAltMatch[1].trim() : null)
+      if (extractedTime && !formattedTimes.includes(extractedTime)) {
+        formattedTimes.push(extractedTime)
+      }
+      if (!cleanMeetupPhone && phoneMatch) {
+        cleanMeetupPhone = phoneMatch[1].trim()
+      }
+    }
+  }
+
+  // Cleaned deal notes (stripping all raw meetup tags so meeting is never displayed as a side note)
+  const cleanBuyerNote = buyerNote
+    ? buyerNote
+        .replace(/\[المقابلة المقترحة:\s*[^\]]+\]/g, '')
+        .replace(/📍[^\n]+/g, '')
+        .replace(/📅[^\n]+/g, '')
+        .replace(/📞[^\n]+/g, '')
+        .trim()
+    : ''
+  const cleanSellerNote = sellerNote
+    ? sellerNote
+        .replace(/\[المقابلة المقترحة:\s*[^\]]+\]/g, '')
+        .replace(/📍[^\n]+/g, '')
+        .replace(/📅[^\n]+/g, '')
+        .replace(/📞[^\n]+/g, '')
+        .trim()
+    : ''
+
+  // Phone / WhatsApp Setup (with note & meetup fallback)
+  let fallbackPhone: string | null = null
+  if (!counterparty?.whatsapp_number && !counterparty?.phone) {
+    if (cleanMeetupPhone) {
+      fallbackPhone = cleanMeetupPhone
+    } else {
+      const noteText = `${buyerNote || ''} ${sellerNote || ''}`
+      const phoneMatch = noteText.match(/(?:01[0-25]\d{8}|\+?201[0-25]\d{8})/)
+      if (phoneMatch) {
+        fallbackPhone = phoneMatch[0]
+      }
+    }
+  }
+  const phone = counterparty?.whatsapp_number || counterparty?.phone || fallbackPhone || cleanMeetupPhone
   const displayPhone = formatPhoneDisplay(phone)
   const bookTitleForMessage = primaryBook?.title_ar || primaryBook?.title || 'الكتاب'
   const defaultWhatsAppText =
@@ -242,23 +323,25 @@ export function DetailedDealCard({
       : `Hi ${counterpartyName}! Reaching out regarding our book ${type} on BookSwap for "${bookTitleForMessage}".`
   const whatsAppUrl = getWhatsAppUrl(phone, defaultWhatsAppText)
 
-  // Meetup formatting
-  const formattedTimes: string[] = []
-  if (meetupAt) {
-    formattedTimes.push(
-      new Date(meetupAt).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-      })
-    )
-  } else if (proposedTimes && Array.isArray(proposedTimes)) {
+  if (proposedTimes && Array.isArray(proposedTimes)) {
     proposedTimes.forEach(t => {
-      if (typeof t === 'string') formattedTimes.push(t)
-      else if (t?.label) formattedTimes.push(t.label)
+      const label = typeof t === 'string' ? t : t?.label
+      if (label && !formattedTimes.includes(label)) formattedTimes.push(label)
     })
+  }
+
+  if (meetupAt && formattedTimes.length === 0) {
+    try {
+      formattedTimes.push(
+        new Date(meetupAt).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        })
+      )
+    } catch {}
   }
 
   // Loan Countdown Calculation
@@ -677,8 +760,8 @@ export function DetailedDealCard({
         </div>
       )}
 
-      {/* ── 4. MEETUP, TIME, AND LOCATION DETAILS ── */}
-      {(meetupLocation || formattedTimes.length > 0 || deliveryMethod) && (
+      {/* ── 4. MEETUP, TIME, AND LOCATION DETAILS (CRITICAL HANDOVER INFO) ── */}
+      {(cleanLocation || formattedTimes.length > 0 || deliveryMethod || phone) && (
         <div className="rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card to-primary/5 p-4 sm:p-5 space-y-4 shadow-xs">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-3">
             <div className="flex items-center gap-2">
@@ -687,7 +770,7 @@ export function DetailedDealCard({
               </div>
               <div>
                 <span className="text-xs font-black text-foreground block">
-                  {lang === 'ar' ? 'تفاصيل المقابلة والتسليم' : 'Handover & Meetup Coordination'}
+                  {lang === 'ar' ? 'تفاصيل المقابلة والتسليم (بيانات أساسية)' : 'Handover & Meetup Coordination'}
                 </span>
                 <span className="text-[10px] text-muted-foreground font-semibold">
                   {deliveryMethod === 'COMMUNITY_HUB'
@@ -711,8 +794,9 @@ export function DetailedDealCard({
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            {/* Scheduled Date & Time Card */}
+          {/* 3-Card Crucial Meeting Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+            {/* 1. Scheduled Date & Time Card */}
             <div className="flex items-start gap-3 bg-background/90 p-3.5 rounded-xl border border-border/80 shadow-xs">
               <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
                 <Calendar className="h-4 w-4" />
@@ -722,13 +806,14 @@ export function DetailedDealCard({
                   {lang === 'ar' ? 'تاريخ ووقت اللقاء:' : 'Scheduled Date & Time:'}
                 </span>
                 {formattedTimes.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5 mt-1">
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
                     {formattedTimes.map((time, idx) => (
                       <span
                         key={idx}
-                        className="inline-block px-2.5 py-1 rounded-lg bg-primary/10 text-primary font-black text-xs"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/25 font-black text-xs"
                       >
-                        {time}
+                        <Clock className="h-3 w-3 shrink-0" />
+                        <span>{time}</span>
                       </span>
                     ))}
                   </div>
@@ -740,7 +825,7 @@ export function DetailedDealCard({
               </div>
             </div>
 
-            {/* Handover Location Card */}
+            {/* 2. Handover Location Card */}
             <div className="flex items-start gap-3 bg-background/90 p-3.5 rounded-xl border border-border/80 shadow-xs">
               <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
                 <MapPin className="h-4 w-4" />
@@ -749,11 +834,11 @@ export function DetailedDealCard({
                 <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider block">
                   {lang === 'ar' ? 'مكان اللقاء المتفق عليه:' : 'Handover Location:'}
                 </span>
-                {meetupLocation ? (
+                {cleanLocation ? (
                   <>
-                    <p className="font-black text-foreground text-xs mt-1 truncate">{meetupLocation}</p>
+                    <p className="font-black text-foreground text-xs mt-1 break-words">{cleanLocation}</p>
                     <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(meetupLocation)}`}
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cleanLocation)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-[11px] font-bold text-primary hover:underline mt-1.5"
@@ -765,6 +850,49 @@ export function DetailedDealCard({
                 ) : (
                   <p className="text-xs text-muted-foreground font-bold mt-1">
                     {lang === 'ar' ? 'حدد مكان اللقاء بالتنسيق عبر المحادثة' : 'Coordinate location in chat'}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* 3. Direct Contact / Fast Handover Phone Card */}
+            <div className="flex items-start gap-3 bg-background/90 p-3.5 rounded-xl border border-border/80 shadow-xs sm:col-span-2 lg:col-span-1">
+              <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0">
+                <Phone className="h-4 w-4" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="text-[10px] text-muted-foreground font-black uppercase tracking-wider block">
+                  {lang === 'ar' ? 'هاتف التواصل السريع:' : 'Handover Contact Phone:'}
+                </span>
+                {phone ? (
+                  <div className="mt-1 space-y-1.5">
+                    <p className="font-mono font-black text-xs text-foreground tracking-wide" dir="ltr">
+                      {displayPhone || phone}
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <a
+                        href={`tel:${phone.replace(/[^\d+]/g, '')}`}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-[11px] font-bold transition-colors"
+                      >
+                        <Phone className="h-3 w-3" />
+                        <span>{lang === 'ar' ? 'اتصال' : 'Call'}</span>
+                      </a>
+                      {whatsAppUrl && (
+                        <a
+                          href={whatsAppUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 text-[11px] font-bold transition-colors"
+                        >
+                          <MessageCircle className="h-3 w-3" />
+                          <span>واتساب</span>
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground font-bold mt-1">
+                    {lang === 'ar' ? 'تواصل عبر شات المنصة الداخلي' : 'Available via platform chat'}
                   </p>
                 )}
               </div>
@@ -781,27 +909,27 @@ export function DetailedDealCard({
             </span>
           </div>
 
-          {/* Notes toggle */}
-          {(buyerNote || sellerNote) && (
+          {/* Notes toggle (Only shown if there are actual notes that are not raw meetup tags) */}
+          {Boolean(cleanBuyerNote || cleanSellerNote) && (
             <div className="pt-1">
               <button
                 type="button"
                 onClick={() => setShowNotes(!showNotes)}
                 className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground hover:text-foreground cursor-pointer"
               >
-                <span>{lang === 'ar' ? 'ملاحظات الطرفين' : 'Deal Notes'}</span>
+                <span>{lang === 'ar' ? 'ملاحظات إضافية' : 'Additional Notes'}</span>
                 {showNotes ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
               </button>
               {showNotes && (
                 <div className="mt-2 p-2.5 rounded-xl bg-card border border-border/70 text-xs text-muted-foreground space-y-1 animate-in fade-in">
-                  {buyerNote && (
+                  {cleanBuyerNote && (
                     <p>
-                      <strong className="text-foreground">{lang === 'ar' ? 'ملاحظة مقدم الطلب:' : 'Requester Note:'}</strong> {buyerNote}
+                      <strong className="text-foreground">{lang === 'ar' ? 'ملاحظة مقدم الطلب:' : 'Requester Note:'}</strong> {cleanBuyerNote}
                     </p>
                   )}
-                  {sellerNote && (
+                  {cleanSellerNote && (
                     <p>
-                      <strong className="text-foreground">{lang === 'ar' ? 'ملاحظة المالك:' : 'Owner Note:'}</strong> {sellerNote}
+                      <strong className="text-foreground">{lang === 'ar' ? 'ملاحظة المالك:' : 'Owner Note:'}</strong> {cleanSellerNote}
                     </p>
                   )}
                 </div>
