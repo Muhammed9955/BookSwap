@@ -199,13 +199,13 @@ export function PwaRegister() {
   // Render PWA Install Banner
   if (showInstallBanner) {
     return (
-      <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
+      <div className="fixed bottom-20 md:bottom-6 left-4 right-4 z-50 mx-auto max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-background/95 p-4 shadow-2xl backdrop-blur-md">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted/60 p-1 border border-border shadow-xs">
               <img
                 src="/icons/icon-96x96.png"
-                alt="WARAQ"
+                alt="WaraqConnect"
                 className="w-full h-full object-contain"
               />
             </div>
@@ -244,7 +244,7 @@ export function PwaRegister() {
   // Render Push Notification Permission Prompt (if install banner isn't active)
   if (showNotifBanner && notifPermission === 'default') {
     return (
-      <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
+      <div className="fixed bottom-20 md:bottom-6 left-4 right-4 z-50 mx-auto max-w-md animate-in fade-in slide-in-from-bottom-4 duration-300">
         <div className="flex items-center justify-between gap-3 rounded-2xl border border-primary/30 bg-background/95 p-4 shadow-2xl backdrop-blur-md">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-xs">

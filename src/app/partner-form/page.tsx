@@ -3,9 +3,9 @@ import { PartnerFormClient } from '@/components/partner/partner-form-client'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
-  title: 'انضم كشريك — WARAQ | ورق | للمكتبات ومنظمي الفعاليات',
+  title: 'انضم كشريك — WaraqConnect (ورق كونكت) | للمكتبات ومنظمي الفعاليات',
   description:
-    'هل تمتلك مكتبة أو تنظم فعاليات قراءة؟ انضم كشريك مميز في منصة وَرَق واستفد من الوصول لآلاف القراء النشطين.',
+    'هل تمتلك مكتبة أو تنظم فعاليات قراءة؟ انضم كشريك مميز في منصة WaraqConnect (ورق كونكت) واستفد من الوصول لآلاف القراء النشطين.',
 }
 
 export default async function PartnerFormPage() {

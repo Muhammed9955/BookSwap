@@ -101,8 +101,12 @@ export function truncate(text: string, maxLength: number): string {
   return text.substring(0, maxLength) + '...'
 }
 
+export const BOOK_PLACEHOLDER = '/images/book-placeholder.svg'
+export const COVER_PLACEHOLDER = '/images/cover-placeholder.svg'
+export const IMG_NOT_FOUND_PLACEHOLDER = '/images/image-not-found.svg'
+
 export function getImageUrl(path: string | null | undefined): string {
-  if (!path || path.trim() === '') return '/images/book-placeholder.svg'
+  if (!path || path.trim() === '') return BOOK_PLACEHOLDER
   if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:') || path.startsWith('/')) {
     return path
   }
@@ -111,6 +115,18 @@ export function getImageUrl(path: string | null | undefined): string {
     return `${supabaseUrl}/storage/v1/object/public/${path}`
   }
   return `${supabaseUrl}/storage/v1/object/public/book-images/${path}`
+}
+
+export function getCoverUrl(path: string | null | undefined): string {
+  if (!path || path.trim() === '') return COVER_PLACEHOLDER
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:') || path.startsWith('/')) {
+    return path
+  }
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  if (path.startsWith('community-images/') || path.startsWith('covers/')) {
+    return `${supabaseUrl}/storage/v1/object/public/${path}`
+  }
+  return `${supabaseUrl}/storage/v1/object/public/community-images/${path}`
 }
 
 export function getAvatarUrl(url: string | null | undefined, name?: string): string {

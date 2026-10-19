@@ -7,6 +7,7 @@ export type StoreType = 'OFFLINE' | 'ONLINE' | 'BOTH'
 export type OfferType =
   | 'DISCOUNT'        // % or flat off
   | 'BUNDLE'          // package like 10, 20, 25 books with fixed price & gift
+  | 'CURATED_PACK'    // 2 or 3 books package with picture, description & special price
   | 'FLASH_SALE'      // limited time flash deal
   | 'GIFT_WITH_BUY'   // buy book get gift free
   | 'SEASONAL'        // Ramadan, Eid, Back to School, Cairo Book Fair
@@ -36,10 +37,14 @@ export interface Bookstore {
   description_ar?: string
   store_type: StoreType
   address?: string
+  district?: string
   city_id?: string
   area_id?: string
   latitude?: number
   longitude?: number
+  google_maps_url?: string
+  slogan?: string
+  shipping_scope?: string
   opening_hours?: Record<string, string>
   website_url?: string
   social_links?: {
@@ -96,6 +101,14 @@ export interface StoreOffer {
   bundle_buy_qty?: number
   bundle_free_qty?: number
   bundle_price?: number
+  // Fields for Curated Packs of 2, 3, 4, 5 Books
+  book_count?: number
+  genre?: string
+  genre_ar?: string
+  original_price?: number
+  offer_price?: number
+  included_books?: string[]
+  badge_text?: string
   gift_description?: string
   starts_at?: string
   ends_at?: string
@@ -137,6 +150,11 @@ export interface StoreEvent {
   is_active: boolean
   created_at: string
 
+  // Host & Organizer Details
+  host_name?: string
+  host_phone?: string
+  host_role?: string
+
   // Relations
   store?: Bookstore
   user_rsvp?: RSVPStatus
@@ -171,3 +189,124 @@ export interface StoreInventoryItem {
   is_active: boolean
   created_at: string
 }
+
+export type StoreApplicationStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
+export interface StoreVerificationSignals {
+  social_verified?: boolean
+  whatsapp_business?: boolean
+  sample_video_verified?: boolean
+  national_id_or_cr?: boolean
+}
+
+export interface StoreApplication {
+  id: string
+  applicant_id?: string
+  applicant_name: string
+  owner_name?: string
+  business_name: string
+  store_name?: string
+  store_name_ar?: string
+  phone: string
+  email?: string
+  city: string
+  address?: string
+  store_type?: StoreType // 'OFFLINE' | 'ONLINE' | 'BOTH'
+  is_online_only?: boolean
+  website_url?: string
+  social_links?: {
+    facebook?: string
+    instagram?: string
+    whatsapp?: string
+    tiktok?: string
+  }
+  district?: string
+  latitude?: number
+  longitude?: number
+  working_hours?: string
+  google_maps_url?: string
+  logo_url?: string
+  cover_url?: string
+  slogan?: string
+  shipping_scope?: string
+  commercial_reg?: string
+  monthly_book_estimate?: string
+  bio?: string
+  bio_ar?: string
+  partner_type: 'BOOKSTORE' | 'EVENT_ORGANIZER' | 'BOTH'
+  details?: string
+  verification_signals?: StoreVerificationSignals
+  contract_accepted?: boolean
+  status: StoreApplicationStatus
+  rejection_reason?: string
+  created_at: string
+  reviewed_at?: string
+  approved_store_id?: string
+}
+
+export type BookGenreCategory =
+  | 'NOVELS'
+  | 'SELF_HELP'
+  | 'RELIGIOUS'
+  | 'PHILOSOPHY'
+  | 'PSYCHOLOGY'
+  | 'THRILLER'
+
+export interface StoreCatalogBook {
+  id: string
+  title: string
+  title_ar?: string
+  author: string
+  author_ar?: string
+  category: BookGenreCategory
+  category_name_ar: string
+  price: number
+  original_price?: number
+  in_stock: boolean
+  cover_url?: string
+  cover_color?: string
+  rating?: number
+  badge?: string
+}
+
+export interface StoreBundleTier {
+  id: string
+  name_ar: string
+  required_books: number
+  free_gift_books: number
+  free_bookmarks: number
+  price: number
+  original_value: number
+  popular?: boolean
+}
+
+export interface StoreOrderItem {
+  book_id: string
+  title: string
+  book_title?: string
+  title_ar?: string
+  author?: string
+  price: number
+  quantity: number
+  cover_url?: string
+}
+
+export interface StoreOrder {
+  id: string
+  store_id: string
+  order_type: 'SINGLE_BOOK' | 'BUNDLE_PACKAGE' | 'CURATED_PACK'
+  bundle_title?: string
+  bundle_size?: number
+  pack_title?: string
+  pack_image_url?: string
+  total_price: number
+  customer_name: string
+  customer_phone: string
+  customer_city: string
+  customer_address: string
+  customer_notes?: string
+  items: StoreOrderItem[]
+  status: 'NEW' | 'CONFIRMED' | 'DISPATCHED' | 'DELIVERED' | 'CANCELLED'
+  created_at: string
+}
+

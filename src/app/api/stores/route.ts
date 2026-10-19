@@ -1,0 +1,174 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+
+export const dynamic = 'force-dynamic'
+
+/**
+ * GET /api/stores
+ * Fetch bookstores from Supabase database
+ */
+export async function GET(req: NextRequest) {
+  try {
+    const supabase = await createClient()
+    const { searchParams } = new URL(req.url)
+    const storeType = searchParams.get('storeType')
+    const query = searchParams.get('query')
+
+    let q = supabase
+      .from('bookstores')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+
+    if (storeType && storeType !== 'ALL') {
+      q = q.eq('store_type', storeType)
+    }
+
+    if (query) {
+      q = q.or(`name.ilike.%${query}%,name_ar.ilike.%${query}%,address.ilike.%${query}%`)
+    }
+
+    const { data, error } = await q
+
+    if (error) {
+      console.warn('Error fetching bookstores from DB:', error.message)
+      return NextResponse.json({ success: false, error: error.message, stores: [] }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, stores: data || [] })
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err?.message, stores: [] }, { status: 500 })
+  }
+}
+
+/**
+ * POST /api/stores
+ * Save a new bookstore directly into Supabase database (bookstores table)
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    const body = await req.json()
+    const {
+      name,
+      name_ar,
+      slug,
+      description,
+      description_ar,
+      store_type = 'ONLINE',
+      address,
+      latitude,
+      longitude,
+      opening_hours,
+      website_url,
+      social_links,
+      logo_url,
+      cover_url,
+      is_verified = false,
+      is_active = true,
+      owner_id: providedOwnerId,
+    } = body
+
+    if (!name || !slug) {
+      return NextResponse.json(
+        { success: false, error: 'Store name and slug are required' },
+        { status: 400 }
+      )
+    }
+
+    // Determine valid owner_id (must reference profiles(id))
+    let effectiveOwnerId = user?.id || providedOwnerId
+
+    if (!effectiveOwnerId) {
+      // Find default admin or first available profile
+      const { data: firstProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .limit(1)
+        .maybeSingle()
+      effectiveOwnerId = firstProfile?.id
+    }
+
+    if (!effectiveOwnerId) {
+      return NextResponse.json(
+        { success: false, error: 'Could not determine store owner profile' },
+        { status: 400 }
+      )
+    }
+
+    // Sanitize slug to be safe
+    const cleanSlug = slug
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-')
+
+    const storePayload = {
+      owner_id: effectiveOwnerId,
+      name,
+      name_ar: name_ar || name,
+      slug: cleanSlug,
+      description: description || '',
+      description_ar: description_ar || description || '',
+      store_type,
+      address: address || (store_type === 'ONLINE' ? 'متجر إلكتروني — شحن لكافة المحافظات' : null),
+      latitude: store_type === 'ONLINE' ? null : (latitude ?? null),
+      longitude: store_type === 'ONLINE' ? null : (longitude ?? null),
+      opening_hours: typeof opening_hours === 'object' ? opening_hours : { 'مواعيد العمل': opening_hours || 'يومياً 10:00 ص - 11:00 م' },
+      website_url: website_url || null,
+      social_links: typeof social_links === 'object' ? social_links : {},
+      logo_url: logo_url || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=250&q=80',
+      cover_url: cover_url || 'https://images.unsplash.com/photo-1507842229451-7f01be7ac102?auto=format&fit=crop&w=1200&q=80',
+      is_verified: Boolean(is_verified),
+      is_active: Boolean(is_active),
+      updated_at: new Date().toISOString(),
+    }
+
+    // Check if store already exists by slug
+    const { data: existingStore } = await supabase
+      .from('bookstores')
+      .select('id')
+      .eq('slug', cleanSlug)
+      .maybeSingle()
+
+    let result
+    if (existingStore) {
+      result = await supabase
+        .from('bookstores')
+        .update(storePayload)
+        .eq('id', existingStore.id)
+        .select('*')
+        .single()
+    } else {
+      result = await supabase
+        .from('bookstores')
+        .insert(storePayload)
+        .select('*')
+        .single()
+    }
+
+    if (result.error) {
+      console.error('Failed to save store in DB:', result.error)
+      return NextResponse.json(
+        { success: false, error: result.error.message },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      store: result.data,
+      message: 'Store saved successfully in Supabase database',
+    })
+  } catch (err: any) {
+    console.error('API /api/stores error:', err)
+    return NextResponse.json(
+      { success: false, error: err?.message || 'Internal server error' },
+      { status: 500 }
+    )
+  }
+}

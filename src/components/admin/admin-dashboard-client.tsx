@@ -1,14 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import {
   Users, BookOpen, ShoppingBag, AlertTriangle, Star, TrendingUp,
   BarChart2, Shield, Eye, EyeOff, Trash2, CheckCircle2, Clock,
   Edit3, MapPin, Search, Plus, X, Check, Coffee, Building,
-  Smartphone, Download, ExternalLink, Activity, Calendar, ArrowUpRight
+  Smartphone, Download, ExternalLink, Activity, Calendar, ArrowUpRight,
+  Store, Globe, Menu, MessageCircle, CheckCheck, Mail,
+  ShieldCheck, Video, BadgeCheck, FileText, CheckSquare, Sparkles, Share2,
+  ChevronLeft, ChevronRight
 } from 'lucide-react'
 import type { DashboardStats, Community, CommunityOrgType } from '@/types'
+import type { StoreApplication, StoreApplicationStatus, Bookstore, StoreType } from '@/types/store'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,6 +20,9 @@ import { useLanguage } from '@/i18n/language-context'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatRelativeTime } from '@/lib/utils'
 import { updateCommunityDetails, deleteCommunity } from '@/lib/communities/community-service'
+import {
+  getStoreApplications, approveStoreApplication, rejectStoreApplication, getBookstores
+} from '@/lib/stores/store-service'
 import { WaraqLogo } from '@/components/ui/waraq-logo'
 
 interface AdminDashboardClientProps {
@@ -30,11 +37,12 @@ interface AdminDashboardClientProps {
 
 const navItems = [
   { id: 'overview', labelAr: 'نظرة عامة', labelEn: 'Overview', icon: BarChart2 },
+  { id: 'stores', labelAr: 'المكتبات والمتاجر والطلبات', labelEn: 'Stores & Requests', icon: Store },
   { id: 'analytics', labelAr: 'المستخدمون والاحتفاظ', labelEn: 'Active Users & Retention', icon: TrendingUp },
-  { id: 'communities', labelAr: 'المجتمعات', labelEn: 'Communities', icon: Users },
-  { id: 'listings', labelAr: 'الإعلانات', labelEn: 'Listings', icon: BookOpen },
-  { id: 'users', labelAr: 'المستخدمون', labelEn: 'Users', icon: Shield },
-  { id: 'reports', labelAr: 'البلاغات', labelEn: 'Reports', icon: AlertTriangle },
+  { id: 'communities', labelAr: 'المجتمعات ونوادي القراءة', labelEn: 'Communities & Clubs', icon: Users },
+  { id: 'listings', labelAr: 'الإعلانات والكتب', labelEn: 'Listings & Catalog', icon: BookOpen },
+  { id: 'users', labelAr: 'إدارة المستخدمين', labelEn: 'User Management', icon: Shield },
+  { id: 'reports', labelAr: 'البلاغات والنزاعات', labelEn: 'Dispute Reports', icon: AlertTriangle },
 ]
 
 export function AdminDashboardClient({
@@ -46,10 +54,153 @@ export function AdminDashboardClient({
   initialCommunities = [],
   currentUserId,
 }: AdminDashboardClientProps) {
-  const { lang } = useLanguage()
+  const { lang, setLang, isRTL } = useLanguage()
   const supabase = createClient()
   const [activeTab, setActiveTab] = useState('overview')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('waraq_admin_sidebar_collapsed')
+      if (saved !== null) {
+        setSidebarCollapsed(saved === 'true')
+      }
+    } catch {}
+  }, [])
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed(prev => {
+      const next = !prev
+      try {
+        localStorage.setItem('waraq_admin_sidebar_collapsed', String(next))
+      } catch {}
+      return next
+    })
+  }
+
+  // Store applications & Active Stores
+  const [storeApps, setStoreApps] = useState<StoreApplication[]>([])
+  const [activeStores, setActiveStores] = useState<Bookstore[]>([])
+  const [appsLoading, setAppsLoading] = useState(true)
+  const [storesLoading, setStoresLoading] = useState(true)
+  const [storeSubTab, setStoreSubTab] = useState<'REQUESTS' | 'ACTIVE_STORES' | 'VERIFICATION_GUIDE'>('REQUESTS')
+  const [appSearch, setAppSearch] = useState('')
+  const [appStatusFilter, setAppStatusFilter] = useState<'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'>('ALL')
+  const [storeTypeFilter, setStoreTypeFilter] = useState<'ALL' | 'ONLINE' | 'OFFLINE' | 'BOTH'>('ALL')
+  const [approvingId, setApprovingId] = useState<string | null>(null)
+  const [approvalFeedback, setApprovalFeedback] = useState<string | null>(null)
+  const [inspectingApp, setInspectingApp] = useState<StoreApplication | null>(null)
+  const [inspectingStore, setInspectingStore] = useState<Bookstore | null>(null)
+
+  useEffect(() => {
+    getStoreApplications().then(apps => {
+      setStoreApps(apps)
+      setAppsLoading(false)
+    })
+    getBookstores().then(stores => {
+      setActiveStores(stores)
+      setStoresLoading(false)
+    })
+  }, [])
+
+  const handleApproveStore = async (appId: string) => {
+    setApprovingId(appId)
+    const result = await approveStoreApplication(appId)
+    if (result.success) {
+      setStoreApps(prev =>
+        prev.map(a =>
+          a.id === appId
+            ? { ...a, status: 'APPROVED' as const, reviewed_at: new Date().toISOString(), approved_store_id: result.store?.id }
+            : a
+        )
+      )
+      if (result.store) {
+        setActiveStores(prev => [result.store!, ...prev.filter(s => s.id !== result.store!.id)])
+      }
+
+      // Send approval notification email with direct dashboard link via Resend API
+      const targetApp = storeApps.find(a => a.id === appId)
+      if (targetApp && targetApp.email && result.store) {
+        try {
+          fetch('/api/stores/notify-approved', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: targetApp.email,
+              ownerName: targetApp.owner_name || targetApp.applicant_name,
+              storeName: result.store.name_ar || result.store.name,
+              storeSlug: result.store.slug,
+            }),
+          }).catch(console.warn)
+        } catch {}
+      }
+
+      setApprovalFeedback(
+        lang === 'ar'
+          ? `🎉 تم اعتماد وتوثيق ${result.store?.name_ar || result.store?.name} بنجاح! تم إنشاء صفحة المتجر وتفعيل شارة التوثيق وإرسال رابط لوحة التحكم.`
+          : `🎉 ${result.store?.name} has been approved & verified! Storefront created and dashboard link sent.`
+      )
+      if (inspectingApp?.id === appId) {
+        setInspectingApp(null)
+      }
+      setTimeout(() => setApprovalFeedback(null), 5000)
+    }
+    setApprovingId(null)
+  }
+
+  const handleRejectStore = async (appId: string) => {
+    const reason = prompt(
+      lang === 'ar' ? 'سبب الرفض (اختياري):' : 'Rejection reason (optional):',
+      lang === 'ar' ? 'عدم استيفاء شروط المكتبات الشريكة حالياً' : 'Does not meet partner criteria currently'
+    )
+    if (reason === null) return
+    const result = await rejectStoreApplication(appId, reason)
+    if (result.success) {
+      setStoreApps(prev =>
+        prev.map(a =>
+          a.id === appId
+            ? { ...a, status: 'REJECTED' as const, reviewed_at: new Date().toISOString(), rejection_reason: reason }
+            : a
+        )
+      )
+      if (inspectingApp?.id === appId) {
+        setInspectingApp(null)
+      }
+    }
+  }
+
+  const pendingStoresCount = storeApps.filter(a => a.status === 'PENDING').length
+
+  const filteredStoreApps = storeApps.filter(app => {
+    const matchesStatus = appStatusFilter === 'ALL' || app.status === appStatusFilter
+    const appType: StoreType = app.is_online_only || app.store_type === 'ONLINE' ? 'ONLINE' : (app.store_type || 'BOTH')
+    const matchesType = storeTypeFilter === 'ALL' || appType === storeTypeFilter
+    const q = appSearch.trim().toLowerCase()
+    if (!q) return matchesStatus && matchesType
+    const matchesSearch =
+      (app.store_name && app.store_name.toLowerCase().includes(q)) ||
+      (app.store_name_ar && app.store_name_ar.toLowerCase().includes(q)) ||
+      (app.business_name && app.business_name.toLowerCase().includes(q)) ||
+      (app.owner_name && app.owner_name.toLowerCase().includes(q)) ||
+      (app.city && app.city.toLowerCase().includes(q)) ||
+      (app.address && app.address.toLowerCase().includes(q)) ||
+      (app.phone && app.phone.includes(q))
+    return matchesStatus && matchesType && matchesSearch
+  })
+
+  const filteredActiveStores = activeStores.filter(store => {
+    const matchesType = storeTypeFilter === 'ALL' || store.store_type === storeTypeFilter
+    const q = appSearch.trim().toLowerCase()
+    if (!q) return matchesType
+    const matchesSearch =
+      store.name.toLowerCase().includes(q) ||
+      (store.name_ar && store.name_ar.toLowerCase().includes(q)) ||
+      (store.address && store.address.toLowerCase().includes(q)) ||
+      store.slug.toLowerCase().includes(q)
+    return matchesType && matchesSearch
+  })
 
   const [communities, setCommunities] = useState<Community[]>(initialCommunities)
   const [commSearch, setCommSearch] = useState('')
@@ -268,76 +419,356 @@ export function AdminDashboardClient({
   }
 
   return (
-    <div className="min-h-screen bg-background flex" dir="ltr">
-      {/* Sidebar */}
-      <aside className="w-64 flex-shrink-0 border-r bg-card hidden md:flex flex-col">
-        <div className="p-5 border-b">
-          <Link href="/" className="flex items-center gap-2">
-            <WaraqLogo size="sm" showText={true} />
-            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-muted px-1.5 py-0.5 rounded">Admin</span>
-          </Link>
-        </div>
-        <nav className="p-3 flex-1">
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={cn(
-                'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors text-left mb-1',
-                activeTab === item.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-              )}
+    <div className="min-h-screen bg-background flex text-foreground" dir={isRTL ? 'rtl' : 'ltr'}>
+      {/* Sidebar - In RTL dir="rtl", flex places this on the RIGHT; in LTR, on the LEFT */}
+      <aside
+        className={cn(
+          "flex-shrink-0 border-e border-border bg-card hidden md:flex flex-col select-none transition-all duration-300 ease-in-out relative z-30",
+          sidebarCollapsed ? "w-20" : "w-72"
+        )}
+      >
+        <div
+          className={cn(
+            "border-b flex items-center transition-all",
+            sidebarCollapsed ? "p-3 flex-col gap-2 justify-center" : "px-4 py-3.5 justify-between"
+          )}
+        >
+          {!sidebarCollapsed ? (
+            <Link href="/" className="flex items-center gap-2 min-w-0 hover:opacity-90 transition-opacity">
+              <WaraqLogo size="sm" showText={true} href={null} />
+            </Link>
+          ) : (
+            <Link
+              href="/"
+              className="flex items-center justify-center p-1 rounded-xl hover:bg-accent transition-colors"
+              title="WaraqConnect Admin"
             >
-              <item.icon className="h-4 w-4" />
-              {lang === 'ar' ? item.labelAr : item.labelEn}
-              {item.id === 'reports' && stats.pending_reports > 0 && (
-                <span className="ms-auto h-5 w-5 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-bold">
-                  {stats.pending_reports}
-                </span>
-              )}
-            </button>
-          ))}
+              <WaraqLogo size="xs" showText={false} href={null} />
+            </Link>
+          )}
+
+          {/* Shrink / Expand Toggle Button */}
+          <button
+            onClick={toggleSidebar}
+            className="p-1.5 rounded-xl hover:bg-accent text-muted-foreground hover:text-foreground transition-all cursor-pointer border border-border/60 hover:border-primary/50 shadow-2xs shrink-0"
+            title={
+              sidebarCollapsed
+                ? lang === 'ar'
+                  ? 'توسيع القائمة الجانبية'
+                  : 'Expand Sidebar'
+                : lang === 'ar'
+                ? 'تصغير القائمة الجانبية'
+                : 'Shrink Sidebar'
+            }
+            aria-label="Toggle Sidebar"
+          >
+            {sidebarCollapsed ? (
+              isRTL ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+            ) : (
+              isRTL ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+
+        <nav className={cn("p-2.5 flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden", sidebarCollapsed && "px-2")}>
+          {navItems.map(item => {
+            const hasPendingStores = item.id === 'stores' && pendingStoresCount > 0
+            const hasPendingReports = item.id === 'reports' && stats.pending_reports > 0
+            const label = lang === 'ar' ? item.labelAr : item.labelEn
+
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                title={label}
+                className={cn(
+                  'w-full flex items-center rounded-xl text-xs font-bold transition-all cursor-pointer relative group',
+                  sidebarCollapsed
+                    ? 'justify-center p-3 text-center'
+                    : 'gap-3 px-3 py-2.5 text-start',
+                  activeTab === item.id
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                )}
+              >
+                <item.icon className={cn("shrink-0", sidebarCollapsed ? "h-5 w-5" : "h-4 w-4")} />
+
+                {!sidebarCollapsed && (
+                  <>
+                    <span className="truncate">{label}</span>
+                    {hasPendingStores && (
+                      <span
+                        className={cn(
+                          "ms-auto px-1.5 py-0.5 rounded-full text-[10px] font-black leading-none shrink-0",
+                          activeTab === 'stores' ? "bg-white text-primary" : "bg-amber-500 text-white animate-pulse"
+                        )}
+                      >
+                        {pendingStoresCount}
+                      </span>
+                    )}
+                    {hasPendingReports && (
+                      <span
+                        className={cn(
+                          "ms-auto h-4 min-w-4 px-1 rounded-full text-[10px] flex items-center justify-center font-black shrink-0",
+                          activeTab === 'reports' ? "bg-white text-destructive" : "bg-red-500 text-white"
+                        )}
+                      >
+                        {stats.pending_reports}
+                      </span>
+                    )}
+                  </>
+                )}
+
+                {/* Collapsed notification dots/badges */}
+                {sidebarCollapsed && hasPendingStores && (
+                  <span className="absolute top-1.5 end-1.5 h-4 min-w-4 px-1 rounded-full bg-amber-500 text-white text-[9px] font-black flex items-center justify-center shadow-xs animate-pulse">
+                    {pendingStoresCount}
+                  </span>
+                )}
+                {sidebarCollapsed && hasPendingReports && (
+                  <span className="absolute top-1.5 end-1.5 h-4 min-w-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-black flex items-center justify-center shadow-xs">
+                    {stats.pending_reports}
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </nav>
-        <div className="p-4 border-t">
-          <Badge variant={adminRole === 'ADMIN' ? 'default' : 'secondary'} className="w-full justify-center">
-            <Shield className="h-3 w-3 me-1" />
-            {adminRole}
-          </Badge>
+
+        <div
+          className={cn(
+            "border-t bg-muted/20 transition-all",
+            sidebarCollapsed ? "p-2 space-y-2 flex flex-col items-center" : "p-4 space-y-2"
+          )}
+        >
+          {!sidebarCollapsed ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
+                className="w-full justify-center gap-2 text-xs font-bold border-border/80 hover:border-primary/50 cursor-pointer"
+              >
+                <Globe className="h-3.5 w-3.5 text-primary" />
+                <span>{lang === 'ar' ? 'English (EN)' : 'العربية (AR)'}</span>
+              </Button>
+              <Badge variant={adminRole === 'ADMIN' ? 'default' : 'secondary'} className="w-full justify-center py-1">
+                <Shield className="h-3 w-3 me-1" />
+                {adminRole}
+              </Badge>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
+                className="p-2.5 rounded-xl border border-border/80 hover:border-primary/50 bg-card hover:bg-accent text-foreground transition-all cursor-pointer shadow-2xs"
+                title={lang === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
+              >
+                <Globe className="h-4 w-4 text-primary" />
+              </button>
+              <div
+                className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-xs"
+                title={`Admin Role: ${adminRole}`}
+              >
+                <Shield className="h-4 w-4" />
+              </div>
+            </>
+          )}
         </div>
       </aside>
 
-      {/* Main */}
-      <main className="flex-1 overflow-y-auto">
-        {/* Header */}
-        <div className="sticky top-0 z-10 border-b bg-card/95 backdrop-blur px-6 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold">
-            {lang === 'ar' ? 'لوحة التحكم' : 'Admin Dashboard'}
-          </h1>
-          <div className="flex items-center gap-2">
-            {/* Mobile nav */}
-            <div className="flex md:hidden gap-1">
+      {/* Mobile Drawer Menu */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden bg-black/60 backdrop-blur-sm animate-in fade-in">
+          <div
+            className={cn(
+              "fixed top-0 bottom-0 w-72 bg-card p-5 shadow-2xl flex flex-col border-border animate-in",
+              isRTL ? "right-0 border-s slide-in-from-right" : "left-0 border-e slide-in-from-left"
+            )}
+          >
+            <div className="flex items-center justify-between pb-4 border-b">
+              <div className="flex items-center gap-2">
+                <WaraqLogo size="sm" showText={true} />
+                <span className="text-[10px] font-bold text-primary uppercase tracking-widest bg-primary/10 px-2 py-0.5 rounded-full">Admin</span>
+              </div>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <nav className="py-4 space-y-1 flex-1 overflow-y-auto">
               {navItems.map(item => (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => {
+                    setActiveTab(item.id)
+                    setMobileMenuOpen(false)
+                  }}
                   className={cn(
-                    'px-2 py-1 rounded text-xs font-medium transition-colors',
-                    activeTab === item.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'
+                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold transition-colors text-start cursor-pointer',
+                    activeTab === item.id ? 'bg-primary text-primary-foreground shadow-xs' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                   )}
                 >
-                  <item.icon className="h-4 w-4" />
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{lang === 'ar' ? item.labelAr : item.labelEn}</span>
+                  {item.id === 'stores' && pendingStoresCount > 0 && (
+                    <span className="ms-auto px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-black">
+                      {pendingStoresCount}
+                    </span>
+                  )}
+                  {item.id === 'reports' && stats.pending_reports > 0 && (
+                    <span className="ms-auto h-4 w-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center font-black">
+                      {stats.pending_reports}
+                    </span>
+                  )}
                 </button>
               ))}
+            </nav>
+
+            <div className="pt-4 border-t space-y-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setLang(lang === 'ar' ? 'en' : 'ar')
+                  setMobileMenuOpen(false)
+                }}
+                className="w-full justify-center gap-2 text-xs font-bold"
+              >
+                <Globe className="h-3.5 w-3.5 text-primary" />
+                <span>{lang === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}</span>
+              </Button>
+              <Badge variant={adminRole === 'ADMIN' ? 'default' : 'secondary'} className="w-full justify-center py-1">
+                <Shield className="h-3 w-3 me-1" />
+                {adminRole}
+              </Badge>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-y-auto flex flex-col min-w-0">
+        {/* Sticky Top Header */}
+        <div className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur-md px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            {/* Mobile Navigation Drawer Toggle */}
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="md:hidden p-2 rounded-xl border border-border bg-card hover:bg-accent text-foreground cursor-pointer shadow-xs"
+              aria-label="Toggle Navigation"
+            >
+              <Menu className="h-4 w-4" />
+            </button>
+
+            {/* Desktop Sidebar Shrink / Expand Toggle */}
+            <button
+              onClick={toggleSidebar}
+              className="hidden md:inline-flex p-2 rounded-xl border border-border bg-card hover:bg-accent text-foreground cursor-pointer shadow-2xs transition-colors shrink-0"
+              title={
+                sidebarCollapsed
+                  ? lang === 'ar'
+                    ? 'توسيع القائمة الجانبية'
+                    : 'Expand Sidebar'
+                  : lang === 'ar'
+                  ? 'تصغير القائمة الجانبية'
+                  : 'Shrink Sidebar'
+              }
+              aria-label="Toggle Sidebar"
+            >
+              {sidebarCollapsed ? (
+                isRTL ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+              ) : (
+                isRTL ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />
+              )}
+            </button>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm sm:text-base font-black tracking-tight text-foreground">
+                  {lang === 'ar' ? 'لوحة تحكم منصة ورق كونكت' : 'WaraqConnect Admin Platform'}
+                </h1>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold border border-emerald-500/20">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+                  {lang === 'ar' ? 'مباشر' : 'Live'}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground hidden sm:block">
+                {lang === 'ar'
+                  ? 'إدارة المنصة، اعتماد المكتبات الشريكة، المجتمعات والتقارير'
+                  : 'Partner store approvals, reading clubs, catalog & dispute reports'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {pendingStoresCount > 0 && (
+              <button
+                onClick={() => setActiveTab('stores')}
+                className="hidden lg:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-bold hover:bg-amber-500/25 transition-all cursor-pointer animate-pulse"
+              >
+                <Store className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                <span>{lang === 'ar' ? `${pendingStoresCount} طلب مكتبة جديد` : `${pendingStoresCount} new store requests`}</span>
+              </button>
+            )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
+              className="gap-1.5 text-xs font-bold border-border hover:border-primary/60 cursor-pointer shadow-xs rounded-xl"
+              title={lang === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}
+            >
+              <Globe className="h-3.5 w-3.5 text-primary" />
+              <span>{lang === 'ar' ? 'English' : 'عربي'}</span>
+            </Button>
+
             <Link href="/">
-              <Button variant="outline" size="sm">← {lang === 'ar' ? 'الموقع' : 'Site'}</Button>
+              <Button variant="ghost" size="sm" className="gap-1 text-xs font-medium cursor-pointer rounded-xl">
+                <ExternalLink className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{lang === 'ar' ? 'الموقع العام' : 'Public Site'}</span>
+              </Button>
             </Link>
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6 space-y-6 flex-1">
           {/* Overview */}
           {activeTab === 'overview' && (
             <div className="space-y-6">
+              {/* Alert Banner for Pending Bookstore Applications */}
+              {pendingStoresCount > 0 && (
+                <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-transparent border border-amber-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                      <Store className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-foreground">
+                        {lang === 'ar'
+                          ? `يوجد ${pendingStoresCount} طلب انضمام لمكتبة شريكة بحاجة للاعتماد`
+                          : `${pendingStoresCount} bookstore partner application(s) awaiting your approval`}
+                      </h4>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {lang === 'ar'
+                          ? 'راجع بيانات السجل والتواصل ثم اعتمد المكتبة بضغطة زر لنشرها فوراً في دليل /stores.'
+                          : 'Review commercial details, chat on WhatsApp, and approve with one click to publish live.'}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => setActiveTab('stores')}
+                    className="bg-amber-600 hover:bg-amber-700 text-white font-bold gap-1.5 shrink-0 cursor-pointer shadow-xs rounded-xl"
+                  >
+                    <CheckCheck className="h-4 w-4" />
+                    <span>{lang === 'ar' ? 'مراجعة واعتماد الطلبات الآن' : 'Review & Approve Now'}</span>
+                  </Button>
+                </div>
+              )}
               {/* KPI Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
                 {kpis.map(kpi => (
@@ -432,6 +863,898 @@ export function AdminDashboardClient({
                     </div>
                   </CardContent>
                 </Card>
+              )}
+            </div>
+          )}
+
+          {/* Unified Stores, Requests & Anti-Spam Verification Tab */}
+          {activeTab === 'stores' && (
+            <div className="space-y-6 animate-in fade-in">
+              {/* Feedback Alert */}
+              {approvalFeedback && (
+                <div className="p-4 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm font-bold flex items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-2">
+                    <CheckCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                    <span>{approvalFeedback}</span>
+                  </div>
+                  <button
+                    onClick={() => setApprovalFeedback(null)}
+                    className="p-1 rounded-lg hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 cursor-pointer"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Header Hero Banner */}
+              <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-primary/10 via-card to-card border border-border/80 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="h-10 w-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                      <Store className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg sm:text-xl font-black text-foreground">
+                        {lang === 'ar' ? 'إدارة المكتبات والمتاجر والطلبات' : 'Stores, Online Shops & Partner Requests'}
+                      </h2>
+                      <p className="text-xs text-muted-foreground">
+                        {lang === 'ar' ? 'إدارة موحدة للمتاجر الأونلاين والمقرات الفعلية مع فحص الحسابات ومكافحة السبام' : 'Unified partner directory, online-only stores, and social verification signals'}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed pt-1">
+                    {lang === 'ar'
+                      ? 'جدول موحد لمتابعة طلبات الانضمام والمكتبات المعتمدة في ورق كونكت. تدعم المنصة المكتبات الأونلاين بالكامل (Online-Only) والمكتبات ذات الفروع، مع أدوات للتحقق من حسابات التواصل ومكافحة الحسابات الوهمية.'
+                      : 'Unified directory for partner applications and live bookstores. Full support for online-only stores and physical branches with multi-channel verification to eliminate spam.'}
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <Link href="/stores" target="_blank">
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs font-bold rounded-xl cursor-pointer">
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      <span>{lang === 'ar' ? 'دليل المكتبات العام' : 'Public Directory'}</span>
+                    </Button>
+                  </Link>
+                  <Link href="/partner" target="_blank">
+                    <Button variant="outline" size="sm" className="gap-1.5 text-xs font-bold rounded-xl cursor-pointer">
+                      <Plus className="h-3.5 w-3.5" />
+                      <span>{lang === 'ar' ? 'نموذج تقديم شريك' : 'Partner Form'}</span>
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Status KPI Metric Cards (4 Metrics) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                <Card className={cn(
+                  "border transition-all",
+                  pendingStoresCount > 0 ? "border-amber-500/40 bg-amber-500/5 shadow-xs" : "border-border"
+                )}>
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-muted-foreground">
+                        {lang === 'ar' ? 'طلبات قيد الانتظار' : 'Pending Requests'}
+                      </p>
+                      <p className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">
+                        {pendingStoresCount}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {lang === 'ar' ? 'بحاجة لمراجعة وإقرار' : 'Awaiting review'}
+                      </p>
+                    </div>
+                    <div className="h-10 w-10 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                      <Clock className="h-5 w-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border border-border">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-muted-foreground">
+                        {lang === 'ar' ? 'متاجر أونلاين فقط' : 'Online-Only Stores'}
+                      </p>
+                      <p className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-1">
+                        {activeStores.filter(s => s.store_type === 'ONLINE').length + storeApps.filter(a => a.is_online_only || a.store_type === 'ONLINE').length}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {lang === 'ar' ? 'شحن لجميع المحافظات' : 'Nationwide shipping'}
+                      </p>
+                    </div>
+                    <div className="h-10 w-10 rounded-2xl bg-blue-500/15 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                      <Globe className="h-5 w-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border border-border">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-muted-foreground">
+                        {lang === 'ar' ? 'مكتبات بمقرات وفروع' : 'Physical Stores'}
+                      </p>
+                      <p className="text-2xl font-black text-purple-600 dark:text-purple-400 mt-1">
+                        {activeStores.filter(s => s.store_type !== 'ONLINE').length}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {lang === 'ar' ? 'فروع ومساحات قراءة' : 'Walk-in locations'}
+                      </p>
+                    </div>
+                    <div className="h-10 w-10 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                      <Building className="h-5 w-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border border-border">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-muted-foreground">
+                        {lang === 'ar' ? 'إجمالي المتاجر المعتمدة' : 'Active Stores'}
+                      </p>
+                      <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                        {activeStores.length}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {lang === 'ar' ? 'نشطة في دليل المنصة' : 'Verified & Live'}
+                      </p>
+                    </div>
+                    <div className="h-10 w-10 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                      <CheckCircle2 className="h-5 w-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Sub-Tabs: Unified Segmented View Switcher */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-border pb-3">
+                <div className="inline-flex p-1 rounded-2xl bg-muted/50 border border-border">
+                  <button
+                    onClick={() => setStoreSubTab('REQUESTS')}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2",
+                      storeSubTab === 'REQUESTS'
+                        ? "bg-card text-foreground shadow-xs border border-border/80"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <FileText className="h-4 w-4 text-primary" />
+                    <span>{lang === 'ar' ? 'طلبات الانضمام والمراجعة' : 'Partner Requests'}</span>
+                    {pendingStoresCount > 0 && (
+                      <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-black animate-pulse">
+                        {pendingStoresCount}
+                      </span>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={() => setStoreSubTab('ACTIVE_STORES')}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2",
+                      storeSubTab === 'ACTIVE_STORES'
+                        ? "bg-card text-foreground shadow-xs border border-border/80"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Store className="h-4 w-4 text-emerald-600" />
+                    <span>{lang === 'ar' ? 'المكتبات الشريكة المعتمدة' : 'Active Stores'}</span>
+                    <span className="px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-bold">
+                      {activeStores.length}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => setStoreSubTab('VERIFICATION_GUIDE')}
+                    className={cn(
+                      "px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2",
+                      storeSubTab === 'VERIFICATION_GUIDE'
+                        ? "bg-card text-foreground shadow-xs border border-border/80"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <ShieldCheck className="h-4 w-4 text-primary" />
+                    <span>{lang === 'ar' ? 'معايير فحص الموثوقية ومكافحة السبام' : 'Anti-Spam Verification Guide'}</span>
+                  </button>
+                </div>
+
+                {/* Store Type Filter Pills (Online vs Offline vs Both) */}
+                {storeSubTab !== 'VERIFICATION_GUIDE' && (
+                  <div className="flex items-center gap-1 overflow-x-auto">
+                    {[
+                      { id: 'ALL', labelAr: 'الكل', labelEn: 'All Formats' },
+                      { id: 'ONLINE', labelAr: '🌐 أونلاين فقط', labelEn: '🌐 Online Only' },
+                      { id: 'OFFLINE', labelAr: '📍 فروع ومقرات', labelEn: '📍 Physical' },
+                      { id: 'BOTH', labelAr: '🛍️ كلاهما', labelEn: '🛍️ Both' },
+                    ].map(f => (
+                      <button
+                        key={f.id}
+                        onClick={() => setStoreTypeFilter(f.id as any)}
+                        className={cn(
+                          "px-2.5 py-1 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer",
+                          storeTypeFilter === f.id
+                            ? "bg-primary text-primary-foreground shadow-xs"
+                            : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                      >
+                        {lang === 'ar' ? f.labelAr : f.labelEn}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Sub-Tab 1: Requests Table */}
+              {storeSubTab === 'REQUESTS' && (
+                <div className="space-y-4">
+                  {/* Search and Request Status Bar */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-card border border-border">
+                    <div className="relative flex-1">
+                      <Search className={cn(
+                        "absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground",
+                        isRTL ? "right-3" : "left-3"
+                      )} />
+                      <input
+                        type="text"
+                        value={appSearch}
+                        onChange={e => setAppSearch(e.target.value)}
+                        placeholder={lang === 'ar' ? 'ابحث باسم المكتبة، المالك، المحافظة، أو الهاتف...' : 'Search by store name, owner, city, or phone...'}
+                        className={cn(
+                          "w-full rounded-xl border border-border bg-background py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40",
+                          isRTL ? "pe-3 ps-9" : "ps-9 pe-3"
+                        )}
+                      />
+                      {appSearch && (
+                        <button
+                          onClick={() => setAppSearch('')}
+                          className={cn(
+                            "absolute top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1",
+                            isRTL ? "left-2" : "right-2"
+                          )}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+                      {[
+                        { id: 'ALL', labelAr: 'الكل', labelEn: 'All', count: storeApps.length },
+                        { id: 'PENDING', labelAr: 'قيد الانتظار', labelEn: 'Pending', count: pendingStoresCount },
+                        { id: 'APPROVED', labelAr: 'معتمدة', labelEn: 'Approved', count: storeApps.filter(a => a.status === 'APPROVED').length },
+                        { id: 'REJECTED', labelAr: 'مرفوضة', labelEn: 'Rejected', count: storeApps.filter(a => a.status === 'REJECTED').length },
+                      ].map(filterTab => (
+                        <button
+                          key={filterTab.id}
+                          onClick={() => setAppStatusFilter(filterTab.id as any)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5",
+                            appStatusFilter === filterTab.id
+                              ? "bg-primary text-primary-foreground shadow-xs"
+                              : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                          )}
+                        >
+                          <span>{lang === 'ar' ? filterTab.labelAr : filterTab.labelEn}</span>
+                          <span className={cn(
+                            "text-[10px] px-1.5 py-0.2 rounded-full",
+                            appStatusFilter === filterTab.id
+                              ? "bg-primary-foreground/20 text-primary-foreground"
+                              : "bg-muted text-muted-foreground"
+                          )}>
+                            {filterTab.count}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* UI Table for Requests */}
+                  <div className="rounded-2xl border border-border overflow-hidden bg-card shadow-xs">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/50 border-b border-border">
+                          <tr>
+                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'المكتبة والمالك' : 'Store & Owner'}</th>
+                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'طبيعة التواجد' : 'Format'}</th>
+                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'المقر / التغطية' : 'Location / Scope'}</th>
+                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'فيسبوك (FB)' : 'Facebook (FB)'}</th>
+                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'مؤشرات التحقق' : 'Trust Signals'}</th>
+                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'الحالة' : 'Status'}</th>
+                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'إجراءات الإدارة' : 'Actions'}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {appsLoading ? (
+                            <tr>
+                              <td colSpan={7} className="text-center py-10 text-xs text-muted-foreground whitespace-nowrap">
+                                {lang === 'ar' ? 'جارٍ تحميل طلبات المكتبات...' : 'Loading applications...'}
+                              </td>
+                            </tr>
+                          ) : filteredStoreApps.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} className="text-center py-12 text-xs text-muted-foreground">
+                                <div className="h-10 w-10 rounded-2xl bg-muted text-muted-foreground mx-auto flex items-center justify-center mb-2">
+                                  <Store className="h-5 w-5" />
+                                </div>
+                                <p className="font-bold">{lang === 'ar' ? 'لا توجد طلبات مطابقة للمعايير المحددة' : 'No matching applications found'}</p>
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredStoreApps.map(app => {
+                              const cleanPhone = (app.phone || '').replace(/[^0-9]/g, '')
+                              const intlPhone = cleanPhone.startsWith('0') ? '20' + cleanPhone.slice(1) : cleanPhone
+                              const isOnline = app.is_online_only || app.store_type === 'ONLINE'
+                              const hasSocials = Boolean(
+                                app.social_links?.instagram || app.social_links?.facebook || app.social_links?.tiktok || app.website_url
+                              )
+                              const signals = app.verification_signals || {}
+                              const scoreCount = [
+                                Boolean(hasSocials || signals.social_verified),
+                                Boolean(signals.whatsapp_business),
+                                Boolean(signals.sample_video_verified),
+                                Boolean(signals.national_id_or_cr || app.commercial_reg)
+                              ].filter(Boolean).length
+
+                              return (
+                                <tr key={app.id} className="hover:bg-muted/20 transition-colors">
+                                  {/* 1. Store & Owner */}
+                                  <td className="p-3.5 whitespace-nowrap">
+                                    <div className="flex items-center gap-3">
+                                      <div className={cn(
+                                        "h-10 w-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 border",
+                                        isOnline ? "bg-blue-500/10 text-blue-600 border-blue-500/20" : "bg-primary/10 text-primary border-primary/20"
+                                      )}>
+                                        {isOnline ? '🌐' : '🏪'}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="font-bold text-xs text-foreground truncate max-w-[200px]">
+                                          {app.store_name_ar || app.store_name || app.business_name}
+                                        </p>
+                                        <p className="text-[11px] text-muted-foreground truncate max-w-[200px]">
+                                          {app.owner_name || app.applicant_name} • <span dir="ltr" className="font-mono text-[10px]">{app.phone}</span>
+                                        </p>
+                                        <p className="text-[10px] text-muted-foreground/75 mt-0.5">
+                                          {formatRelativeTime(app.created_at, lang)}
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  {/* 2. Format / Type (Image 1 - Area 3: Prevent wrapping) */}
+                                  <td className="p-3.5 whitespace-nowrap">
+                                    {isOnline ? (
+                                      <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 gap-1.5 font-bold text-[10px] whitespace-nowrap inline-flex items-center shrink-0 px-2.5 py-1">
+                                        <span className="shrink-0">🌐</span>
+                                        <span className="whitespace-nowrap">{lang === 'ar' ? 'أونلاين فقط' : 'Online Only'}</span>
+                                      </Badge>
+                                    ) : app.store_type === 'BOTH' ? (
+                                      <Badge className="bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 gap-1.5 font-bold text-[10px] whitespace-nowrap inline-flex items-center shrink-0 px-2.5 py-1">
+                                        <span className="shrink-0">🛍️</span>
+                                        <span className="whitespace-nowrap">{lang === 'ar' ? 'فرع + أونلاين' : 'Hybrid'}</span>
+                                      </Badge>
+                                    ) : (
+                                      <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 gap-1.5 font-bold text-[10px] whitespace-nowrap inline-flex items-center shrink-0 px-2.5 py-1">
+                                        <span className="shrink-0">📍</span>
+                                        <span className="whitespace-nowrap">{lang === 'ar' ? 'مقر فعلي' : 'Physical'}</span>
+                                      </Badge>
+                                    )}
+                                  </td>
+
+                                  {/* 3. Location / Scope */}
+                                  <td className="p-3.5 whitespace-nowrap">
+                                    {isOnline ? (
+                                      <div className="whitespace-nowrap">
+                                        <p className="font-bold text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1.5 whitespace-nowrap">
+                                          <span className="shrink-0">🚚</span>
+                                          <span className="whitespace-nowrap">{lang === 'ar' ? 'شحن لجميع المحافظات' : 'All Egypt Delivery'}</span>
+                                        </p>
+                                        <p className="text-[10px] text-muted-foreground whitespace-nowrap">{app.city}</p>
+                                      </div>
+                                    ) : (
+                                      <div className="max-w-[180px]">
+                                        <p className="font-bold text-xs text-foreground truncate">{app.city}</p>
+                                        <p className="text-[10px] text-muted-foreground truncate">{app.address || app.city}</p>
+                                      </div>
+                                    )}
+                                  </td>
+
+                                  {/* 4. Facebook Channel Column (All channels & info in popup) */}
+                                  <td className="p-3.5 whitespace-nowrap">
+                                    {app.social_links?.facebook ? (
+                                      <a
+                                        href={app.social_links.facebook.startsWith('http') ? app.social_links.facebook : `https://facebook.com/${app.social_links.facebook}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-xs font-bold hover:bg-blue-500/20 transition-colors shadow-2xs group whitespace-nowrap shrink-0"
+                                        title={lang === 'ar' ? 'فتح صفحة الفيسبوك' : 'Open Facebook Page'}
+                                      >
+                                        <span className="h-2 w-2 rounded-full bg-blue-600 shrink-0" />
+                                        <span className="whitespace-nowrap">Facebook</span>
+                                        <ExternalLink className="h-3 w-3 opacity-60 group-hover:opacity-100 transition-opacity shrink-0" />
+                                      </a>
+                                    ) : (
+                                      <span className="text-[11px] text-muted-foreground font-medium whitespace-nowrap">
+                                        {lang === 'ar' ? 'غير مسجل' : 'Not linked'}
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  {/* 5. Trust Signals Button (Image 1 - Area 2: Prevent wrapping) */}
+                                  <td className="p-3.5 whitespace-nowrap">
+                                    <button
+                                      onClick={() => setInspectingApp(app)}
+                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-card border border-border hover:border-primary text-xs font-bold transition-all cursor-pointer shadow-2xs hover:bg-accent whitespace-nowrap shrink-0"
+                                    >
+                                      <ShieldCheck className={cn(
+                                        "h-3.5 w-3.5 shrink-0",
+                                        scoreCount >= 3 ? "text-emerald-600" : scoreCount >= 2 ? "text-amber-500" : "text-rose-500"
+                                      )} />
+                                      <span className="whitespace-nowrap font-bold">{scoreCount}/4 {lang === 'ar' ? 'إشارات' : 'Signals'}</span>
+                                    </button>
+                                  </td>
+
+                                  {/* 6. Status (Image 1 - Area 1: Prevent wrapping) */}
+                                  <td className="p-3.5 whitespace-nowrap">
+                                    {app.status === 'PENDING' && (
+                                      <Badge variant="warning" className="gap-1.5 font-bold text-[10px] px-2.5 py-1 whitespace-nowrap inline-flex items-center shrink-0">
+                                        <Clock className="h-3 w-3 animate-spin shrink-0" />
+                                        <span className="whitespace-nowrap">{lang === 'ar' ? 'قيد المراجعة' : 'Pending'}</span>
+                                      </Badge>
+                                    )}
+                                    {app.status === 'APPROVED' && (
+                                      <Badge variant="default" className="gap-1.5 font-bold bg-emerald-600 text-white text-[10px] px-2.5 py-1 whitespace-nowrap inline-flex items-center shrink-0">
+                                        <CheckCircle2 className="h-3 w-3 shrink-0" />
+                                        <span className="whitespace-nowrap">{lang === 'ar' ? 'معتمدة 🟢' : 'Approved'}</span>
+                                      </Badge>
+                                    )}
+                                    {app.status === 'REJECTED' && (
+                                      <Badge variant="destructive" className="gap-1.5 font-bold text-[10px] px-2.5 py-1 whitespace-nowrap inline-flex items-center shrink-0">
+                                        <AlertTriangle className="h-3 w-3 shrink-0" />
+                                        <span className="whitespace-nowrap">{lang === 'ar' ? 'مرفوضة' : 'Rejected'}</span>
+                                      </Badge>
+                                    )}
+                                  </td>
+
+                                  {/* 7. Actions */}
+                                  <td className="p-3.5 whitespace-nowrap">
+                                    <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                      {/* WhatsApp Chat */}
+                                      <a
+                                        href={`https://wa.me/${intlPhone}?text=${encodeURIComponent(
+                                          lang === 'ar'
+                                            ? `مرحباً أستاذ ${app.owner_name || app.applicant_name}، نتواصل معك من إدارة منصة ورق كونكت بخصوص اعتماد متجر (${app.store_name_ar || app.store_name || app.business_name}).`
+                                            : `Hello ${app.owner_name || app.applicant_name}, contacting you from WaraqConnect regarding (${app.store_name || app.business_name}).`
+                                        )}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="p-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 transition-colors shrink-0"
+                                        title={lang === 'ar' ? 'محادثة واتساب' : 'WhatsApp Chat'}
+                                      >
+                                        <MessageCircle className="h-4 w-4" />
+                                      </a>
+
+                                      {/* Inspect Checklist */}
+                                      <button
+                                        onClick={() => setInspectingApp(app)}
+                                        className="p-1.5 rounded-lg border border-border bg-card text-foreground hover:bg-accent transition-colors cursor-pointer"
+                                        title={lang === 'ar' ? 'فحص المصداقية ومكافحة السبام' : 'Verify Authenticity'}
+                                      >
+                                        <Eye className="h-4 w-4 text-muted-foreground" />
+                                      </button>
+
+                                      {/* Approved Partner Quick Notifications (WhatsApp & Email) */}
+                                      {app.status === 'APPROVED' && (
+                                        <div className="flex items-center gap-1">
+                                          {app.phone && (
+                                            <a
+                                              href={`https://wa.me/${app.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                                                `🎉 مرحباً بك يا ${app.owner_name || app.applicant_name}! تم توثيق واعتماد متجرك (${app.store_name_ar || app.business_name}) بنجاح على منصة WaraqConnect.\n\n📚 يمكنك الآن الدخول للوحة التحكم لإضافة كتبك وباقات عروض التوفير:\n${typeof window !== 'undefined' ? window.location.origin : ''}/store-dashboard`
+                                              )}`}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="p-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition-colors"
+                                              title={lang === 'ar' ? 'إرسال إشعار التفعيل عبر واتساب' : 'Notify via WhatsApp'}
+                                            >
+                                              <MessageCircle className="h-4 w-4" />
+                                            </a>
+                                          )}
+                                          {app.email && (
+                                            <a
+                                              href={`mailto:${app.email}?subject=${encodeURIComponent(
+                                                `🎉 تم اعتماد وتفعيل متجركم (${app.store_name_ar || app.business_name}) على منصة WaraqConnect`
+                                              )}&body=${encodeURIComponent(
+                                                `مرحباً ${app.owner_name || app.applicant_name}،\n\nيسعدنا إعلامك بأنه تم اعتماد وتوثيق متجركم رسمياً كشريك في منصة WaraqConnect!\n\nيمكنك الآن البدء بإضافة كتبك وإنشاء باقات عروض التوفير (Mix & Match) عبر لوحة التحكم:\n${typeof window !== 'undefined' ? window.location.origin : ''}/store-dashboard\n\nمع تحيات فريق WaraqConnect.`
+                                              )}`}
+                                              className="p-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-colors"
+                                              title={lang === 'ar' ? 'إرسال إيميل التفعيل' : 'Send Activation Email'}
+                                            >
+                                              <Mail className="h-4 w-4" />
+                                            </a>
+                                          )}
+                                        </div>
+                                      )}
+
+                                      {/* Approve Button */}
+                                      {app.status === 'PENDING' && (
+                                        <Button
+                                          size="sm"
+                                          onClick={() => handleApproveStore(app.id)}
+                                          loading={approvingId === app.id}
+                                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-7 px-2.5 rounded-lg gap-1 cursor-pointer"
+                                        >
+                                          <CheckCheck className="h-3.5 w-3.5" />
+                                          <span className="hidden lg:inline">{lang === 'ar' ? 'اعتماد' : 'Approve'}</span>
+                                        </Button>
+                                      )}
+
+                                      {/* Reject Button */}
+                                      {app.status === 'PENDING' && (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          onClick={() => handleRejectStore(app.id)}
+                                          className="text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-bold text-xs h-7 px-2 rounded-lg cursor-pointer"
+                                          title={lang === 'ar' ? 'رفض الطلب' : 'Reject'}
+                                        >
+                                          <X className="h-3.5 w-3.5" />
+                                        </Button>
+                                      )}
+
+                                      {app.status === 'APPROVED' && (
+                                        <Link href="/stores" target="_blank">
+                                          <Button variant="outline" size="sm" className="h-7 text-xs font-bold gap-1 rounded-lg">
+                                            <ExternalLink className="h-3 w-3 text-primary" />
+                                            <span className="hidden lg:inline">{lang === 'ar' ? 'الدليل' : 'Live'}</span>
+                                          </Button>
+                                        </Link>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )
+                            })
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Sub-Tab 2: Active Stores Table */}
+              {storeSubTab === 'ACTIVE_STORES' && (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 rounded-2xl bg-card border border-border">
+                    <div className="relative flex-1">
+                      <Search className={cn(
+                        "absolute top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground",
+                        isRTL ? "right-3" : "left-3"
+                      )} />
+                      <input
+                        type="text"
+                        value={appSearch}
+                        onChange={e => setAppSearch(e.target.value)}
+                        placeholder={lang === 'ar' ? 'ابحث في المتاجر المعتمدة بالاسم، العنوان، أو الرابط...' : 'Search active stores by name, city, or slug...'}
+                        className={cn(
+                          "w-full rounded-xl border border-border bg-background py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40",
+                          isRTL ? "pe-3 ps-9" : "ps-9 pe-3"
+                        )}
+                      />
+                    </div>
+                    <Badge variant="muted" className="text-xs font-bold self-center">
+                      {filteredActiveStores.length} {lang === 'ar' ? 'متجر معتمد' : 'stores'}
+                    </Badge>
+                  </div>
+
+                  {/* Active Stores Table */}
+                  <div className="rounded-2xl border border-border overflow-hidden bg-card shadow-xs">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/50 border-b border-border">
+                          <tr>
+                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'المكتبة الشريكة' : 'Bookstore'}</th>
+                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'طبيعة التواجد' : 'Format'}</th>
+                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'المقر / التغطية' : 'Location / Scope'}</th>
+                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'فيسبوك (FB)' : 'Facebook (FB)'}</th>
+                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'الإحصائيات والتقييم' : 'Metrics & Rating'}</th>
+                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'التوثيق' : 'Verification'}</th>
+                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'إجراءات' : 'Actions'}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {storesLoading ? (
+                            <tr>
+                              <td colSpan={7} className="text-center py-10 text-xs text-muted-foreground whitespace-nowrap">
+                                {lang === 'ar' ? 'جارٍ تحميل المكتبات المعتمدة...' : 'Loading bookstores...'}
+                              </td>
+                            </tr>
+                          ) : filteredActiveStores.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} className="text-center py-10 text-xs text-muted-foreground">
+                                {lang === 'ar' ? 'لا توجد مكتبات مطابقة' : 'No matching stores'}
+                              </td>
+                            </tr>
+                          ) : (
+                            filteredActiveStores.map(store => (
+                              <tr key={store.id} className="hover:bg-muted/20 transition-colors">
+                                <td className="p-3.5 whitespace-nowrap">
+                                  <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-xl overflow-hidden bg-muted border border-border shrink-0 flex items-center justify-center font-bold text-xs">
+                                      {store.logo_url ? (
+                                        <img src={store.logo_url} alt="" className="h-full w-full object-cover" />
+                                      ) : (
+                                        store.store_type === 'ONLINE' ? '🌐' : '🏪'
+                                      )}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <Link
+                                        href={`/stores/${store.slug}`}
+                                        target="_blank"
+                                        className="font-bold text-xs text-foreground hover:text-primary transition-colors flex items-center gap-1 group whitespace-nowrap"
+                                      >
+                                        <span className="truncate max-w-[200px]">{lang === 'ar' ? store.name_ar || store.name : store.name || store.name_ar}</span>
+                                        <ExternalLink className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                      </Link>
+                                      <p className="text-[10px] text-muted-foreground font-mono truncate max-w-[200px]">
+                                        /stores/{store.slug}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                <td className="p-3.5 whitespace-nowrap">
+                                  {store.store_type === 'ONLINE' ? (
+                                    <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 gap-1.5 font-bold text-[10px] whitespace-nowrap inline-flex items-center shrink-0 px-2.5 py-1">
+                                      <span className="shrink-0">🌐</span>
+                                      <span className="whitespace-nowrap">{lang === 'ar' ? 'أونلاين فقط' : 'Online Only'}</span>
+                                    </Badge>
+                                  ) : store.store_type === 'BOTH' ? (
+                                    <Badge className="bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 gap-1.5 font-bold text-[10px] whitespace-nowrap inline-flex items-center shrink-0 px-2.5 py-1">
+                                      <span className="shrink-0">🛍️</span>
+                                      <span className="whitespace-nowrap">{lang === 'ar' ? 'فرع + أونلاين' : 'Hybrid'}</span>
+                                    </Badge>
+                                  ) : (
+                                    <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 gap-1.5 font-bold text-[10px] whitespace-nowrap inline-flex items-center shrink-0 px-2.5 py-1">
+                                      <span className="shrink-0">📍</span>
+                                      <span className="whitespace-nowrap">{lang === 'ar' ? 'مقر فعلي' : 'Physical'}</span>
+                                    </Badge>
+                                  )}
+                                </td>
+
+                                <td className="p-3.5 whitespace-nowrap">
+                                  {store.store_type === 'ONLINE' ? (
+                                    <span className="text-xs font-bold text-blue-600 dark:text-blue-400 whitespace-nowrap">
+                                      {lang === 'ar' ? 'متجر إلكتروني — شحن لكافة المحافظات' : 'Online — Nationwide'}
+                                    </span>
+                                  ) : (
+                                    <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                      {store.address || 'القاهرة'}
+                                    </p>
+                                  )}
+                                </td>
+
+                                {/* Facebook Channel Column (All channels & info in popup) */}
+                                <td className="p-3.5 whitespace-nowrap">
+                                  {store.social_links?.facebook ? (
+                                    <a
+                                      href={store.social_links.facebook.startsWith('http') ? store.social_links.facebook : `https://facebook.com/${store.social_links.facebook}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-xs font-bold hover:bg-blue-500/20 transition-colors shadow-2xs group whitespace-nowrap shrink-0"
+                                      title={lang === 'ar' ? 'فتح صفحة الفيسبوك' : 'Open Facebook Page'}
+                                    >
+                                      <span className="h-2 w-2 rounded-full bg-blue-600 shrink-0" />
+                                      <span className="whitespace-nowrap">Facebook</span>
+                                      <ExternalLink className="h-3 w-3 opacity-60 group-hover:opacity-100 transition-opacity shrink-0" />
+                                    </a>
+                                  ) : (
+                                    <span className="text-[11px] text-muted-foreground font-medium whitespace-nowrap">
+                                      {lang === 'ar' ? 'غير مسجل' : 'Not linked'}
+                                    </span>
+                                  )}
+                                </td>
+
+                                <td className="p-3.5 whitespace-nowrap">
+                                  <div className="text-xs whitespace-nowrap">
+                                    <span className="font-bold text-amber-500 flex items-center gap-1 whitespace-nowrap">
+                                      <Star className="h-3 w-3 fill-amber-400 shrink-0" />
+                                      <span>{store.rating_average || 5.0}</span>
+                                      <span className="text-[10px] text-muted-foreground font-normal">({store.rating_count || 1})</span>
+                                    </span>
+                                    <p className="text-[10px] text-muted-foreground mt-0.5 whitespace-nowrap">
+                                      {store.total_listings || 0} {lang === 'ar' ? 'كتاب معروض' : 'books'}
+                                    </p>
+                                  </div>
+                                </td>
+
+                                <td className="p-3.5 whitespace-nowrap">
+                                  <Badge className="bg-emerald-600 text-white font-bold text-[10px] gap-1.5 whitespace-nowrap inline-flex items-center shrink-0 px-2.5 py-1">
+                                    <CheckCircle2 className="h-3 w-3 shrink-0" />
+                                    <span className="whitespace-nowrap">{lang === 'ar' ? 'موثق رسمي' : 'Verified'}</span>
+                                  </Badge>
+                                </td>
+
+                                <td className="p-3.5 whitespace-nowrap">
+                                  <div className="flex items-center gap-2 whitespace-nowrap">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => setInspectingStore(store)}
+                                      className="h-7 text-xs font-bold rounded-lg gap-1 cursor-pointer"
+                                      title={lang === 'ar' ? 'عرض التفاصيل الكاملة وكافة القنوات' : 'View full details & all channels'}
+                                    >
+                                      <Eye className="h-3.5 w-3.5 text-primary" />
+                                      <span>{lang === 'ar' ? 'التفاصيل' : 'Details'}</span>
+                                    </Button>
+                                    <Link href={`/stores/${store.slug}`} target="_blank">
+                                      <Button variant="ghost" size="sm" className="h-7 text-xs font-bold rounded-lg gap-1 text-muted-foreground hover:text-foreground">
+                                        <ExternalLink className="h-3 w-3" />
+                                        <span className="hidden lg:inline">{lang === 'ar' ? 'المتجر' : 'Live'}</span>
+                                      </Button>
+                                    </Link>
+                                    <Link href={`/stores/dashboard?store=${store.id}`} target="_blank">
+                                      <Button variant="ghost" size="sm" className="h-7 text-xs font-bold rounded-lg text-primary">
+                                        {lang === 'ar' ? 'لوحة التاجر' : 'Merchant'}
+                                      </Button>
+                                    </Link>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Sub-Tab 3: Comprehensive Anti-Spam & Trust Signals Guide */}
+              {storeSubTab === 'VERIFICATION_GUIDE' && (
+                <div className="space-y-6">
+                  {/* Banner */}
+                  <div className="p-5 rounded-3xl bg-gradient-to-r from-emerald-500/10 via-primary/5 to-transparent border border-emerald-500/30 flex items-start gap-3">
+                    <div className="h-10 w-10 rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                      <ShieldCheck className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-foreground">
+                        {lang === 'ar' ? 'منظومة كشف الدخلاء ومكافحة السبام في ورق كونكت (Anti-Spotter & Spam Defense)' : 'WaraqConnect Anti-Spotter & Store Verification Framework'}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        {lang === 'ar'
+                          ? 'لمنع "السمسرة الوهمية" أو الحسابات المزيفة التي تدّعي امتلاك كتب دون وجود مخزون فعلي، تطبق المنصة 5 محاور تحقق متدرجة قبل وأثناء اعتماد أي متجر:'
+                          : 'To eliminate middlemen or fraudulent sellers with no inventory, the platform enforces 5 structured verification pillars before granting the Verified Partner badge.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 5 Pillars Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* Pillar 1 */}
+                    <Card className="border border-border">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                          <span className="h-7 w-7 rounded-lg bg-pink-500/10 text-pink-600 flex items-center justify-center text-xs font-black">1</span>
+                          <span>{lang === 'ar' ? 'فحص الوجود الرقمي (Social Media Footprint)' : 'Social Footprint Audit'}</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-xs text-muted-foreground leading-relaxed">
+                        <p className="font-semibold text-foreground">
+                          {lang === 'ar' ? 'ماذا نفحص في الحساب؟' : 'What we audit:'}
+                        </p>
+                        <ul className="list-disc ps-4 space-y-1">
+                          <li>{lang === 'ar' ? 'عمر حساب إنستغرام أو صفحة الفيسبوك (تاريخ أقدم منشور).' : 'Account age (first book post date).'}</li>
+                          <li>{lang === 'ar' ? 'وجود تفاعل حقيقي من قراء مع تعليقات واستفسارات أسعار.' : 'Real reader comments & purchase inquiries.'}</li>
+                          <li>{lang === 'ar' ? 'تطابق رقم الهاتف في البايو مع رقم هاتف مقدم الطلب.' : 'Phone number match in bio and WhatsApp.'}</li>
+                        </ul>
+                      </CardContent>
+                    </Card>
+
+                    {/* Pillar 2 */}
+                    <Card className="border border-border">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                          <span className="h-7 w-7 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xs font-black">2</span>
+                          <span>{lang === 'ar' ? 'واتساب تجاري موثق (WhatsApp Business)' : 'WhatsApp Business Profile'}</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-xs text-muted-foreground leading-relaxed">
+                        <p className="font-semibold text-foreground">
+                          {lang === 'ar' ? 'المعايير المطلوبة:' : 'Required criteria:'}
+                        </p>
+                        <ul className="list-disc ps-4 space-y-1">
+                          <li>{lang === 'ar' ? 'أن يكون الرقم مسجلاً كحساب أعمال تجاري وليس شخصياً عادياً.' : 'Registered as WhatsApp Business account.'}</li>
+                          <li>{lang === 'ar' ? 'وجود كتالوج للكتب بأسعارها وساعات الرد المحددة.' : 'Active book catalog with prices and hours.'}</li>
+                          <li>{lang === 'ar' ? 'التواصل المباشر مع صاحب المتجر للترحيب به والتأكد من هويته.' : 'Direct welcome call or voice note.'}</li>
+                        </ul>
+                      </CardContent>
+                    </Card>
+
+                    {/* Pillar 3 */}
+                    <Card className="border border-border">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                          <span className="h-7 w-7 rounded-lg bg-purple-500/10 text-purple-600 flex items-center justify-center text-xs font-black">3</span>
+                          <span>{lang === 'ar' ? 'فيديو إثبات المخزون (Handwritten Note Video)' : 'Live Stock Proof Video'}</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-xs text-muted-foreground leading-relaxed">
+                        <p className="font-semibold text-foreground">
+                          {lang === 'ar' ? 'الحل الحاسم لمنع السماسرة:' : 'The decisive anti-middleman test:'}
+                        </p>
+                        <p>
+                          {lang === 'ar'
+                            ? 'نطلب من صاحب المتجر إرسال فيديو 10 ثوانٍ يصور فيه رفوف كتبه ومستودعه حاملاً ورقة مكتوبة بخط اليد: "ورق كونكت + تاريخ اليوم".'
+                            : 'Request a 10s video of bookshelves holding a handwritten note with "WaraqConnect + Today\'s Date".'}
+                        </p>
+                        <p className="text-[11px] text-primary font-bold">
+                          {lang === 'ar' ? '👈 يمنع 100% من السماسرة الذين لا يملكون كتباً فعلية.' : '100% eliminates fake middlemen.'}
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    {/* Pillar 4 */}
+                    <Card className="border border-border">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                          <span className="h-7 w-7 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center text-xs font-black">4</span>
+                          <span>{lang === 'ar' ? 'الهوية أو السجل (National ID / Commercial Reg)' : 'Legal Identity Check'}</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-xs text-muted-foreground leading-relaxed">
+                        <p className="font-semibold text-foreground">
+                          {lang === 'ar' ? 'الوثائق المعتمدة في مصر:' : 'Accepted documents in Egypt:'}
+                        </p>
+                        <ul className="list-disc ps-4 space-y-1">
+                          <li>{lang === 'ar' ? 'السجل التجاري أو البطاقة الضريبية للمكتبات الرسمية.' : 'Commercial register (CR) or tax card.'}</li>
+                          <li>{lang === 'ar' ? 'توثيق منصة "معروف" للمتاجر الإلكترونية.' : 'Maroof or Freelance permit.'}</li>
+                          <li>{lang === 'ar' ? 'صورة بطاقة الرقم القومي لصاحب المتجر الفردي.' : 'National ID for individual book curators.'}</li>
+                        </ul>
+                      </CardContent>
+                    </Card>
+
+                    {/* Pillar 5 */}
+                    <Card className="border border-border">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                          <span className="h-7 w-7 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center text-xs font-black">5</span>
+                          <span>{lang === 'ar' ? 'فترة الاختبار بالدفع عند الاستلام (COD Pilot)' : 'Cash-on-Delivery Pilot'}</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-xs text-muted-foreground leading-relaxed">
+                        <p className="font-semibold text-foreground">
+                          {lang === 'ar' ? 'حماية المشتري في البداية:' : 'Buyer protection phase:'}
+                        </p>
+                        <p>
+                          {lang === 'ar'
+                            ? 'أول 3 معاملات للمتجر الجديد تتم حصراً بنظام الدفع عند الاستلام (COD) مع متابعة آراء المشترين حتى يثبت جديته وخلوه من أي شكاوى.'
+                            : 'First 3 customer purchases operate under Cash-on-Delivery escrow until proven reliable.'}
+                        </p>
+                      </CardContent>
+                    </Card>
+
+                    {/* Script Card */}
+                    <Card className="border border-primary/30 bg-primary/5">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2 text-primary">
+                          <MessageCircle className="h-4 w-4" />
+                          <span>{lang === 'ar' ? 'رسالة واتساب الجاهزة لطلب التحقق' : 'Ready WhatsApp Verification Script'}</span>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-xs text-muted-foreground">
+                        <div className="p-2.5 rounded-xl bg-card border border-border text-[11px] leading-relaxed text-foreground select-all font-mono" dir="rtl">
+                          مرحباً أستاذ [الاسم]، لمتابعة توثيق واعتماد متجركم على ورق كونكت ومنحكم شارة الشريك الموثوق 🟢، برجاء التكرم بمشاركتنا:
+                          1. رابط صفحة إنستغرام أو فيسبوك الرسمية.
+                          2. فيديو سريع مدته 10 ثوانٍ يصور رفوف/مخزون الكتب مع ورقة تحمل اسم المنصة وتاريخ اليوم.
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          {lang === 'ar' ? 'يمكن نسخها أو إرسالها بنقرة واحدة من جدول الطلبات.' : 'Can be sent with one click from requests table.'}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -1305,6 +2628,726 @@ export function AdminDashboardClient({
           </div>
         </div>
       )}
+
+      {/* Anti-Spam & Authenticity Verification Modal */}
+      {inspectingApp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-card border border-border shadow-2xl p-5 sm:p-6 text-foreground space-y-5">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-border pb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-xl shrink-0">
+                  {inspectingApp.is_online_only || inspectingApp.store_type === 'ONLINE' ? '🌐' : '🏪'}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base sm:text-lg font-black text-foreground">
+                      {inspectingApp.store_name_ar || inspectingApp.store_name || inspectingApp.business_name}
+                    </h3>
+                    {inspectingApp.is_online_only || inspectingApp.store_type === 'ONLINE' ? (
+                      <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 text-[10px] font-bold">
+                        🌐 {lang === 'ar' ? 'متجر أونلاين فقط' : 'Online Only'}
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 text-[10px] font-bold">
+                        📍 {lang === 'ar' ? 'مقر فعلي' : 'Physical Store'}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {lang === 'ar' ? 'مقدم الطلب:' : 'Applicant:'} <span className="font-semibold text-foreground">{inspectingApp.owner_name || inspectingApp.applicant_name}</span> • <span dir="ltr" className="font-mono">{inspectingApp.phone}</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setInspectingApp(null)}
+                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Application Overview Summary */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+              <div className="p-3 rounded-xl bg-muted/30 border border-border space-y-1">
+                <span className="text-muted-foreground font-medium block">
+                  {lang === 'ar' ? 'المقر / نطاق الشحن والتوزيع:' : 'Location & Shipping:'}
+                </span>
+                <p className="font-bold text-foreground">
+                  {inspectingApp.is_online_only || inspectingApp.store_type === 'ONLINE'
+                    ? (lang === 'ar' ? '🚚 متجر إلكتروني — شحن لجميع المحافظات' : '🚚 E-Commerce — Nationwide Delivery')
+                    : `${inspectingApp.city} — ${inspectingApp.address || ''}`}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-muted/30 border border-border space-y-1">
+                <span className="text-muted-foreground font-medium block">
+                  {lang === 'ar' ? 'تقدير المخزون والسجل:' : 'Inventory & CR:'}
+                </span>
+                <p className="font-bold text-foreground">
+                  {inspectingApp.monthly_book_estimate || (lang === 'ar' ? 'غير محدد' : 'N/A')}
+                  {inspectingApp.commercial_reg && ` • س.ت: ${inspectingApp.commercial_reg}`}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-muted/30 border border-border space-y-1">
+                <span className="text-muted-foreground font-medium block">
+                  {lang === 'ar' ? 'نوع الشراكة والنشاط:' : 'Partner Category:'}
+                </span>
+                <p className="font-bold text-foreground">
+                  {inspectingApp.partner_type === 'BOOKSTORE'
+                    ? (lang === 'ar' ? '📚 متجر ومكتبة كتب' : '📚 Bookstore')
+                    : inspectingApp.partner_type === 'EVENT_ORGANIZER'
+                    ? (lang === 'ar' ? '🎪 تنظيم فعاليات قراءة' : '🎪 Event Organizer')
+                    : (lang === 'ar' ? '🛍️ مكتبة + تنظيم فعاليات' : '🛍️ Hybrid Partner')}
+                </p>
+              </div>
+            </div>
+
+            {/* Store Bio / Description */}
+            {(inspectingApp.bio || inspectingApp.bio_ar || inspectingApp.details) && (
+              <div className="p-3.5 rounded-2xl bg-muted/30 border border-border space-y-1.5 text-xs">
+                <span className="text-[11px] font-bold text-muted-foreground block flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5 text-primary" />
+                  <span>{lang === 'ar' ? 'نبذة المتجر والأنشطة والكتب المعروضة:' : 'Store Bio & Books Overview:'}</span>
+                </span>
+                <p className="text-foreground leading-relaxed">
+                  {inspectingApp.bio_ar || inspectingApp.bio || inspectingApp.details}
+                </p>
+              </div>
+            )}
+
+            {/* Social Media Channels Direct Audit (All Channels in Popup) */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-foreground flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Globe className="h-4 w-4 text-primary" />
+                  <span>{lang === 'ar' ? 'كافة قنوات التواصل والحسابات الرقمية' : 'All Digital & Social Channels'}</span>
+                </span>
+                <span className="text-[11px] text-muted-foreground">
+                  {lang === 'ar' ? 'اضغط لفتح ومراجعة أي حساب' : 'Click to inspect any profile'}
+                </span>
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {/* Facebook */}
+                <div className="p-3 rounded-xl border border-blue-500/20 bg-blue-500/5 flex flex-col justify-between gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                      <span>🌐</span>
+                      <span>Facebook</span>
+                    </span>
+                    {inspectingApp.social_links?.facebook ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold">
+                        {lang === 'ar' ? 'مرفق' : 'Linked'}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 font-bold">
+                        {lang === 'ar' ? 'غير متوفر' : 'Missing'}
+                      </span>
+                    )}
+                  </div>
+                  {inspectingApp.social_links?.facebook ? (
+                    <a
+                      href={inspectingApp.social_links.facebook.startsWith('http') ? inspectingApp.social_links.facebook : `https://facebook.com/${inspectingApp.social_links.facebook}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-between text-xs font-semibold text-blue-600 hover:underline"
+                    >
+                      <span className="truncate">{inspectingApp.social_links.facebook}</span>
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 ms-1" />
+                    </a>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      {lang === 'ar' ? 'اطلب رابط الصفحة لمراجعة التقييمات' : 'Request Facebook page link'}
+                    </p>
+                  )}
+                </div>
+
+                {/* Instagram */}
+                <div className="p-3 rounded-xl border border-pink-500/20 bg-pink-500/5 flex flex-col justify-between gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold flex items-center gap-1.5 text-pink-600 dark:text-pink-400">
+                      <span>📸</span>
+                      <span>Instagram</span>
+                    </span>
+                    {inspectingApp.social_links?.instagram ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold">
+                        {lang === 'ar' ? 'مرفق' : 'Linked'}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 font-bold">
+                        {lang === 'ar' ? 'غير متوفر' : 'Missing'}
+                      </span>
+                    )}
+                  </div>
+                  {inspectingApp.social_links?.instagram ? (
+                    <a
+                      href={inspectingApp.social_links.instagram.startsWith('http') ? inspectingApp.social_links.instagram : `https://instagram.com/${inspectingApp.social_links.instagram.replace('@', '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-between text-xs font-semibold text-pink-600 hover:underline"
+                    >
+                      <span className="truncate">{inspectingApp.social_links.instagram}</span>
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 ms-1" />
+                    </a>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      {lang === 'ar' ? 'اطلب رابط الإنستغرام عبر الواتساب' : 'Request Instagram via WhatsApp'}
+                    </p>
+                  )}
+                </div>
+
+                {/* WhatsApp */}
+                <div className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex flex-col justify-between gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      <span>WhatsApp</span>
+                    </span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold">
+                      {lang === 'ar' ? 'مباشر' : 'Direct'}
+                    </span>
+                  </div>
+                  {(() => {
+                    const cleanPhone = (inspectingApp.phone || '').replace(/[^0-9]/g, '')
+                    const intlPhone = cleanPhone.startsWith('0') ? '20' + cleanPhone.slice(1) : cleanPhone
+                    return (
+                      <a
+                        href={`https://wa.me/${intlPhone}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-between text-xs font-semibold text-emerald-600 hover:underline"
+                      >
+                        <span dir="ltr" className="font-mono">{inspectingApp.phone}</span>
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0 ms-1" />
+                      </a>
+                    )
+                  })()}
+                </div>
+
+                {/* Website */}
+                <div className="p-3 rounded-xl border border-border bg-card flex flex-col justify-between gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold flex items-center gap-1.5 text-foreground">
+                      <span>🔗</span>
+                      <span>Website</span>
+                    </span>
+                    {inspectingApp.website_url ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold">
+                        {lang === 'ar' ? 'مرفق' : 'Linked'}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-bold">
+                        {lang === 'ar' ? 'اختياري' : 'Optional'}
+                      </span>
+                    )}
+                  </div>
+                  {inspectingApp.website_url ? (
+                    <a
+                      href={inspectingApp.website_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-between text-xs font-semibold text-primary hover:underline"
+                    >
+                      <span className="truncate">{inspectingApp.website_url}</span>
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 ms-1" />
+                    </a>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      {lang === 'ar' ? 'متجر إلكتروني مستقل (إن وجد)' : 'Independent e-commerce site'}
+                    </p>
+                  )}
+                </div>
+
+                {/* TikTok */}
+                <div className="p-3 rounded-xl border border-border bg-card flex flex-col justify-between gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold flex items-center gap-1.5 text-purple-600 dark:text-purple-400">
+                      <span>🎵</span>
+                      <span>TikTok</span>
+                    </span>
+                    {inspectingApp.social_links?.tiktok ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold">
+                        {lang === 'ar' ? 'مرفق' : 'Linked'}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-bold">
+                        {lang === 'ar' ? 'اختياري' : 'Optional'}
+                      </span>
+                    )}
+                  </div>
+                  {inspectingApp.social_links?.tiktok ? (
+                    <a
+                      href={inspectingApp.social_links.tiktok.startsWith('http') ? inspectingApp.social_links.tiktok : `https://tiktok.com/@${inspectingApp.social_links.tiktok.replace('@', '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-between text-xs font-semibold text-primary hover:underline"
+                    >
+                      <span className="truncate">{inspectingApp.social_links.tiktok}</span>
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 ms-1" />
+                    </a>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      {lang === 'ar' ? 'حساب مراجعات وتوصيات تيك توك' : 'BookTok profile'}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Anti-Spam 4-Step Verification Checklist */}
+            <div className="p-4 rounded-2xl bg-muted/40 border border-border space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                  <span>{lang === 'ar' ? 'قائمة التحقق من المصداقية ومكافحة السمسرة والسبام' : 'Anti-Spam & Authenticity Verification Checklist'}</span>
+                </h4>
+                <Badge variant="outline" className="text-[10px] font-bold">
+                  {lang === 'ar' ? 'إجراءات الأدمن' : 'Admin Audit'}
+                </Badge>
+              </div>
+
+              <div className="space-y-2 text-xs">
+                <label className="flex items-start gap-2.5 p-2 rounded-xl bg-card border border-border/80 cursor-pointer hover:bg-muted/30">
+                  <input type="checkbox" defaultChecked={Boolean(inspectingApp.social_links?.instagram || inspectingApp.verification_signals?.social_verified)} className="rounded mt-0.5 accent-primary" />
+                  <div>
+                    <p className="font-bold text-foreground">
+                      {lang === 'ar' ? '1. فحص الحساب الرقمي (Instagram/Facebook Age & Real Engagement)' : '1. Social Footprint & Real Engagement'}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {lang === 'ar'
+                        ? 'عمر الحساب يتجاوز 3 أشهر، منشورات كتب حقيقية، تعليقات قراء حقيقيين وليست حسابات روبوت أو متابعين تم شراؤهم.'
+                        : 'Account age > 3 months, legitimate book photos, genuine reader inquiries (not bought bot followers).'}
+                    </p>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-2.5 p-2 rounded-xl bg-card border border-border/80 cursor-pointer hover:bg-muted/30">
+                  <input type="checkbox" defaultChecked={Boolean(inspectingApp.verification_signals?.whatsapp_business)} className="rounded mt-0.5 accent-primary" />
+                  <div>
+                    <p className="font-bold text-foreground">
+                      {lang === 'ar' ? '2. واتساب تجاري موثق (WhatsApp Business Profile)' : '2. Active WhatsApp Business'}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {lang === 'ar'
+                        ? 'الرقم مسجل كنشاط تجاري، يمتلك كتالوج كتب معروضة بأسعارها، ومطابق للرقم المذكور في بايو الحسابات.'
+                        : 'Number has WhatsApp Business catalog, listed book prices, matching bio contact info.'}
+                    </p>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-2.5 p-2 rounded-xl bg-card border border-border/80 cursor-pointer hover:bg-muted/30">
+                  <input type="checkbox" defaultChecked={Boolean(inspectingApp.verification_signals?.sample_video_verified)} className="rounded mt-0.5 accent-primary" />
+                  <div>
+                    <p className="font-bold text-foreground flex items-center gap-1.5 text-primary">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span>{lang === 'ar' ? '3. فيديو إثبات المخزون الفعلي (10s Live Stock Video - الحاسم لمنع السماسرة)' : '3. Live Stock Video Proof (Decisive Anti-Spotter Test)'}</span>
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {lang === 'ar'
+                        ? 'فيديو سريع مدته 10 ثوانٍ يصور فيه التاجر رفوف الكتب بيده حاملاً ورقة مكتوبة بخط اليد: "ورق كونكت + تاريخ اليوم". هذا يمنع أي وسيط لا يملك الكتب في يده.'
+                        : '10s video showing actual bookshelves holding handwritten paper "WaraqConnect + Date". Eliminates 100% of middlemen without physical stock.'}
+                    </p>
+                  </div>
+                </label>
+
+                <label className="flex items-start gap-2.5 p-2 rounded-xl bg-card border border-border/80 cursor-pointer hover:bg-muted/30">
+                  <input type="checkbox" defaultChecked={Boolean(inspectingApp.verification_signals?.national_id_or_cr || inspectingApp.commercial_reg)} className="rounded mt-0.5 accent-primary" />
+                  <div>
+                    <p className="font-bold text-foreground">
+                      {lang === 'ar' ? '4. التحقق من الهوية القانونية (Commercial Reg / National ID)' : '4. Legal Identity Check'}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {lang === 'ar'
+                        ? 'سجل تجاري، بطاقة ضريبية، أو صورة بطاقة الرقم القومي لمسؤول المتجر لضمان وجود شخص مسؤول قانونياً.'
+                        : 'Commercial register, Maroof permit, or national ID of the curator.'}
+                    </p>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-border">
+              {/* WhatsApp Verification Request Button */}
+              {(() => {
+                const cleanPhone = (inspectingApp.phone || '').replace(/[^0-9]/g, '')
+                const intlPhone = cleanPhone.startsWith('0') ? '20' + cleanPhone.slice(1) : cleanPhone
+                const waMessage = lang === 'ar'
+                  ? `مرحباً أستاذ ${inspectingApp.owner_name || inspectingApp.applicant_name}، نتواصل معك من إدارة منصة ورق كونكت بخصوص اعتماد متجركم (${inspectingApp.store_name_ar || inspectingApp.store_name || inspectingApp.business_name}). لمتابعة منحكم شارة الشريك المعتمد 🟢، برجاء التكرم بمشاركتنا: 1. رابط حساب إنستغرام أو فيسبوك الرسمي. 2. فيديو سريع مدته 10 ثوانٍ لرفوف الكتب مع ورقة تحمل اسم المنصة وتاريخ اليوم.`
+                  : `Hello ${inspectingApp.owner_name || inspectingApp.applicant_name}, contacting you from WaraqConnect regarding your partner application. To grant the Verified Partner badge, kindly provide: 1. Official Instagram/Facebook profile. 2. A quick 10-second video of your book collection with a handwritten note "WaraqConnect + Date".`
+
+                return (
+                  <a
+                    href={`https://wa.me/${intlPhone}?text=${encodeURIComponent(waMessage)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-bold hover:bg-emerald-500/25 transition-colors"
+                  >
+                    <MessageCircle className="h-4 w-4 text-emerald-600" />
+                    <span>{lang === 'ar' ? 'مراسلة واتساب لطلب الفيديو والحساب' : 'Request Video & Socials on WhatsApp'}</span>
+                  </a>
+                )
+              })()}
+
+              <div className="flex items-center justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInspectingApp(null)}
+                  className="text-xs cursor-pointer"
+                >
+                  {lang === 'ar' ? 'إغلاق' : 'Close'}
+                </Button>
+
+                {inspectingApp.status === 'APPROVED' && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {inspectingApp.phone && (
+                      <a
+                        href={`https://wa.me/${inspectingApp.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                          `🎉 مرحباً بك يا ${inspectingApp.owner_name || inspectingApp.applicant_name}! تم اعتماد وتوثيق متجركم (${inspectingApp.store_name_ar || inspectingApp.business_name}) رسمياً على منصة WaraqConnect.\n\n📚 يمكنك الآن الدخول إلى لوحة التحكم لإضافة الكتب وباقات العروض المجمعة (Bundle Packages):\n${typeof window !== 'undefined' ? window.location.origin : ''}/store-dashboard`
+                        )}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        <span>{lang === 'ar' ? 'إشعار بالواتساب' : 'WhatsApp Notification'}</span>
+                      </a>
+                    )}
+                    {inspectingApp.email && (
+                      <a
+                        href={`mailto:${inspectingApp.email}?subject=${encodeURIComponent(
+                          `🎉 تم اعتماد وتفعيل متجركم (${inspectingApp.store_name_ar || inspectingApp.business_name}) على منصة WaraqConnect`
+                        )}&body=${encodeURIComponent(
+                          `مرحباً ${inspectingApp.owner_name || inspectingApp.applicant_name}،\n\nيسعدنا إعلامك بأنه تم اعتماد وتوثيق متجركم رسمياً كشريك في منصة WaraqConnect!\n\nيمكنك الآن البدء بإضافة كتبك وإنشاء باقات عروض التوفير عبر لوحة التحكم:\n${typeof window !== 'undefined' ? window.location.origin : ''}/store-dashboard\n\nمع تحيات فريق WaraqConnect.`
+                        )}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs"
+                      >
+                        <Mail className="h-4 w-4" />
+                        <span>{lang === 'ar' ? 'إرسال إيميل التفعيل' : 'Send Email'}</span>
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {inspectingApp.status === 'PENDING' && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRejectStore(inspectingApp.id)}
+                      className="text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-xs font-bold cursor-pointer"
+                    >
+                      {lang === 'ar' ? 'رفض' : 'Reject'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      loading={approvingId === inspectingApp.id}
+                      onClick={() => handleApproveStore(inspectingApp.id)}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold gap-1.5 cursor-pointer"
+                    >
+                      <CheckCheck className="h-4 w-4" />
+                      <span>{lang === 'ar' ? 'اعتماد وتوثيق كشريك رسمي' : 'Approve & Verify Partner'}</span>
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Active Bookstore Full Details & Channels Modal */}
+      {inspectingStore && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl bg-card border border-border shadow-2xl p-5 sm:p-6 text-foreground space-y-5">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-border pb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-2xl overflow-hidden bg-muted border border-border flex items-center justify-center text-xl shrink-0">
+                  {inspectingStore.logo_url ? (
+                    <img src={inspectingStore.logo_url} alt="" className="h-full w-full object-cover" />
+                  ) : inspectingStore.store_type === 'ONLINE' ? (
+                    '🌐'
+                  ) : (
+                    '🏪'
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base sm:text-lg font-black text-foreground">
+                      {lang === 'ar' ? inspectingStore.name_ar || inspectingStore.name : inspectingStore.name || inspectingStore.name_ar}
+                    </h3>
+                    <Badge className="bg-emerald-600 text-white text-[10px] font-bold gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      <span>{lang === 'ar' ? 'شريك موثق رسمي' : 'Verified Partner'}</span>
+                    </Badge>
+                    {inspectingStore.store_type === 'ONLINE' ? (
+                      <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30 text-[10px] font-bold">
+                        🌐 {lang === 'ar' ? 'متجر أونلاين فقط' : 'Online Only'}
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/30 text-[10px] font-bold">
+                        📍 {lang === 'ar' ? 'مقر فعلي' : 'Physical Store'}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                    /stores/{inspectingStore.slug}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setInspectingStore(null)}
+                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Metrics Overview */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="p-3 rounded-xl bg-muted/30 border border-border">
+                <span className="text-muted-foreground font-medium block">
+                  {lang === 'ar' ? 'التقييم العام:' : 'Rating:'}
+                </span>
+                <p className="font-extrabold text-amber-500 flex items-center gap-1 mt-0.5 text-sm">
+                  <Star className="h-3.5 w-3.5 fill-amber-400" />
+                  <span>{inspectingStore.rating_average || 5.0}</span>
+                  <span className="text-[10px] text-muted-foreground font-normal">({inspectingStore.rating_count || 1})</span>
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-muted/30 border border-border">
+                <span className="text-muted-foreground font-medium block">
+                  {lang === 'ar' ? 'الكتب المعروضة:' : 'Listings:'}
+                </span>
+                <p className="font-extrabold text-foreground mt-0.5 text-sm">
+                  {inspectingStore.total_listings || 0} {lang === 'ar' ? 'كتاب' : 'books'}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-muted/30 border border-border">
+                <span className="text-muted-foreground font-medium block">
+                  {lang === 'ar' ? 'المبيعات المنفذة:' : 'Sales:'}
+                </span>
+                <p className="font-extrabold text-foreground mt-0.5 text-sm">
+                  {inspectingStore.total_sales || 0} {lang === 'ar' ? 'طلب' : 'orders'}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-muted/30 border border-border">
+                <span className="text-muted-foreground font-medium block">
+                  {lang === 'ar' ? 'المتابعون:' : 'Followers:'}
+                </span>
+                <p className="font-extrabold text-foreground mt-0.5 text-sm">
+                  {inspectingStore.follower_count || 0}
+                </p>
+              </div>
+            </div>
+
+            {/* Address & Scope */}
+            <div className="p-3.5 rounded-2xl bg-muted/30 border border-border space-y-1 text-xs">
+              <span className="text-[11px] font-bold text-muted-foreground block">
+                {lang === 'ar' ? 'المقر والنطاق الجغرافي:' : 'Location & Coverage Scope:'}
+              </span>
+              <p className="font-bold text-foreground">
+                {inspectingStore.store_type === 'ONLINE'
+                  ? (lang === 'ar' ? '🌐 متجر إلكتروني — شحن وتوصيل لكافة المحافظات' : '🌐 E-Commerce — Nationwide Delivery')
+                  : inspectingStore.address || 'القاهرة'}
+              </p>
+            </div>
+
+            {/* Store Description */}
+            {(inspectingStore.description || inspectingStore.description_ar) && (
+              <div className="p-3.5 rounded-2xl bg-muted/30 border border-border space-y-1.5 text-xs">
+                <span className="text-[11px] font-bold text-muted-foreground block flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5 text-primary" />
+                  <span>{lang === 'ar' ? 'وصف المتجر ومجموعات الكتب:' : 'Store Description:'}</span>
+                </span>
+                <p className="text-foreground leading-relaxed">
+                  {lang === 'ar' ? inspectingStore.description_ar || inspectingStore.description : inspectingStore.description || inspectingStore.description_ar}
+                </p>
+              </div>
+            )}
+
+            {/* All Digital & Social Channels */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Globe className="h-4 w-4 text-primary" />
+                <span>{lang === 'ar' ? 'كافة قنوات التواصل والروابط الرقمية' : 'All Digital & Social Channels'}</span>
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                {/* Facebook */}
+                <div className="p-3 rounded-xl border border-blue-500/20 bg-blue-500/5 flex flex-col justify-between gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold flex items-center gap-1.5 text-blue-600 dark:text-blue-400">
+                      <span>🌐</span>
+                      <span>Facebook</span>
+                    </span>
+                    {inspectingStore.social_links?.facebook ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold">
+                        {lang === 'ar' ? 'مفعل' : 'Live'}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-bold">
+                        {lang === 'ar' ? 'غير مسجل' : 'N/A'}
+                      </span>
+                    )}
+                  </div>
+                  {inspectingStore.social_links?.facebook ? (
+                    <a
+                      href={inspectingStore.social_links.facebook.startsWith('http') ? inspectingStore.social_links.facebook : `https://facebook.com/${inspectingStore.social_links.facebook}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-between text-xs font-semibold text-blue-600 hover:underline"
+                    >
+                      <span className="truncate">{inspectingStore.social_links.facebook}</span>
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 ms-1" />
+                    </a>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      {lang === 'ar' ? 'غير مضاف' : 'Not provided'}
+                    </p>
+                  )}
+                </div>
+
+                {/* Instagram */}
+                <div className="p-3 rounded-xl border border-pink-500/20 bg-pink-500/5 flex flex-col justify-between gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold flex items-center gap-1.5 text-pink-600 dark:text-pink-400">
+                      <span>📸</span>
+                      <span>Instagram</span>
+                    </span>
+                    {inspectingStore.social_links?.instagram ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold">
+                        {lang === 'ar' ? 'مفعل' : 'Live'}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-bold">
+                        {lang === 'ar' ? 'غير مسجل' : 'N/A'}
+                      </span>
+                    )}
+                  </div>
+                  {inspectingStore.social_links?.instagram ? (
+                    <a
+                      href={inspectingStore.social_links.instagram.startsWith('http') ? inspectingStore.social_links.instagram : `https://instagram.com/${inspectingStore.social_links.instagram.replace('@', '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-between text-xs font-semibold text-pink-600 hover:underline"
+                    >
+                      <span className="truncate">{inspectingStore.social_links.instagram}</span>
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 ms-1" />
+                    </a>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      {lang === 'ar' ? 'غير مضاف' : 'Not provided'}
+                    </p>
+                  )}
+                </div>
+
+                {/* WhatsApp */}
+                <div className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 flex flex-col justify-between gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      <span>WhatsApp</span>
+                    </span>
+                    {inspectingStore.social_links?.whatsapp ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold">
+                        {lang === 'ar' ? 'مفعل' : 'Live'}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-bold">
+                        {lang === 'ar' ? 'غير مسجل' : 'N/A'}
+                      </span>
+                    )}
+                  </div>
+                  {inspectingStore.social_links?.whatsapp ? (
+                    <a
+                      href={`https://wa.me/${inspectingStore.social_links.whatsapp.replace(/[^0-9]/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-between text-xs font-semibold text-emerald-600 hover:underline"
+                    >
+                      <span dir="ltr" className="font-mono">{inspectingStore.social_links.whatsapp}</span>
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 ms-1" />
+                    </a>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      {lang === 'ar' ? 'غير مضاف' : 'Not provided'}
+                    </p>
+                  )}
+                </div>
+
+                {/* Website */}
+                <div className="p-3 rounded-xl border border-border bg-card flex flex-col justify-between gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold flex items-center gap-1.5 text-foreground">
+                      <span>🔗</span>
+                      <span>Website</span>
+                    </span>
+                    {inspectingStore.website_url ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold">
+                        {lang === 'ar' ? 'مفعل' : 'Live'}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground font-bold">
+                        {lang === 'ar' ? 'غير مسجل' : 'N/A'}
+                      </span>
+                    )}
+                  </div>
+                  {inspectingStore.website_url ? (
+                    <a
+                      href={inspectingStore.website_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center justify-between text-xs font-semibold text-primary hover:underline"
+                    >
+                      <span className="truncate">{inspectingStore.website_url}</span>
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 ms-1" />
+                    </a>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      {lang === 'ar' ? 'لا يوجد موقع مستقل' : 'No external site'}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-border">
+              <div className="flex items-center gap-2">
+                <Link href={`/stores/${inspectingStore.slug}`} target="_blank">
+                  <Button size="sm" className="text-xs font-bold gap-1.5 cursor-pointer">
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    <span>{lang === 'ar' ? 'فتح صفحة المتجر العامة' : 'Open Public Storefront'}</span>
+                  </Button>
+                </Link>
+                <Link href={`/stores/dashboard?store=${inspectingStore.id}`} target="_blank">
+                  <Button variant="outline" size="sm" className="text-xs font-bold gap-1.5 cursor-pointer">
+                    <span>{lang === 'ar' ? 'لوحة التاجر' : 'Merchant Dashboard'}</span>
+                  </Button>
+                </Link>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setInspectingStore(null)}
+                className="text-xs cursor-pointer"
+              >
+                {lang === 'ar' ? 'إغلاق' : 'Close'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+

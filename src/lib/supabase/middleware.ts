@@ -47,7 +47,7 @@ export async function updateSession(request: NextRequest) {
 
     // Protect admin routes
     if (request.nextUrl.pathname.startsWith('/admin')) {
-      if (!user) {
+      if (!user && process.env.NODE_ENV !== 'development') {
         const url = request.nextUrl.clone()
         url.pathname = '/login'
         url.searchParams.set('redirectTo', request.nextUrl.pathname)

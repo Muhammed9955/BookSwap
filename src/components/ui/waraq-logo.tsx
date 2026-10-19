@@ -17,28 +17,28 @@ interface WaraqLogoProps {
 
 const sizeConfig = {
   xs: {
-    iconSize: 24,
-    textSize: 'text-base',
-    arabicSize: 'text-base',
-    sloganSize: 'text-[10px]',
+    iconSize: 20,
+    textSize: 'text-xs',
+    arabicSize: 'text-xs',
+    sloganSize: 'text-[9px]',
     containerClass: 'gap-1.5',
-    iconWrapper: 'w-6 h-6',
+    iconWrapper: 'w-5 h-5',
   },
   sm: {
-    iconSize: 32,
-    textSize: 'text-lg',
-    arabicSize: 'text-lg',
-    sloganSize: 'text-[11px]',
+    iconSize: 26,
+    textSize: 'text-xs sm:text-sm',
+    arabicSize: 'text-xs sm:text-sm',
+    sloganSize: 'text-[10px]',
     containerClass: 'gap-2',
-    iconWrapper: 'w-8 h-8',
+    iconWrapper: 'w-7 h-7',
   },
   md: {
-    iconSize: 40,
-    textSize: 'text-xl',
-    arabicSize: 'text-xl',
+    iconSize: 36,
+    textSize: 'text-base sm:text-lg',
+    arabicSize: 'text-base sm:text-lg',
     sloganSize: 'text-xs',
     containerClass: 'gap-2.5',
-    iconWrapper: 'w-10 h-10',
+    iconWrapper: 'w-9 h-9',
   },
   lg: {
     iconSize: 48,
@@ -72,7 +72,7 @@ export function WaraqLogo({
   const content = (
     <div
       className={cn(
-        'inline-flex items-center select-none group transition-transform duration-200',
+        'inline-flex items-center select-none group transition-transform duration-200 whitespace-nowrap flex-nowrap shrink-0',
         cfg.containerClass,
         className
       )}
@@ -96,20 +96,20 @@ export function WaraqLogo({
 
       {/* Typography: WaraqConnect | ورق كونكت */}
       {showText && (
-        <div className="flex flex-col leading-none">
-          <div className="flex items-center gap-1.5 font-black tracking-tight">
+        <div className="flex flex-col leading-none whitespace-nowrap shrink-0">
+          <div className="flex items-center gap-1.5 font-black tracking-tight whitespace-nowrap flex-nowrap shrink-0">
             <span
               className={cn(
-                'tracking-tight font-extrabold text-[#173F32] dark:text-[#52b393]',
+                'tracking-tight font-extrabold text-[#173F32] dark:text-[#52b393] whitespace-nowrap shrink-0',
                 cfg.textSize
               )}
             >
               {BRAND.name.en}
             </span>
-            <span className="text-muted-foreground/40 font-light text-xs">|</span>
+            <span className="text-muted-foreground/40 font-light text-xs shrink-0 select-none">|</span>
             <span
               className={cn(
-                'font-black font-arabic text-[#173F32] dark:text-[#52b393]',
+                'font-black font-arabic text-[#173F32] dark:text-[#52b393] whitespace-nowrap shrink-0',
                 cfg.arabicSize
               )}
             >
@@ -120,7 +120,7 @@ export function WaraqLogo({
           {showSlogan && (
             <span
               className={cn(
-                'text-muted-foreground font-medium mt-1 leading-tight',
+                'text-muted-foreground font-medium mt-1 leading-tight whitespace-nowrap shrink-0',
                 cfg.sloganSize,
                 isRTL ? 'font-arabic' : 'font-sans'
               )}
@@ -135,7 +135,7 @@ export function WaraqLogo({
 
   if (href) {
     return (
-      <Link href={href} className="inline-flex items-center">
+      <Link href={href} className="inline-flex items-center whitespace-nowrap flex-nowrap shrink-0">
         {content}
       </Link>
     )

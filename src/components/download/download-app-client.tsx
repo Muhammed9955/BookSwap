@@ -441,15 +441,15 @@ export function DownloadAppClient({ defaultDeployUrl }: DownloadAppClientProps) 
 
             {/* Right Column: Prominent Large QR Code Station + Download QR Card */}
             <div className="lg:col-span-5 flex flex-col items-center justify-center">
-              <div className="w-full max-w-sm rounded-[36px] bg-card text-foreground border-4 border-emerald-500/40 p-6 sm:p-7 shadow-2xl space-y-5 text-center relative">
+              <div className="w-full max-w-sm rounded-3xl sm:rounded-[36px] bg-card text-foreground border-2 sm:border-4 border-emerald-500/40 p-4 sm:p-7 shadow-2xl space-y-4 sm:space-y-5 text-center relative">
                 {/* Glow Ring Accent */}
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-emerald-500 text-slate-950 text-[11px] font-black uppercase tracking-wider shadow-md">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-emerald-500 text-slate-950 text-[11px] font-black uppercase tracking-wider shadow-md whitespace-nowrap">
                   {lang === 'ar' ? 'امسح للتثبيت الفوري 📸' : 'Scan to Install Instantly 📸'}
                 </div>
 
                 {/* Header text inside scan card */}
                 <div className="pt-2">
-                  <h3 className="font-black text-lg text-foreground">
+                  <h3 className="font-black text-base sm:text-lg text-foreground">
                     {lang === 'ar' ? 'رمز الاستجابة السريع (QR Code)' : 'App QR Scan Station'}
                   </h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -458,7 +458,7 @@ export function DownloadAppClient({ defaultDeployUrl }: DownloadAppClientProps) 
                 </div>
 
                 {/* Big Prominent QR Code with Scanner Brackets */}
-                <div className="relative mx-auto w-64 h-64 sm:w-72 sm:h-72 p-3 rounded-3xl bg-white shadow-xl border-2 border-emerald-500/30 flex items-center justify-center">
+                <div className="relative mx-auto w-56 h-56 sm:w-72 sm:h-72 p-2.5 sm:p-3 rounded-2xl sm:rounded-3xl bg-white shadow-xl border-2 border-emerald-500/30 flex items-center justify-center">
                   {/* Decorative Corner Scanner Brackets */}
                   <div className="absolute top-2 start-2 w-5 h-5 border-t-4 border-s-4 border-emerald-600 rounded-tl-lg" />
                   <div className="absolute top-2 end-2 w-5 h-5 border-t-4 border-e-4 border-emerald-600 rounded-tr-lg" />

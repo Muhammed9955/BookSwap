@@ -49,7 +49,7 @@ export default async function StorePage({ params }: StorePageProps) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const { store, offers, events } = await getStoreBySlug(slug, supabase)
+  const { store, offers, events, inventory } = await getStoreBySlug(slug, supabase)
 
   if (!store) {
     notFound()
@@ -96,6 +96,7 @@ export default async function StorePage({ params }: StorePageProps) {
         store={store}
         offers={offers}
         events={events}
+        initialInventory={inventory}
         currentUserId={user?.id ?? null}
       />
     </>

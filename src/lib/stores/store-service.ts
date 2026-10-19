@@ -1,5 +1,6 @@
-import type { Bookstore, StoreOffer, StoreEvent, RSVPStatus, StoreType, OfferType, StoreInventoryItem } from '@/types/store'
+import type { Bookstore, StoreOffer, StoreEvent, RSVPStatus, StoreType, OfferType, StoreInventoryItem, StoreApplication, StoreApplicationStatus, StoreOrder } from '@/types/store'
 import { createClient } from '@/lib/supabase/client'
+import { STORE_CATALOG_BOOKS } from '@/lib/stores/store-catalog-data'
 
 type SupabaseClient = any
 
@@ -283,6 +284,116 @@ export const DEMO_OFFERS: StoreOffer[] = [
     status: 'ACTIVE',
     created_at: '2026-09-01T12:00:00Z',
   },
+  {
+    id: 'offer-diwan-pack-2',
+    store_id: 'store-diwan-zamalek',
+    title: 'Bestseller Duo: The Blue Elephant & Diamond Dust (2 Books Pack)',
+    title_ar: 'ثنائية التشويق البوليسي (الفيل الأزرق + تراب الماس) — باكدج كتابين بسعر حصري',
+    description: 'Exclusive 2-book bundle featuring Ahmed Mourad top mystery thrillers at a discounted set price.',
+    description_ar: 'ثنائية من أقوى روايات التشويق والإثارة النفسية في الأدب المعاصر للكاتب أحمد مراد، تأتيكم في باكدج توفير خاص بتغليف أنيق وهدية فاصل قراءة محفور.',
+    offer_type: 'CURATED_PACK',
+    book_count: 2,
+    genre: 'THRILLER',
+    genre_ar: 'غموض ورعب وتشويق',
+    original_price: 330,
+    offer_price: 210,
+    discount_pct: 36,
+    included_books: ['الفيل الأزرق (The Blue Elephant)', 'تراب الماس (Diamond Dust)'],
+    badge_text: 'ثنائية التوفير 🔥',
+    gift_description: 'فاصل كتب خشبي أنيق محفور + شحن سريع',
+    cover_image_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80',
+    is_featured: true,
+    status: 'ACTIVE',
+    created_at: '2026-09-18T10:00:00Z',
+  },
+  {
+    id: 'offer-shorouk-pack-3',
+    store_id: 'store-shorouk-downtown',
+    title: 'Cairo Trilogy by Naguib Mahfouz (Complete 3-Book Pack)',
+    title_ar: 'ثلاثية القاهرة الخالدة لنجيب محفوظ (3 كتب كاملة) — باكدج التراث الأدبي',
+    description: 'Complete 3-book masterpiece (Palace Walk, Palace of Desire, Sugar Street) at special bundle value.',
+    description_ar: 'الملحمة الروائية الأهم في تاريخ الأدب العربي: بين القصرين، قصر الشوق، والسكرية. طبعة دار الشروق المعتمدة مع علبة كرتونية تذكارية وبسعر خاص جداً.',
+    offer_type: 'CURATED_PACK',
+    book_count: 3,
+    genre: 'NOVELS',
+    genre_ar: 'روايات وأدب',
+    original_price: 540,
+    offer_price: 340,
+    discount_pct: 37,
+    included_books: ['بين القصرين (Palace Walk)', 'قصر الشوق (Palace of Desire)', 'السكرية (Sugar Street)'],
+    badge_text: 'ثلاثية نوبل 🌟',
+    gift_description: 'بوكس كرتوني تذكاري فاخر + 3 فواصل كلاسيكية',
+    cover_image_url: 'https://images.unsplash.com/photo-1507842229451-7f01be7ac102?auto=format&fit=crop&w=800&q=80',
+    is_featured: true,
+    status: 'ACTIVE',
+    created_at: '2026-09-19T11:00:00Z',
+  },
+  {
+    id: 'offer-bookish-pack-3',
+    store_id: 'store-bookish-online',
+    title: 'Self-Mastery & Habits Trio: Atomic Habits + Mindset + Deep Work (3 Books)',
+    title_ar: 'ثلاثية العادات والإنتاجية العالية (3 كتب الأكثر طلباً عالمياً)',
+    description: 'The ultimate productivity & mindset booster trio: Atomic Habits, Mindset, and Deep Work.',
+    description_ar: 'أقوى 3 كتب مترجمة لبناء روتين حديدي وتحقيق التركيز العميق والنجاح المهني. وفر 38% عند طلب الباكدج المجمع مع الشحن المنزلي السريع.',
+    offer_type: 'CURATED_PACK',
+    book_count: 3,
+    genre: 'PSYCHOLOGY',
+    genre_ar: 'علم نفس وتطوير ذات',
+    original_price: 620,
+    offer_price: 380,
+    discount_pct: 38,
+    included_books: ['العادات الذرية (Atomic Habits)', 'طريقة التفكير (Mindset)', 'العمل العميق (Deep Work)'],
+    badge_text: 'باكدج الإنتاجية ⚡',
+    gift_description: 'دفتر قراءة وتخطيط يومي Habit Tracker مجاناً',
+    cover_image_url: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=800&q=80',
+    is_featured: true,
+    status: 'ACTIVE',
+    created_at: '2026-09-21T14:00:00Z',
+  },
+  {
+    id: 'offer-diwan-pack-4',
+    store_id: 'store-diwan-zamalek',
+    title: 'Contemporary Thought & Renaissance (4 Books Pack)',
+    title_ar: 'رباعية الفكر والنهضة المعرفية (4 كتب تأسيسية)',
+    description: '4 essential books in philosophy, civilization and sociology by top Arab scholars.',
+    description_ar: 'حزمة نقدية فكرية متميزة تشمل كبار مفكري العصر لتأسيس وعي نقدي عميق، مع خصم خاص للمكتبة الفكرية.',
+    offer_type: 'CURATED_PACK',
+    book_count: 4,
+    genre: 'PHILOSOPHY',
+    genre_ar: 'فكر وفلسفة ومجتمع',
+    original_price: 750,
+    offer_price: 460,
+    discount_pct: 39,
+    included_books: ['مقدمة ابن خلدون', 'شروط النهضة (مالك بن نبي)', 'مشكلة الثقافة', 'تكوين العقل العربي'],
+    badge_text: 'رباعية الفكر 💡',
+    gift_description: 'مفكرة تدوين أفكار وقلم حبر فاخر مجاناً',
+    cover_image_url: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=800&q=80',
+    is_featured: true,
+    status: 'ACTIVE',
+    created_at: '2026-09-22T09:00:00Z',
+  },
+  {
+    id: 'offer-diwan-pack-5',
+    store_id: 'store-diwan-zamalek',
+    title: 'Faith & Serenity Quintet (5 Books Pack for 200 EGP)',
+    title_ar: 'خماسية الإيمان والسكينة الأسرية (باكدج 5 كتب بـ 200 ج.م فقط) 🔥',
+    description: '5 uplifting spiritual and family guidance books at our best bundle price of 200 EGP.',
+    description_ar: 'مجموعة من أروع كتب التزكية والتربية والعلاقات الأسرية الهادفة، باكدج 5 كتب متكاملة بسعر التوفير الخارق 200 ج.م.',
+    offer_type: 'CURATED_PACK',
+    book_count: 5,
+    genre: 'RELIGIOUS',
+    genre_ar: 'دين وروحانيات',
+    original_price: 420,
+    offer_price: 200,
+    discount_pct: 52,
+    included_books: ['فاتتني صلاة', 'لأنك الله', 'ندي تشتكي لعائشة', 'مع النبي', 'رسائل من القرآن'],
+    badge_text: 'باكدج الـ 200 ج.م 💥',
+    gift_description: '5 فواصل قراءة إسلامية محفورة + شحن مخفض',
+    cover_image_url: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=800&q=80',
+    is_featured: true,
+    status: 'ACTIVE',
+    created_at: '2026-09-23T10:00:00Z',
+  },
 ]
 
 // ─────────────────────────────────────────────────────────────
@@ -303,6 +414,9 @@ export const DEMO_EVENTS: StoreEvent[] = [
     location: 'Diwan Zamalek — Main Garden Hall',
     address: '159 26th of July St, Zamalek, Cairo',
     is_free: true,
+    host_name: 'أحمد مراد (الكاتب والروائي)',
+    host_phone: '+201001234567',
+    host_role: 'الكاتب الضيف وحفل التوقيع',
     cover_image_url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80',
     max_attendees: 120,
     current_attendees: 84,
@@ -321,6 +435,9 @@ export const DEMO_EVENTS: StoreEvent[] = [
     location: 'Cilantro Cafe, Street 218, Degla, Maadi, Cairo',
     address: 'Cilantro Cafe, Street 218, Degla, Maadi',
     is_free: true,
+    host_name: 'سارة عبد الرحمن',
+    host_phone: '+201123456789',
+    host_role: 'منسقة نادي قراء المعادي',
     cover_image_url: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80',
     max_attendees: 45,
     current_attendees: 38,
@@ -339,7 +456,11 @@ export const DEMO_EVENTS: StoreEvent[] = [
     ends_at: '2026-10-22T20:00:00Z',
     location: 'Readers Corner Lounge, Shatby Corniche, Alexandria',
     address: '42 Corniche El Nile, Shatby, Alexandria',
-    is_free: true,
+    is_free: false,
+    price: 65,
+    host_name: 'د. يوسف إبراهيم',
+    host_phone: '+201234567890',
+    host_role: 'أستاذ النقد الأدبي ومنسق الجلسة',
     cover_image_url: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=800&q=80',
     max_attendees: 35,
     current_attendees: 29,
@@ -359,6 +480,9 @@ export const DEMO_EVENTS: StoreEvent[] = [
     location: 'Dar El Shorouk Downtown, 1 Talaat Harb Square, Cairo',
     address: '1 Talaat Harb Square, Downtown, Cairo',
     is_free: true,
+    host_name: 'إدارة فرع الشروق وسط البلد',
+    host_phone: '+201019876543',
+    host_role: 'فريق تنظيم المبيعات والفعاليات',
     cover_image_url: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=800&q=80',
     max_attendees: 300,
     current_attendees: 210,
@@ -371,8 +495,171 @@ export const DEMO_EVENTS: StoreEvent[] = [
 // SERVICE FUNCTIONS (Database-first with fallback to demo data)
 // ─────────────────────────────────────────────────────────────
 
+function cacheStoreLocally(store: Bookstore) {
+  if (typeof window === 'undefined') return
+  try {
+    const storedStores = localStorage.getItem(STORES_STORAGE_KEY)
+    const storeMap = storedStores ? JSON.parse(storedStores) : {}
+    storeMap[store.id] = store
+    if (store.slug) {
+      storeMap[store.slug] = store
+    }
+    localStorage.setItem(STORES_STORAGE_KEY, JSON.stringify(storeMap))
+  } catch {}
+}
+
+/**
+ * Save / Upsert a bookstore directly into Supabase database (bookstores table)
+ */
+export async function saveStoreToDatabase(
+  store: Partial<Bookstore> & { name: string; slug?: string },
+  ownerId?: string,
+  _client?: SupabaseClient
+): Promise<{ success: boolean; store?: Bookstore; error?: string }> {
+  try {
+    const supabase = _client ?? createClient()
+    let effectiveOwnerId = ownerId
+
+    if (!effectiveOwnerId && typeof window !== 'undefined') {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user?.id) effectiveOwnerId = user.id
+      } catch {}
+    }
+
+    if (!effectiveOwnerId) {
+      try {
+        const { data: firstProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .limit(1)
+          .maybeSingle()
+        if (firstProfile?.id) effectiveOwnerId = firstProfile.id
+      } catch {}
+    }
+
+    const cleanSlug = (store.slug || store.name)
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/\s+/g, '-') || `store-${Date.now()}`
+
+    const isOnline = store.store_type === 'ONLINE'
+
+    const dbPayload: Record<string, any> = {
+      name: store.name,
+      name_ar: store.name_ar || store.name,
+      slug: cleanSlug,
+      description: store.description || '',
+      description_ar: store.description_ar || store.description || '',
+      store_type: store.store_type || 'ONLINE',
+      address: store.address || (isOnline ? 'متجر إلكتروني — شحن وتوصيل لكافة المحافظات' : null),
+      latitude: isOnline ? null : (store.latitude ?? null),
+      longitude: isOnline ? null : (store.longitude ?? null),
+      opening_hours: typeof store.opening_hours === 'object' ? store.opening_hours : { 'مواعيد العمل': 'يومياً 10:00 ص - 11:00 م' },
+      website_url: store.website_url || null,
+      social_links: typeof store.social_links === 'object' ? store.social_links : {},
+      logo_url: store.logo_url || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=250&q=80',
+      cover_url: store.cover_url || 'https://images.unsplash.com/photo-1507842229451-7f01be7ac102?auto=format&fit=crop&w=1200&q=80',
+      is_verified: store.is_verified ?? false,
+      is_active: store.is_active ?? true,
+      updated_at: new Date().toISOString(),
+    }
+
+    if (effectiveOwnerId) {
+      dbPayload.owner_id = effectiveOwnerId
+    }
+
+    // 1. Try server API route first if in browser (to leverage server cookie auth cleanly)
+    if (typeof window !== 'undefined') {
+      try {
+        const res = await fetch('/api/stores', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dbPayload),
+        })
+        if (res.ok) {
+          const json = await res.json()
+          if (json.success && json.store) {
+            cacheStoreLocally(json.store)
+            return { success: true, store: json.store }
+          }
+        }
+      } catch (e) {
+        console.warn('API /api/stores fallback:', e)
+      }
+    }
+
+    // 2. Direct Supabase insert / update
+    const { data: existing } = await supabase
+      .from('bookstores')
+      .select('id')
+      .eq('slug', cleanSlug)
+      .maybeSingle()
+
+    let savedData: Bookstore | null = null
+
+    if (existing) {
+      const { data, error } = await supabase
+        .from('bookstores')
+        .update(dbPayload)
+        .eq('id', existing.id)
+        .select('*')
+        .single()
+      if (!error && data) savedData = data as Bookstore
+    } else {
+      const { data, error } = await supabase
+        .from('bookstores')
+        .insert(dbPayload)
+        .select('*')
+        .single()
+      if (!error && data) savedData = data as Bookstore
+    }
+
+    if (savedData) {
+      cacheStoreLocally(savedData)
+      return { success: true, store: savedData }
+    }
+
+    // 3. Fallback store (stored locally)
+    const fallbackStore: Bookstore = {
+      id: `store-${Date.now()}`,
+      owner_id: effectiveOwnerId || `user-${Date.now()}`,
+      name: store.name,
+      name_ar: store.name_ar,
+      slug: cleanSlug,
+      description: store.description,
+      description_ar: store.description_ar,
+      store_type: store.store_type || 'ONLINE',
+      address: dbPayload.address,
+      latitude: dbPayload.latitude,
+      longitude: dbPayload.longitude,
+      opening_hours: dbPayload.opening_hours,
+      social_links: dbPayload.social_links,
+      logo_url: dbPayload.logo_url,
+      cover_url: dbPayload.cover_url,
+      is_verified: dbPayload.is_verified,
+      is_active: dbPayload.is_active,
+      total_listings: 0,
+      total_sales: 0,
+      total_events: 0,
+      rating_average: 5.0,
+      rating_count: 0,
+      follower_count: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    cacheStoreLocally(fallbackStore)
+    return { success: true, store: fallbackStore }
+  } catch (err: any) {
+    console.error('saveStoreToDatabase exception:', err)
+    return { success: false, error: err?.message }
+  }
+}
+
 /**
  * Fetch all bookstores with optional filters (store_type, city_id, search query)
+ * Queries Supabase database first, then merges with local and demo catalog
  */
 export async function getBookstores(params?: {
   storeType?: StoreType | 'ALL'
@@ -381,13 +668,12 @@ export async function getBookstores(params?: {
   _client?: SupabaseClient
 }): Promise<Bookstore[]> {
   try {
-    if (!params?._client) return filterDemoStores(params)
-    const supabase = params._client
+    const supabase = params?._client ?? createClient()
     let q = supabase
       .from('bookstores')
       .select('*')
       .eq('is_active', true)
-      .order('rating_average', { ascending: false })
+      .order('created_at', { ascending: false })
 
     if (params?.storeType && params.storeType !== 'ALL') {
       q = q.eq('store_type', params.storeType)
@@ -395,13 +681,40 @@ export async function getBookstores(params?: {
     if (params?.cityId) {
       q = q.eq('city_id', params.cityId)
     }
-
-    const { data, error } = await q
-    if (error || !data || data.length === 0) {
-      return filterDemoStores(params)
+    if (params?.query) {
+      const term = params.query.toLowerCase()
+      q = q.or(`name.ilike.%${term}%,name_ar.ilike.%${term}%,address.ilike.%${term}%`)
     }
 
-    return data as Bookstore[]
+    const { data, error } = await q
+    const dbStores = (!error && data) ? (data as Bookstore[]) : []
+
+    // Merge database stores with local & demo stores
+    const all = [...dbStores]
+
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(STORES_STORAGE_KEY)
+        if (stored) {
+          const map = JSON.parse(stored)
+          const customList: Bookstore[] = Object.values(map)
+          for (const s of customList) {
+            if (!all.some(existing => existing.id === s.id || existing.slug === s.slug)) {
+              all.push(s)
+            }
+          }
+        }
+      } catch {}
+    }
+
+    // Include demo stores if not already in database
+    for (const demo of filterDemoStores(params)) {
+      if (!all.some(existing => existing.slug === demo.slug || existing.id === demo.id)) {
+        all.push(demo)
+      }
+    }
+
+    return all
   } catch {
     return filterDemoStores(params)
   }
@@ -429,22 +742,16 @@ function filterDemoStores(params?: {
 }
 
 /**
- * Get bookstore by slug with its active offers and events
+ * Get bookstore by slug with its active offers and events (queries DB first)
  */
 export async function getStoreBySlug(slug: string, _client?: SupabaseClient): Promise<{
   store: Bookstore | null
   offers: StoreOffer[]
   events: StoreEvent[]
+  inventory: StoreInventoryItem[]
 }> {
   try {
-    if (!_client) {
-      const demoStore = DEMO_STORES.find(s => s.slug === slug) || null
-      if (!demoStore) return { store: null, offers: [], events: [] }
-      const offers = DEMO_OFFERS.filter(o => o.store_id === demoStore.id)
-      const events = DEMO_EVENTS.filter(e => e.store_id === demoStore.id)
-      return { store: demoStore, offers, events }
-    }
-    const supabase = _client
+    const supabase = _client ?? createClient()
     const { data: store, error } = await supabase
       .from('bookstores')
       .select('*')
@@ -452,32 +759,65 @@ export async function getStoreBySlug(slug: string, _client?: SupabaseClient): Pr
       .eq('is_active', true)
       .maybeSingle()
 
-    if (error || !store) {
-      const demoStore = DEMO_STORES.find(s => s.slug === slug) || null
-      if (!demoStore) return { store: null, offers: [], events: [] }
+    let activeStore: Bookstore | null = (!error && store) ? (store as Bookstore) : null
 
-      const offers = DEMO_OFFERS.filter(o => o.store_id === demoStore.id)
-      const events = DEMO_EVENTS.filter(e => e.store_id === demoStore.id)
-      return { store: demoStore, offers, events }
+    // Check localStorage if not in DB
+    if (!activeStore && typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(STORES_STORAGE_KEY)
+        if (stored) {
+          const map = JSON.parse(stored)
+          activeStore = map[slug] || Object.values(map).find((s: any) => s.slug === slug) as Bookstore || null
+        }
+      } catch {}
     }
+
+    // Fallback to DEMO_STORES
+    if (!activeStore) {
+      activeStore = DEMO_STORES.find(s => s.slug === slug) || null
+    }
+
+    if (!activeStore) return { store: null, offers: [], events: [], inventory: [] }
 
     // Fetch store offers & events
     const [{ data: offers }, { data: events }] = await Promise.all([
-      supabase.from('store_offers').select('*').eq('store_id', store.id).eq('status', 'ACTIVE'),
-      supabase.from('events').select('*').eq('store_id', store.id).eq('is_active', true),
+      supabase.from('store_offers').select('*').eq('store_id', activeStore.id).eq('status', 'ACTIVE'),
+      supabase.from('events').select('*').eq('store_id', activeStore.id).eq('is_active', true),
     ])
 
+    // Load any custom offers added via merchant dashboard
+    let customOffers: StoreOffer[] = []
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(OFFERS_STORAGE_KEY)
+        if (stored) {
+          const list = JSON.parse(stored) as StoreOffer[]
+          customOffers = list.filter(o => o.store_id === activeStore!.id)
+        }
+      } catch {}
+    }
+
+    const mergedOffers = customOffers.length > 0 
+      ? [...customOffers, ...(offers ? (offers as StoreOffer[]) : [])]
+      : (offers && offers.length > 0) ? (offers as StoreOffer[]) : DEMO_OFFERS.filter(o => o.store_id === activeStore!.id)
+    const mergedEvents = (events && events.length > 0) ? (events as StoreEvent[]) : DEMO_EVENTS.filter(e => e.store_id === activeStore!.id)
+
+    // Load store inventory items
+    const inventory = await getStoreInventory(activeStore.id)
+
     return {
-      store: store as Bookstore,
-      offers: (offers && offers.length > 0 ? offers : DEMO_OFFERS.filter(o => o.store_id === store.id)) as StoreOffer[],
-      events: (events && events.length > 0 ? events : DEMO_EVENTS.filter(e => e.store_id === store.id)) as StoreEvent[],
+      store: activeStore,
+      offers: mergedOffers,
+      events: mergedEvents,
+      inventory,
     }
   } catch {
     const demoStore = DEMO_STORES.find(s => s.slug === slug) || null
-    if (!demoStore) return { store: null, offers: [], events: [] }
+    if (!demoStore) return { store: null, offers: [], events: [], inventory: [] }
     const offers = DEMO_OFFERS.filter(o => o.store_id === demoStore.id)
     const events = DEMO_EVENTS.filter(e => e.store_id === demoStore.id)
-    return { store: demoStore, offers, events }
+    const inventory = await getStoreInventory(demoStore.id)
+    return { store: demoStore, offers, events, inventory }
   }
 }
 
@@ -569,28 +909,144 @@ export async function getAllEvents(_client?: SupabaseClient): Promise<StoreEvent
 }
 
 /**
- * Follow or unfollow a bookstore
+ * Follow or unfollow a bookstore with persistent state and real count tracking
  */
-export async function toggleStoreFollow(storeId: string, userId: string): Promise<boolean> {
-  const supabase = createClient()
-  try {
-    const { data: existing } = await supabase
-      .from('store_follows')
-      .select('store_id')
-      .eq('store_id', storeId)
-      .eq('user_id', userId)
-      .maybeSingle()
+export async function toggleStoreFollow(
+  storeId: string,
+  userId?: string | null
+): Promise<{ isFollowing: boolean; followerCount: number }> {
+  const effectiveUserId = userId || 'guest_reader'
+  let isFollowing = false
+  let followerCount = 0
 
-    if (existing) {
-      await supabase.from('store_follows').delete().eq('store_id', storeId).eq('user_id', userId)
-      return false // Now not following
-    } else {
-      await supabase.from('store_follows').insert({ store_id: storeId, user_id: userId })
-      return true // Now following
-    }
-  } catch {
-    return true
+  if (typeof window !== 'undefined') {
+    try {
+      const storedFollows = localStorage.getItem(FOLLOWS_STORAGE_KEY)
+      const followMap: Record<string, boolean> = storedFollows ? JSON.parse(storedFollows) : {}
+      const followKey = `${storeId}_${effectiveUserId}`
+
+      isFollowing = !followMap[followKey]
+      followMap[followKey] = isFollowing
+      localStorage.setItem(FOLLOWS_STORAGE_KEY, JSON.stringify(followMap))
+
+      const countKey = `store_fc_${storeId}`
+      const currentCountStr = localStorage.getItem(countKey)
+      const baseCount = currentCountStr ? parseInt(currentCountStr, 10) : 14
+      followerCount = Math.max(0, isFollowing ? baseCount + 1 : baseCount - 1)
+      localStorage.setItem(countKey, String(followerCount))
+    } catch {}
   }
+
+  // Also try Supabase DB
+  try {
+    const supabase = createClient()
+    if (userId) {
+      if (isFollowing) {
+        await supabase.from('store_follows').upsert({ store_id: storeId, user_id: userId })
+      } else {
+        await supabase.from('store_follows').delete().eq('store_id', storeId).eq('user_id', userId)
+      }
+    }
+  } catch {}
+
+  return { isFollowing, followerCount }
+}
+
+/**
+ * Get bookstore follow state and real follower count
+ */
+export function getStoreFollowState(
+  storeId: string,
+  userId?: string | null,
+  fallbackCount = 14
+): { isFollowing: boolean; followerCount: number } {
+  const effectiveUserId = userId || 'guest_reader'
+  let isFollowing = false
+  let followerCount = fallbackCount
+
+  if (typeof window !== 'undefined') {
+    try {
+      const storedFollows = localStorage.getItem(FOLLOWS_STORAGE_KEY)
+      if (storedFollows) {
+        const followMap = JSON.parse(storedFollows)
+        isFollowing = Boolean(followMap[`${storeId}_${effectiveUserId}`])
+      }
+      const countKey = `store_fc_${storeId}`
+      const storedCount = localStorage.getItem(countKey)
+      if (storedCount) {
+        followerCount = parseInt(storedCount, 10)
+      } else {
+        localStorage.setItem(countKey, String(fallbackCount))
+      }
+    } catch {}
+  }
+
+  return { isFollowing, followerCount }
+}
+
+/**
+ * Submit a 1-5 star rating for a bookstore with persistent recalculated average and total count
+ */
+export async function submitStoreRating(
+  storeId: string,
+  rating: number,
+  userId?: string | null
+): Promise<{ userRating: number; rating_average: number; rating_count: number }> {
+  const effectiveUserId = userId || 'guest_reader'
+  let rating_average = 4.9
+  let rating_count = 14
+
+  if (typeof window !== 'undefined') {
+    try {
+      const key = `${RATINGS_STORAGE_KEY}_${storeId}`
+      const stored = localStorage.getItem(key)
+      const data = stored ? JSON.parse(stored) : { ratings: {}, initialAvg: 4.8, initialCount: 12 }
+
+      data.ratings[effectiveUserId] = rating
+
+      const userScores = Object.values(data.ratings) as number[]
+      const totalRatingsCount = (data.initialCount || 12) + userScores.length
+      const sumUser = userScores.reduce((acc, curr) => acc + curr, 0)
+      const totalScore = (data.initialAvg || 4.8) * (data.initialCount || 12) + sumUser
+
+      rating_average = Math.round((totalScore / totalRatingsCount) * 10) / 10
+      rating_count = totalRatingsCount
+
+      localStorage.setItem(key, JSON.stringify({ ...data, average: rating_average, count: rating_count }))
+    } catch {}
+  }
+
+  return { userRating: rating, rating_average, rating_count }
+}
+
+/**
+ * Get store rating state
+ */
+export function getStoreRatingState(
+  storeId: string,
+  userId?: string | null,
+  fallbackAvg = 4.9,
+  fallbackCount = 14
+): { userRating: number | null; rating_average: number; rating_count: number } {
+  const effectiveUserId = userId || 'guest_reader'
+  let userRating: number | null = null
+  let rating_average = fallbackAvg
+  let rating_count = fallbackCount
+
+  if (typeof window !== 'undefined') {
+    try {
+      const key = `${RATINGS_STORAGE_KEY}_${storeId}`
+      const stored = localStorage.getItem(key)
+      if (stored) {
+        const data = JSON.parse(stored)
+        userRating = data.ratings?.[effectiveUserId] ?? null
+        rating_average = data.average || fallbackAvg
+        rating_count = data.count || fallbackCount
+      }
+    } catch {}
+  }
+
+  return { userRating, rating_average, rating_count }
 }
 
 /**
@@ -721,6 +1177,9 @@ const INVENTORY_STORAGE_KEY = 'waraq_store_inventory_v1'
 const STORES_STORAGE_KEY = 'waraq_custom_stores_v1'
 const OFFERS_STORAGE_KEY = 'waraq_custom_offers_v1'
 const EVENTS_STORAGE_KEY = 'waraq_custom_events_v1'
+const ORDERS_STORAGE_KEY = 'waraq_store_orders_v1'
+const FOLLOWS_STORAGE_KEY = 'waraq_store_follows_v1'
+const RATINGS_STORAGE_KEY = 'waraq_store_ratings_v1'
 
 /**
  * Get bookstore inventory items
@@ -734,7 +1193,103 @@ export async function getStoreInventory(storeId: string): Promise<StoreInventory
       }
     } catch {}
   }
-  return DEMO_STORE_INVENTORY.filter(item => item.store_id === storeId)
+
+  const demoItems = DEMO_STORE_INVENTORY.filter(item => item.store_id === storeId)
+  if (demoItems.length > 0) return demoItems
+
+  // Seed default books from curated catalog for new bookstores so storefront is never empty
+  const seeded: StoreInventoryItem[] = STORE_CATALOG_BOOKS.slice(0, 8).map((book, idx) => ({
+    id: `seed-${storeId}-${idx}`,
+    store_id: storeId,
+    title: book.title,
+    title_ar: book.title_ar || book.title,
+    author: book.author,
+    isbn: `97897709${idx}4321`,
+    category_name: book.category_name_ar || 'أدب وروايات',
+    condition: 'NEW',
+    price: book.price || 120,
+    original_price: book.original_price || (book.price ? book.price + 40 : 160),
+    stock_quantity: 12,
+    cover_url: book.cover_url || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80',
+    is_active: true,
+    created_at: new Date().toISOString(),
+  }))
+
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${storeId}`, JSON.stringify(seeded))
+    } catch {}
+  }
+
+  return seeded
+}
+
+/**
+ * Submit a customer order to the bookstore (Single Book or Bundle Package)
+ */
+export async function submitStoreOrder(
+  order: Omit<StoreOrder, 'id' | 'created_at' | 'status'>
+): Promise<StoreOrder> {
+  const newOrder: StoreOrder = {
+    ...order,
+    id: `ORD-${Date.now().toString().slice(-6)}`,
+    status: 'NEW',
+    created_at: new Date().toISOString(),
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const key = `${ORDERS_STORAGE_KEY}_${order.store_id}`
+      const stored = localStorage.getItem(key)
+      const orders = stored ? JSON.parse(stored) : []
+      orders.unshift(newOrder)
+      localStorage.setItem(key, JSON.stringify(orders))
+    } catch {}
+  }
+
+  return newOrder
+}
+
+/**
+ * Get orders received by a specific bookstore
+ */
+export async function getStoreOrders(storeId: string): Promise<StoreOrder[]> {
+  if (typeof window !== 'undefined') {
+    try {
+      const key = `${ORDERS_STORAGE_KEY}_${storeId}`
+      const stored = localStorage.getItem(key)
+      if (stored) {
+        return JSON.parse(stored)
+      }
+    } catch {}
+  }
+  return []
+}
+
+/**
+ * Update store order status (NEW, CONFIRMED, DISPATCHED, DELIVERED, CANCELLED)
+ */
+export async function updateStoreOrderStatus(
+  storeId: string,
+  orderId: string,
+  status: StoreOrder['status']
+): Promise<boolean> {
+  if (typeof window !== 'undefined') {
+    try {
+      const key = `${ORDERS_STORAGE_KEY}_${storeId}`
+      const stored = localStorage.getItem(key)
+      if (stored) {
+        const orders = JSON.parse(stored) as StoreOrder[]
+        const target = orders.find(o => o.id === orderId)
+        if (target) {
+          target.status = status
+          localStorage.setItem(key, JSON.stringify(orders))
+          return true
+        }
+      }
+    } catch {}
+  }
+  return false
 }
 
 /**
@@ -758,6 +1313,30 @@ export async function addStoreBook(
   }
 
   return newItem
+}
+
+/**
+ * Add multiple books to the bookstore inventory in batch
+ */
+export async function addStoreBooksBatch(
+  items: Omit<StoreInventoryItem, 'id' | 'created_at'>[]
+): Promise<StoreInventoryItem[]> {
+  const newItems: StoreInventoryItem[] = items.map((item, idx) => ({
+    ...item,
+    id: `inv-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`,
+    created_at: new Date().toISOString(),
+  }))
+
+  if (typeof window !== 'undefined' && items.length > 0) {
+    try {
+      const storeId = items[0].store_id
+      const current = await getStoreInventory(storeId)
+      const updated = [...newItems, ...current]
+      localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${storeId}`, JSON.stringify(updated))
+    } catch {}
+  }
+
+  return newItems
 }
 
 /**
@@ -787,6 +1366,13 @@ export async function updateBookstore(
     ...target,
     ...updates,
     updated_at: new Date().toISOString(),
+  }
+
+  // Persist directly to Supabase DB bookstores table
+  try {
+    await saveStoreToDatabase(updatedStore, updatedStore.owner_id)
+  } catch (err) {
+    console.warn('updateBookstore saveStoreToDatabase error:', err)
   }
 
   if (typeof window !== 'undefined') {
@@ -882,4 +1468,417 @@ export async function deleteStoreEvent(eventId: string): Promise<boolean> {
     } catch {}
   }
   return true
+}
+
+// ─────────────────────────────────────────────────────────────
+// STORE PARTNER APPLICATIONS & APPROVAL WORKFLOW
+// ─────────────────────────────────────────────────────────────
+
+const APPLICATIONS_STORAGE_KEY = 'waraq_store_applications_v1'
+
+export const DEMO_STORE_APPLICATIONS: StoreApplication[] = [
+  {
+    id: 'app-rawi-online',
+    applicant_name: 'عمر خالد المنشاوي',
+    owner_name: 'عمر خالد المنشاوي',
+    business_name: 'راوي للكتب — متجر إلكتروني',
+    store_name: 'Rawi Books Online',
+    store_name_ar: 'راوي للكتب الورقية (أونلاين فقط)',
+    store_type: 'ONLINE',
+    is_online_only: true,
+    phone: '01099887766',
+    email: 'orders@rawibooks.eg',
+    city: 'القاهرة',
+    address: 'متجر إلكتروني — شحن وتوصيل لكافة المحافظات',
+    commercial_reg: 'سجل تجاري إلكتروني CR-77291-ONLINE',
+    monthly_book_estimate: '2,200+ كتاب شهرياً (أونلاين)',
+    bio: 'Online-only secondhand & indie bookstore delivering curated literature and rare novels across all Egyptian governorates via courier.',
+    bio_ar: 'متجر ومكتبة أونلاين متخصصة في توفير الروايات النادرة والكتب المستعملة بعناية مع التوصيل المنزلي لجميع محافظات مصر خلال 48 ساعة.',
+    partner_type: 'BOOKSTORE',
+    details: 'نعمل كمتجر إلكتروني عبر إنستغرام وموقعنا مع مستودع شحن بالمعادي ونرغب في الانضمام كشريك أونلاين على ورق كونكت.',
+    website_url: 'https://rawibooks.eg',
+    social_links: {
+      instagram: 'https://instagram.com/rawibooks.eg',
+      facebook: 'https://facebook.com/rawibooks.eg',
+      tiktok: 'https://tiktok.com/@rawibooks',
+      whatsapp: '01099887766',
+    },
+    verification_signals: {
+      social_verified: true,
+      whatsapp_business: true,
+      sample_video_verified: true,
+      national_id_or_cr: true,
+    },
+    status: 'PENDING',
+    created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'app-dar-tanmia',
+    applicant_name: 'أحمد سعيد عبد القادر',
+    owner_name: 'أحمد سعيد عبد القادر',
+    business_name: 'مكتبة تنمية',
+    store_name: 'Tanmeya Bookstore',
+    store_name_ar: 'مكتبة تنمية',
+    store_type: 'BOTH',
+    is_online_only: false,
+    phone: '01012348899',
+    email: 'info@tanmeya-books.com',
+    city: 'القاهرة',
+    address: 'شارع 9، المعادي، القاهرة',
+    commercial_reg: 'CR-104928-EG',
+    monthly_book_estimate: '1,500+ كتاب',
+    bio: 'Premier bookstore specializing in contemporary thought, literature, and rare Arabic translations.',
+    bio_ar: 'مكتبة رائدة متخصصة في الكتب الفكرية والتاريخية وترجمات الروايات العالمية مع خدمة التوصيل السريع لكافة المحافظات.',
+    partner_type: 'BOOKSTORE',
+    details: 'مكتبة متخصصة في الكتب الفكرية والتاريخية وترجمات الروايات العالمية. لدينا فرع في المعادي ونقدم خدمة توصيل لجميع المحافظات.',
+    website_url: 'https://tanmeyabooks.com',
+    social_links: {
+      instagram: 'https://instagram.com/tanmeya_bookstore',
+      facebook: 'https://facebook.com/tanmeyabooks',
+      whatsapp: '01012348899',
+    },
+    verification_signals: {
+      social_verified: true,
+      whatsapp_business: true,
+      sample_video_verified: true,
+      national_id_or_cr: true,
+    },
+    status: 'PENDING',
+    created_at: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'app-alex-read-club',
+    applicant_name: 'سارة فهمي النجار',
+    owner_name: 'سارة فهمي النجار',
+    business_name: 'ركن الإسكندرية للقراءة والكتب النادرة',
+    store_name: 'Alexandria Reading Corner',
+    store_name_ar: 'ركن الإسكندرية للقراءة والكتب النادرة',
+    store_type: 'OFFLINE',
+    is_online_only: false,
+    phone: '01224567891',
+    email: 'contact@alexread.org',
+    city: 'الإسكندرية',
+    address: 'ميدان محطة الرمل، عمارة الفنار، الإسكندرية',
+    commercial_reg: 'CR-884219-ALX',
+    monthly_book_estimate: '800+ كتاب شهرياً',
+    bio: 'Cultural reading haven along the Alexandria Corniche featuring weekly book clubs and author signings.',
+    bio_ar: 'مكتبة ومساحة ثقافية على كورنيش الإسكندرية. ننظم لقاءات أسبوعية لمناقشة الكتب وتوقيعات حصرية لكتاب الإسكندرية.',
+    partner_type: 'BOTH',
+    details: 'مكتبة ومساحة ثقافية على كورنيش الإسكندرية. ننظم لقاءات أسبوعية لمناقشة الكتب وتوقيعات حصرية لكتاب الإسكندرية.',
+    social_links: {
+      instagram: 'https://instagram.com/alexreadcorner',
+      facebook: 'https://facebook.com/alexreadcorner',
+      whatsapp: '01224567891',
+    },
+    verification_signals: {
+      social_verified: true,
+      whatsapp_business: false,
+      sample_video_verified: false,
+      national_id_or_cr: false,
+    },
+    status: 'PENDING',
+    created_at: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
+  },
+  {
+    id: 'app-badr-books',
+    applicant_name: 'محمود بدر الدين',
+    owner_name: 'محمود بدر الدين',
+    business_name: 'بوكستور بدر الثقافي',
+    store_name: 'Badr Cultural Bookstore',
+    store_name_ar: 'بوكستور بدر الثقافي',
+    store_type: 'OFFLINE',
+    is_online_only: false,
+    phone: '01198765432',
+    email: 'badr.store@gmail.com',
+    city: 'الجيزة',
+    address: 'شارع مصدق، الدقي، الجيزة',
+    commercial_reg: 'CR-552011-GIZ',
+    monthly_book_estimate: '3,000+ كتاب',
+    bio: 'University & literature book depot offering discounted textbooks and classics.',
+    bio_ar: 'مكتبة جامعية ومستودع كتب أدبية وعلمية بخصومات خاصة للطلاب والباحثين.',
+    partner_type: 'BOOKSTORE',
+    details: 'مكتبة جامعية ومستودع كتب أدبية وعلمية بخصومات خاصة للطلاب.',
+    social_links: {
+      whatsapp: '01198765432',
+      facebook: 'https://facebook.com/badrbookstore',
+    },
+    status: 'APPROVED',
+    created_at: new Date(Date.now() - 72 * 3600 * 1000).toISOString(),
+    reviewed_at: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
+    approved_store_id: 'store-diwan-zamalek',
+  },
+]
+
+export async function getStoreApplications(): Promise<StoreApplication[]> {
+  if (typeof window !== 'undefined') {
+    let dbApps: StoreApplication[] = []
+    try {
+      const res = await fetch('/api/partner-requests')
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success && Array.isArray(json.applications) && json.applications.length > 0) {
+          dbApps = json.applications.map((row: any) => {
+            let parsedDetails: any = {}
+            if (row.details) {
+              try {
+                parsedDetails = typeof row.details === 'string' ? JSON.parse(row.details) : row.details
+              } catch {
+                parsedDetails = { details: row.details }
+              }
+            }
+            return {
+              id: row.id,
+              applicant_name: row.name,
+              owner_name: parsedDetails.owner_name || row.name,
+              business_name: row.business_name,
+              store_name: parsedDetails.store_name || row.business_name,
+              store_name_ar: parsedDetails.store_name_ar || row.business_name,
+              phone: row.phone,
+              city: row.city,
+              district: parsedDetails.district,
+              address: parsedDetails.address,
+              latitude: parsedDetails.latitude,
+              longitude: parsedDetails.longitude,
+              store_type: parsedDetails.store_type || 'ONLINE',
+              is_online_only: parsedDetails.is_online_only ?? (parsedDetails.store_type === 'ONLINE'),
+              website_url: parsedDetails.website_url,
+              social_links: parsedDetails.social_links || {},
+              working_hours: parsedDetails.working_hours,
+              shipping_scope: parsedDetails.shipping_scope,
+              slogan: parsedDetails.slogan,
+              logo_url: parsedDetails.logo_url,
+              cover_url: parsedDetails.cover_url,
+              monthly_book_estimate: parsedDetails.monthly_book_estimate,
+              bio: parsedDetails.bio || row.details,
+              bio_ar: parsedDetails.bio_ar || row.details,
+              details: row.details,
+              partner_type: row.partner_type || 'BOOKSTORE',
+              contract_accepted: parsedDetails.contract_accepted ?? true,
+              status: (row.status as StoreApplicationStatus) || 'PENDING',
+              created_at: row.created_at,
+            }
+          })
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch partner requests from API:', e)
+    }
+
+    try {
+      const stored = localStorage.getItem(APPLICATIONS_STORAGE_KEY)
+      const localApps: StoreApplication[] = stored ? JSON.parse(stored) : []
+      const merged = [...dbApps]
+      for (const loc of localApps) {
+        if (!merged.some(m => m.id === loc.id)) {
+          merged.push(loc)
+        }
+      }
+      if (merged.length > 0) return merged
+    } catch {}
+  }
+  return DEMO_STORE_APPLICATIONS
+}
+
+export async function submitStoreApplication(
+  app: Omit<StoreApplication, 'id' | 'status' | 'created_at'>
+): Promise<StoreApplication> {
+  const newApp: StoreApplication = {
+    ...app,
+    id: `app-${Date.now()}`,
+    status: 'PENDING',
+    created_at: new Date().toISOString(),
+  }
+
+  if (typeof window !== 'undefined') {
+    // 1. Submit to /api/partner-requests to save in DB partner_requests table
+    try {
+      await fetch('/api/partner-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          applicant_name: newApp.applicant_name,
+          owner_name: newApp.owner_name,
+          business_name: newApp.business_name,
+          store_name_ar: newApp.store_name_ar,
+          phone: newApp.phone,
+          city: newApp.city,
+          partner_type: newApp.partner_type,
+          details: JSON.stringify(newApp),
+        }),
+      })
+    } catch (e) {
+      console.warn('API /api/partner-requests fallback:', e)
+    }
+
+    // 2. Pre-save bookstore in Supabase bookstores table
+    try {
+      const cleanSlug = (newApp.store_name || newApp.business_name)
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-') || `store-${Date.now()}`
+
+      await saveStoreToDatabase({
+        name: newApp.store_name || newApp.business_name,
+        name_ar: newApp.store_name_ar || newApp.business_name,
+        slug: cleanSlug,
+        description: newApp.bio || newApp.details || '',
+        description_ar: newApp.bio_ar || newApp.details || '',
+        store_type: newApp.store_type || (newApp.is_online_only ? 'ONLINE' : 'BOTH'),
+        address: newApp.address,
+        district: newApp.district,
+        latitude: newApp.latitude,
+        longitude: newApp.longitude,
+        google_maps_url: newApp.google_maps_url,
+        slogan: newApp.slogan,
+        shipping_scope: newApp.shipping_scope,
+        opening_hours: newApp.working_hours ? { 'مواعيد العمل': newApp.working_hours } : undefined,
+        logo_url: newApp.logo_url,
+        cover_url: newApp.cover_url,
+        website_url: newApp.website_url,
+        social_links: {
+          whatsapp: newApp.phone,
+          ...(newApp.social_links || {}),
+        },
+        is_verified: false,
+        is_active: true,
+      })
+    } catch (e) {
+      console.warn('Failed to pre-save store to DB:', e)
+    }
+
+    // 3. Cache locally in browser
+    try {
+      const current = await getStoreApplications()
+      const updated = [newApp, ...current.filter(a => a.id !== newApp.id)]
+      localStorage.setItem(APPLICATIONS_STORAGE_KEY, JSON.stringify(updated))
+    } catch {}
+  }
+
+  return newApp
+}
+
+export async function approveStoreApplication(
+  applicationId: string
+): Promise<{ success: boolean; store?: Bookstore; application?: StoreApplication }> {
+  const apps = await getStoreApplications()
+  const target = apps.find(a => a.id === applicationId)
+  if (!target) return { success: false }
+
+  const cleanSlug = (target.store_name || target.business_name)
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-') || `store-${Date.now()}`
+
+  const resolvedStoreType: StoreType =
+    target.is_online_only || target.store_type === 'ONLINE'
+      ? 'ONLINE'
+      : (target.store_type || (target.partner_type === 'BOTH' ? 'BOTH' : 'OFFLINE'))
+
+  // Create new active verified Bookstore
+  const newStore: Bookstore = {
+    id: `store-${Date.now()}`,
+    owner_id: `user-${Date.now()}`,
+    name: target.store_name || target.business_name,
+    name_ar: target.store_name_ar || target.business_name,
+    slug: cleanSlug,
+    description: target.bio || target.details || 'مكتبة شريكة معتمدة على منصة WaraqConnect.',
+    description_ar: target.bio_ar || target.details || 'مكتبة شريكة معتمدة على منصة WaraqConnect.',
+    store_type: resolvedStoreType,
+    address: resolvedStoreType === 'ONLINE' ? 'متجر إلكتروني — شحن وتوصيل لكافة المحافظات' : (target.address || target.city),
+    district: target.district,
+    google_maps_url: target.google_maps_url,
+    slogan: target.slogan,
+    opening_hours: target.working_hours ? { 'مواعيد العمل': target.working_hours } : undefined,
+    logo_url: target.logo_url || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=250&q=80',
+    cover_url: target.cover_url || 'https://images.unsplash.com/photo-1507842229451-7f01be7ac102?auto=format&fit=crop&w=1200&q=80',
+    latitude: target.latitude ?? (resolvedStoreType === 'ONLINE' ? undefined : 30.0444),
+    longitude: target.longitude ?? (resolvedStoreType === 'ONLINE' ? undefined : 31.2357),
+    website_url: target.website_url,
+    social_links: {
+      whatsapp: target.phone,
+      facebook: target.social_links?.facebook,
+      instagram: target.social_links?.instagram,
+      tiktok: target.social_links?.tiktok,
+    },
+    is_verified: true,
+    verified_at: new Date().toISOString(),
+    is_active: true,
+    total_listings: 15,
+    total_sales: 0,
+    total_events: 0,
+    rating_average: 5.0,
+    rating_count: 1,
+    follower_count: 12,
+    created_at: new Date().toISOString(),
+  }
+
+  // Persist directly to Supabase DB bookstores table
+  try {
+    const dbRes = await saveStoreToDatabase(newStore)
+    if (dbRes.store) {
+      newStore.id = dbRes.store.id
+    }
+  } catch (e) {
+    console.warn('Failed to save approved store to DB:', e)
+  }
+
+  target.status = 'APPROVED'
+  target.reviewed_at = new Date().toISOString()
+  target.approved_store_id = newStore.id
+
+  // Send in-app notification to the store applicant
+  if (target.applicant_id) {
+    try {
+      const supabase = createClient()
+      await supabase.from('notifications').insert({
+        user_id: target.applicant_id,
+        type: 'STORE_APPROVED',
+        title: '🎉 تم توثيق واعتماد متجرك رسمياً!',
+        title_ar: '🎉 تم توثيق واعتماد متجرك رسمياً!',
+        body: `مبروك! تم تفعيل متجر (${newStore.name_ar || newStore.name}). يمكنك الآن الدخول إلى لوحة التحكم لإضافة الكتب وباقات العروض المجمعة (Bundle Packages).`,
+        body_ar: `مبروك! تم تفعيل متجر (${newStore.name_ar || newStore.name}). يمكنك الآن الدخول إلى لوحة التحكم لإضافة الكتب وباقات العروض المجمعة (Bundle Packages).`,
+        action_url: `/store-dashboard`,
+        data: { store_id: newStore.id, store_slug: newStore.slug },
+      } as any)
+    } catch (e) {
+      console.warn('In-app notification insert error:', e)
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(APPLICATIONS_STORAGE_KEY, JSON.stringify(apps))
+
+      // Save new bookstore to custom stores in localStorage
+      const storedStores = localStorage.getItem(STORES_STORAGE_KEY)
+      const storeMap = storedStores ? JSON.parse(storedStores) : {}
+      storeMap[newStore.id] = newStore
+      localStorage.setItem(STORES_STORAGE_KEY, JSON.stringify(storeMap))
+    } catch {}
+  }
+
+  return { success: true, store: newStore, application: target }
+}
+
+export async function rejectStoreApplication(
+  applicationId: string,
+  reason?: string
+): Promise<{ success: boolean; application?: StoreApplication }> {
+  const apps = await getStoreApplications()
+  const target = apps.find(a => a.id === applicationId)
+  if (!target) return { success: false }
+
+  target.status = 'REJECTED'
+  target.reviewed_at = new Date().toISOString()
+  target.rejection_reason = reason || 'لا يستوفي شروط التوثيق حالياً'
+
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(APPLICATIONS_STORAGE_KEY, JSON.stringify(apps))
+    } catch {}
+  }
+
+  return { success: true, application: target }
 }

@@ -14,6 +14,7 @@ import {
   Sparkles,
   Search,
   Share2,
+  Phone,
 } from 'lucide-react'
 import { MainLayout } from '@/components/layout/main-layout'
 import { Button } from '@/components/ui/button'
@@ -228,6 +229,36 @@ export function EventsHubClient({ initialEvents, currentUserId }: EventsHubClien
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold pt-1">
                         <MapPin className="h-4 w-4 text-emerald-600 shrink-0" />
                         <span>{event.location}</span>
+                      </div>
+                    )}
+
+                    {/* Host & Organizer Info */}
+                    {event.host_name && (
+                      <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-2xl bg-muted/40 border border-border/80 text-xs mt-2">
+                        <div className="flex items-center gap-2">
+                          <span className="p-1 rounded-lg bg-primary/10 text-primary text-sm">🎙️</span>
+                          <div>
+                            <p className="font-bold text-foreground text-xs">{event.host_name}</p>
+                            {event.host_role && (
+                              <p className="text-[11px] text-muted-foreground">{event.host_role}</p>
+                            )}
+                          </div>
+                        </div>
+                        {event.host_phone && (
+                          <a
+                            href={`https://wa.me/${event.host_phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                              lang === 'ar'
+                                ? `مرحباً، أود الاستفسار بخصوص فعالية: ${eventTitle}`
+                                : `Hello, I'd like to ask about the event: ${eventTitle}`
+                            )}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 font-bold text-[11px] transition-colors"
+                          >
+                            <Phone className="h-3 w-3" />
+                            <span>{lang === 'ar' ? 'تواصل مع المنسق' : 'Contact Host'}</span>
+                          </a>
+                        )}
                       </div>
                     )}
                   </div>

@@ -339,8 +339,8 @@ export function HomePageClient({
                 </span>
                 <span>
                   {lang === 'ar'
-                    ? '🌱 منصة وَرَق • عالم جديد بين كل صفحة والتانية'
-                    : '🌱 WARAQ • A World Between Every Page'}
+                    ? '🌱 منصة WaraqConnect (ورق كونكت) • عالم جديد بين كل صفحة والتانية'
+                    : '🌱 WaraqConnect • A World Between Every Page'}
                 </span>
               </div>
 
@@ -350,14 +350,14 @@ export function HomePageClient({
                   <div className="w-10 h-10 rounded-xl bg-white p-1.5 flex items-center justify-center border border-white/80 shadow-md">
                     <Image
                       src="/images/logo.png"
-                      alt="WARAQ Logo"
+                      alt="WaraqConnect Logo"
                       width={32}
                       height={32}
                       className="w-full h-full object-contain"
                     />
                   </div>
-                  <span className="text-xl sm:text-2xl font-black text-emerald-300 tracking-wider">
-                    {lang === 'ar' ? 'وَرَق | WARAQ' : 'WARAQ | وَرَق'}
+                  <span className="text-xl sm:text-2xl font-black text-emerald-300 tracking-tight">
+                    {lang === 'ar' ? 'ورق كونكت | WaraqConnect' : 'WaraqConnect | ورق كونكت'}
                   </span>
                 </div>
 
@@ -383,8 +383,8 @@ export function HomePageClient({
               {/* Engaging Subtitle */}
               <p className="text-base sm:text-lg text-white/85 max-w-xl leading-relaxed font-medium">
                 {lang === 'ar'
-                  ? 'منصة وَرَق لتبادل وشراء واستعارة الكتب المستعملة مع قراء حيك ومدينتك. كتابك المقروء كنز ينتظر قارئاً قريباً منك — التقي بأمان في كافيهات ومكتبات معتمدة وبدون أي عمولات.'
-                  : 'WARAQ connects readers to swap, borrow, and buy secondhand books locally. Your read books are treasures waiting for the next reader nearby — 100% commission free.'}
+                  ? 'منصة وتطبيق WaraqConnect (ورق كونكت) لتبادل وشراء واستعارة الكتب المستعملة وتحديات القراءة مع مجتمع القراء في مدينتك. كتابك المقروء كنز ينتظر قارئاً قريباً منك — التقي بأمان وبدون أي عمولات.'
+                  : 'WaraqConnect connects readers to swap, borrow, buy secondhand books, and join reading challenges locally. 100% commission free.'}
               </p>
 
               {/* Competitor-Style Mode Pills: Swap, Buy, Borrow, Free */}
@@ -559,17 +559,17 @@ export function HomePageClient({
                 </div>
 
                 {/* Floating Badge 1: Direct Swap Guarantee */}
-                <div className="absolute top-4 start-4 bg-background/90 dark:bg-slate-900/90 backdrop-blur-md text-foreground px-3.5 py-1.5 rounded-2xl shadow-xl border border-border/80 flex items-center gap-2 text-xs font-black">
-                  <span className="flex h-2.5 w-2.5 relative">
+                <div className="absolute top-3 sm:top-4 start-3 sm:start-4 bg-background/90 dark:bg-slate-900/90 backdrop-blur-md text-foreground px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-2xl shadow-xl border border-border/80 flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-black">
+                  <span className="flex h-2 w-2 sm:h-2.5 sm:w-2.5 relative">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-emerald-500"></span>
                   </span>
                   <span>{lang === 'ar' ? 'بادِل كتبك في حيك بدون أي عمولة 🤝' : 'Swap Books Locally with 0% Fee 🤝'}</span>
                 </div>
 
                 {/* Floating Badge 2: Safe Hub Guarantee */}
-                <div className="absolute bottom-4 end-4 bg-background/90 dark:bg-slate-900/90 backdrop-blur-md text-foreground px-3.5 py-1.5 rounded-2xl shadow-xl border border-border/80 flex items-center gap-2 text-xs font-black">
-                  <Coffee className="h-3.5 w-3.5 text-amber-500" />
+                <div className="absolute bottom-3 sm:bottom-4 end-3 sm:end-4 bg-background/90 dark:bg-slate-900/90 backdrop-blur-md text-foreground px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-2xl shadow-xl border border-border/80 flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-black">
+                  <Coffee className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-amber-500" />
                   <span>{lang === 'ar' ? 'نقاط تبادل آمنة في كافيهات مدينتك ☕' : 'Safe Cafe Hubs in Your City ☕'}</span>
                 </div>
               </div>
