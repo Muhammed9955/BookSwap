@@ -1245,42 +1245,29 @@ export function HomePageClient({
             </div>
           </div>
 
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {/* 1. Bookstores */}
-            <div className="group relative flex flex-col justify-between rounded-2xl border-2 border-border/90 bg-card/95 hover:border-primary/60 hover:shadow-xl transition-all duration-300 p-6 space-y-5">
-              <div className="space-y-4">
+            <div className="group relative flex flex-col justify-between rounded-2xl border-2 border-border/90 bg-card/95 hover:border-primary/60 hover:shadow-xl transition-all duration-300 p-5 space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20 shadow-xs group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
-                    <Store className="h-6 w-6" />
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20 shadow-xs group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
+                    <Store className="h-5 w-5" />
                   </div>
-                  <span className="px-3 py-1 rounded-full text-[11px] font-black bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center gap-1">
-                    <span>🕒</span>
-                    <span>{lang === 'ar' ? 'قريباً' : 'Coming Soon'}</span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                    <span>✓</span>
+                    <span>{lang === 'ar' ? 'متاح الآن' : 'Live Now'}</span>
                   </span>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-black text-foreground group-hover:text-primary transition-colors">
-                    {lang === 'ar' ? 'المكتبات ودور النشر الشريكة 🏬' : 'Partner Bookstores & Hubs 🏬'}
+                  <h3 className="text-base font-black text-foreground group-hover:text-primary transition-colors">
+                    {lang === 'ar' ? 'المكتبات ودور النشر 🏬' : 'Bookstores & Hubs 🏬'}
                   </h3>
-                  <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                     {lang === 'ar'
-                      ? 'دليل موثق لأشهر المكتبات (ديوان، الشروق، الأزبكية) لتصفح كتالوجاتهم، استلام الكتب في فروعهم بأمان، والاستفادة من عروض خاصة.'
-                      : 'Verified directory of partner bookstores to browse physical catalogs, pick up trades at counter hubs safely, and unlock member discounts.'}
+                      ? 'دليل موثق لأشهر المكتبات (ديوان، الشروق، الأزبكية) مع الخرائط ومواعيد العمل وحزم الكتب.'
+                      : 'Verified directory of partner bookstores with GPS maps, working hours, and book bundles.'}
                   </p>
-                </div>
-
-                <div className="space-y-2 pt-2 border-t border-border/60">
-                  {[
-                    { ar: 'ربط مباشر بمخزون وعناوين كبرى المكتبات', en: 'Live stock access to top bookstore titles' },
-                    { ar: 'نقاط تسليم واستلام آمنة ومعتمدة للقراء', en: 'Safe verified exchange points across cities' },
-                    { ar: 'صفحات مستقلة لكل مكتبة وتقييمات القراء', en: 'Dedicated store pages & reader reviews' },
-                  ].map((feat, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs font-semibold text-foreground/80">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                      <span>{lang === 'ar' ? feat.ar : feat.en}</span>
-                    </div>
-                  ))}
                 </div>
               </div>
 
@@ -1290,7 +1277,7 @@ export function HomePageClient({
                     variant="outline"
                     className="w-full rounded-xl font-black text-xs gap-1.5 border-border/80 group-hover:border-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all cursor-pointer shadow-2xs"
                   >
-                    <span>{lang === 'ar' ? 'معاينة دليل المكتبات (Beta)' : 'Preview Bookstores (Beta)'}</span>
+                    <span>{lang === 'ar' ? 'دليل المكتبات الشريكة' : 'Browse Bookstores'}</span>
                     <ArrowRight className={cn('h-3.5 w-3.5 transition-transform group-hover:translate-x-1', isRTL && 'rotate-180 group-hover:-translate-x-1')} />
                   </Button>
                 </Link>
@@ -1298,40 +1285,27 @@ export function HomePageClient({
             </div>
 
             {/* 2. Deals */}
-            <div className="group relative flex flex-col justify-between rounded-2xl border-2 border-border/90 bg-card/95 hover:border-amber-500/60 hover:shadow-xl transition-all duration-300 p-6 space-y-5">
-              <div className="space-y-4">
+            <div className="group relative flex flex-col justify-between rounded-2xl border-2 border-border/90 bg-card/95 hover:border-amber-500/60 hover:shadow-xl transition-all duration-300 p-5 space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-xs group-hover:scale-110 group-hover:bg-amber-500 group-hover:text-white transition-all duration-300">
-                    <Flame className="h-6 w-6 fill-amber-500 group-hover:fill-white" />
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-xs group-hover:scale-110 group-hover:bg-amber-500 group-hover:text-white transition-all duration-300">
+                    <Flame className="h-5 w-5 fill-amber-500 group-hover:fill-white" />
                   </div>
-                  <span className="px-3 py-1 rounded-full text-[11px] font-black bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/30 flex items-center gap-1">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/30 flex items-center gap-1">
                     <span>⚡</span>
-                    <span>{lang === 'ar' ? 'قريباً' : 'Coming Soon'}</span>
+                    <span>{lang === 'ar' ? 'عروض حصرية' : 'Hot Deals'}</span>
                   </span>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-black text-foreground group-hover:text-amber-500 transition-colors">
-                    {lang === 'ar' ? 'سوق الحزم وباقات التوفير 🔥' : 'Book Bundles & Flash Deals 🔥'}
+                  <h3 className="text-base font-black text-foreground group-hover:text-amber-500 transition-colors">
+                    {lang === 'ar' ? 'باقات وحزم التوفير 🔥' : 'Book Bundles & Deals 🔥'}
                   </h3>
-                  <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                     {lang === 'ar'
-                      ? 'باقات مجمعة (10، 20 كتاب) بخصومات تصل لـ 50% مع هدايا فواصل خشبية محفورة، مفكرات تتبع القراءة، وشحن مخفض لكافة المحافظات.'
-                      : 'Curated 10 & 20 books bundles with up to 50% off, handcrafted wooden bookmarks, reading planners, and cheap shipping.'}
+                      ? 'باقات مجمعة (10، 20 كتاب) بخصومات تصل لـ 50% مع هدايا فواصل خشبية ومفكرات قراءة.'
+                      : 'Curated 10 & 20 books packages with up to 50% off and free artisan bookmarks.'}
                   </p>
-                </div>
-
-                <div className="space-y-2 pt-2 border-t border-border/60">
-                  {[
-                    { ar: 'حزم موضوعية جاهزة (روايات، فكر، تنمية)', en: 'Curated genre boxes (Fiction, Growth, Classics)' },
-                    { ar: 'هدايا فواصل ومفكرات قراءة مع كل حزمة', en: 'Free artisan bookmarks & gifts with packages' },
-                    { ar: 'تخفيضات فلاش دورية على المجموعات الكاملة', en: 'Periodic flash discounts on bulk bundles' },
-                  ].map((feat, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs font-semibold text-foreground/80">
-                      <CheckCircle2 className="h-4 w-4 text-amber-500 shrink-0" />
-                      <span>{lang === 'ar' ? feat.ar : feat.en}</span>
-                    </div>
-                  ))}
                 </div>
               </div>
 
@@ -1341,7 +1315,7 @@ export function HomePageClient({
                     variant="outline"
                     className="w-full rounded-xl font-black text-xs gap-1.5 border-border/80 group-hover:border-amber-500 group-hover:bg-amber-500 group-hover:text-white transition-all cursor-pointer shadow-2xs"
                   >
-                    <span>{lang === 'ar' ? 'معاينة سوق العروض (Beta)' : 'Preview Deals Hub (Beta)'}</span>
+                    <span>{lang === 'ar' ? 'تصفح حزم العروض' : 'Explore Bundles'}</span>
                     <ArrowRight className={cn('h-3.5 w-3.5 transition-transform group-hover:translate-x-1', isRTL && 'rotate-180 group-hover:-translate-x-1')} />
                   </Button>
                 </Link>
@@ -1349,40 +1323,27 @@ export function HomePageClient({
             </div>
 
             {/* 3. Events */}
-            <div className="group relative flex flex-col justify-between rounded-2xl border-2 border-border/90 bg-card/95 hover:border-indigo-500/60 hover:shadow-xl transition-all duration-300 p-6 space-y-5">
-              <div className="space-y-4">
+            <div className="group relative flex flex-col justify-between rounded-2xl border-2 border-border/90 bg-card/95 hover:border-indigo-500/60 hover:shadow-xl transition-all duration-300 p-5 space-y-4">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 shadow-xs group-hover:scale-110 group-hover:bg-indigo-500 group-hover:text-white transition-all duration-300">
-                    <Calendar className="h-6 w-6" />
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-500 border border-indigo-500/20 shadow-xs group-hover:scale-110 group-hover:bg-indigo-500 group-hover:text-white transition-all duration-300">
+                    <Calendar className="h-5 w-5" />
                   </div>
-                  <span className="px-3 py-1 rounded-full text-[11px] font-black bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 flex items-center gap-1">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border border-indigo-500/30 flex items-center gap-1">
                     <span>🎉</span>
-                    <span>{lang === 'ar' ? 'قريباً' : 'Coming Soon'}</span>
+                    <span>{lang === 'ar' ? 'فعاليات نشطة' : 'Active Events'}</span>
                   </span>
                 </div>
 
                 <div>
-                  <h3 className="text-lg font-black text-foreground group-hover:text-indigo-500 transition-colors">
-                    {lang === 'ar' ? 'الفعاليات وحفلات التوقيع 📅' : 'Literary Events & Signings 📅'}
+                  <h3 className="text-base font-black text-foreground group-hover:text-indigo-500 transition-colors">
+                    {lang === 'ar' ? 'حفلات التوقيع واللقاءات 📅' : 'Events & Signings 📅'}
                   </h3>
-                  <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
                     {lang === 'ar'
-                      ? 'أجندة تفاعلية لفعاليات القراءة: ندوات مناقشة الروايات في المقاهي الثقافية، حفلات توقيع الكتاب، مع تأكيد الحضور بنقرة واحدة.'
-                      : 'Interactive literary calendar: cozy cafe novel clubs, author book signings, fair meetups with instant one-click RSVP.'}
+                      ? 'ندوات مناقشة الروايات في المقاهي الثقافية، حفلات توقيع الكتاب، مع تأكيد الحضور RSVP بنقرة واحدة.'
+                      : 'Author signings, cafe book circles, and fairs with instant RSVP attendance tracking.'}
                   </p>
-                </div>
-
-                <div className="space-y-2 pt-2 border-t border-border/60">
-                  {[
-                    { ar: 'أجندة شاملة لملتقيات ونوادي القراءة بالمدن', en: 'Comprehensive schedule of book club meetups' },
-                    { ar: 'تأكيد الحضور (RSVP) وحجز المقاعد مباشرة', en: 'One-click RSVP & attendance confirmations' },
-                    { ar: 'تذكير ذكي بمواعيد الفعاليات وحفلات التوقيع', en: 'Smart calendar reminders for upcoming events' },
-                  ].map((feat, i) => (
-                    <div key={i} className="flex items-center gap-2 text-xs font-semibold text-foreground/80">
-                      <CheckCircle2 className="h-4 w-4 text-indigo-500 shrink-0" />
-                      <span>{lang === 'ar' ? feat.ar : feat.en}</span>
-                    </div>
-                  ))}
                 </div>
               </div>
 
@@ -1392,12 +1353,82 @@ export function HomePageClient({
                     variant="outline"
                     className="w-full rounded-xl font-black text-xs gap-1.5 border-border/80 group-hover:border-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all cursor-pointer shadow-2xs"
                   >
-                    <span>{lang === 'ar' ? 'معاينة أجندة الفعاليات (Beta)' : 'Preview Events (Beta)'}</span>
+                    <span>{lang === 'ar' ? 'أجندة الفعاليات' : 'Events Calendar'}</span>
                     <ArrowRight className={cn('h-3.5 w-3.5 transition-transform group-hover:translate-x-1', isRTL && 'rotate-180 group-hover:-translate-x-1')} />
                   </Button>
                 </Link>
               </div>
             </div>
+
+            {/* 4. Reading Challenges */}
+            <div className="group relative flex flex-col justify-between rounded-2xl border-2 border-border/90 bg-card/95 hover:border-orange-500/60 hover:shadow-xl transition-all duration-300 p-5 space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-500/10 text-orange-500 border border-orange-500/20 shadow-xs group-hover:scale-110 group-hover:bg-orange-500 group-hover:text-white transition-all duration-300">
+                    <Zap className="h-5 w-5" />
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/30 flex items-center gap-1">
+                    <span>🔥</span>
+                    <span>{lang === 'ar' ? 'تحديات وجوائز' : 'Challenges'}</span>
+                  </span>
+                </div>
+
+                <div>
+                  <h3 className="text-base font-black text-foreground group-hover:text-orange-500 transition-colors">
+                    {lang === 'ar' ? 'تحديات القراءة والأوسمة 🏆' : 'Reading Challenges 🏆'}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    {lang === 'ar'
+                      ? 'سبرنتات الويك إند، إنهاء 4 كتب شهرياً، وماراثون أدب نوبل. اجمع الأوسمة واشعل شعلة القراءة اليومية.'
+                      : 'Weekend sprints, 4 books monthly, Nobel quests, and reader badges.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <Link href="/challenges" className="block">
+                  <Button
+                    variant="outline"
+                    className="w-full rounded-xl font-black text-xs gap-1.5 border-border/80 group-hover:border-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-all cursor-pointer shadow-2xs"
+                  >
+                    <span>{lang === 'ar' ? 'انضم للتحديات الآن' : 'Explore Challenges'}</span>
+                    <ArrowRight className={cn('h-3.5 w-3.5 transition-transform group-hover:translate-x-1', isRTL && 'rotate-180 group-hover:-translate-x-1')} />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Download App Spotlight Strip */}
+          <div className="mt-8 rounded-3xl bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-900 border-2 border-emerald-500/30 p-6 sm:p-8 text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
+            <div className="flex items-center gap-4">
+              <div className="h-14 w-14 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center text-3xl shrink-0">
+                📱
+              </div>
+              <div>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  {lang === 'ar' ? 'تطبيق الموبايل متاح الآن' : 'Mobile App Available'}
+                </span>
+                <h3 className="text-lg font-black text-white mt-1">
+                  {lang === 'ar' ? 'حمّل تطبيق وَرَق على هاتفك مجاناً' : 'Get the WARAQ App on Your Phone'}
+                </h3>
+                <p className="text-xs text-white/75 mt-0.5 leading-relaxed">
+                  {lang === 'ar'
+                    ? 'امسح باركود الكتب بالكاميرا، تلقَ إشعارات فورية لطلبات التبادل، واكتشف القراء وكافيهات التبادل في حيك.'
+                    : 'Scan barcodes with your camera, get instant push alerts, and find local readers.'}
+                </p>
+              </div>
+            </div>
+
+            <Link href="/download" className="shrink-0 w-full sm:w-auto">
+              <Button
+                size="lg"
+                className="w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black shadow-lg shadow-emerald-500/25 px-6 py-5 rounded-2xl text-xs sm:text-sm cursor-pointer hover:scale-105 active:scale-95 transition-all"
+              >
+                <span>{lang === 'ar' ? 'صفحة تحميل التطبيق (PWA)' : 'Download App Page'}</span>
+                <ArrowRight className={cn('h-4 w-4 ms-1.5', isRTL && 'rotate-180')} />
+              </Button>
+            </Link>
           </div>
         </section>
 

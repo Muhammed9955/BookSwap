@@ -94,17 +94,17 @@ export function WaraqLogo({
         />
       </div>
 
-      {/* Typography: WARAQ | ورق */}
+      {/* Typography: WaraqConnect | ورق كونكت */}
       {showText && (
         <div className="flex flex-col leading-none">
           <div className="flex items-center gap-1.5 font-black tracking-tight">
             <span
               className={cn(
-                'tracking-wider font-extrabold text-[#173F32] dark:text-[#52b393]',
+                'tracking-tight font-extrabold text-[#173F32] dark:text-[#52b393]',
                 cfg.textSize
               )}
             >
-              WARAQ
+              {BRAND.name.en}
             </span>
             <span className="text-muted-foreground/40 font-light text-xs">|</span>
             <span
@@ -113,7 +113,7 @@ export function WaraqLogo({
                 cfg.arabicSize
               )}
             >
-              وَرَق
+              {BRAND.name.ar}
             </span>
           </div>
 

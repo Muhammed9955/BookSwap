@@ -1,18 +1,31 @@
 import { MetadataRoute } from 'next'
 import { createClient } from '@/lib/supabase/server'
+import { DEMO_STORES } from '@/lib/stores/store-service'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://waraq.app'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://waraqconnect.vercel.app'
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: baseUrl, lastModified: new Date(), changeFrequency: 'daily', priority: 1.0 },
     { url: `${baseUrl}/explore`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+    { url: `${baseUrl}/challenges`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.9 },
+    { url: `${baseUrl}/stores`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.8 },
+    { url: `${baseUrl}/events`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.8 },
+    { url: `${baseUrl}/offers`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.8 },
     { url: `${baseUrl}/communities`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.8 },
-    { url: `${baseUrl}/stores`, lastModified: new Date(), changeFrequency: 'weekly', priority: 0.7 },
+    { url: `${baseUrl}/download`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.8 },
     { url: `${baseUrl}/about`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
     { url: `${baseUrl}/terms`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
     { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
   ]
+
+  // Add demo bookstores to sitemap
+  const storeRoutes: MetadataRoute.Sitemap = DEMO_STORES.map(s => ({
+    url: `${baseUrl}/stores/${s.slug}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly',
+    priority: 0.8,
+  }))
 
   try {
     const supabase = await createClient()
@@ -31,6 +44,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }))
 
+    // Dynamic bookstore routes from database (if any)
+    const { data: dbStores } = await supabase
+      .from('bookstores')
+      .select('slug, updated_at')
+      .eq('is_active', true)
+      .limit(100)
+
+    const dbStoreRoutes: MetadataRoute.Sitemap = (dbStores || []).map(s => ({
+      url: `${baseUrl}/stores/${s.slug}`,
+      lastModified: s.updated_at ? new Date(s.updated_at) : new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    }))
+
     // Dynamic book listing routes
     const { data: listings } = await supabase
       .from('book_listings')
@@ -45,8 +72,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     }))
 
-    return [...staticRoutes, ...communityRoutes, ...listingRoutes]
+    return [...staticRoutes, ...storeRoutes, ...dbStoreRoutes, ...communityRoutes, ...listingRoutes]
   } catch {
-    return staticRoutes
+    return [...staticRoutes, ...storeRoutes]
   }
 }

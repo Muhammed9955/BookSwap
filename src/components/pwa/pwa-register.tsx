@@ -115,8 +115,8 @@ export function PwaRegister() {
 
           const title =
             lang === 'ar'
-              ? newNotif.title_ar || newNotif.title || 'إشعار جديد في وَرَق 🌱'
-              : newNotif.title || newNotif.title_ar || 'New notification on WARAQ 🌱'
+              ? newNotif.title_ar || newNotif.title || 'إشعار جديد في WaraqConnect 🌱'
+              : newNotif.title || newNotif.title_ar || 'New notification on WaraqConnect 🌱'
 
           const body =
             lang === 'ar'
@@ -172,7 +172,7 @@ export function PwaRegister() {
       setNotifActivatedSuccess(true)
       // Send pleasant confirmation welcome notification
       showLocalPwaNotification(
-        lang === 'ar' ? 'تم تفعيل إشعارات وَرَق بنجاح! 🌱' : 'WARAQ Notifications Enabled! 🌱',
+        lang === 'ar' ? 'تم تفعيل إشعارات WaraqConnect بنجاح! 🌱' : 'WaraqConnect Notifications Enabled! 🌱',
         {
           body:
             lang === 'ar'
@@ -211,7 +211,7 @@ export function PwaRegister() {
             </div>
             <div>
               <h4 className="text-sm font-bold text-foreground">
-                {lang === 'ar' ? 'ثبّت تطبيق وَرَق 🌱' : 'Install WARAQ App 🌱'}
+                {lang === 'ar' ? 'ثبّت تطبيق WaraqConnect 🌱' : 'Install WaraqConnect App 🌱'}
               </h4>
               <p className="text-xs text-muted-foreground">
                 {lang === 'ar'

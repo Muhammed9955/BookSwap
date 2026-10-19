@@ -1,4 +1,4 @@
-import type { Bookstore, StoreOffer, StoreEvent, RSVPStatus, StoreType, OfferType } from '@/types/store'
+import type { Bookstore, StoreOffer, StoreEvent, RSVPStatus, StoreType, OfferType, StoreInventoryItem } from '@/types/store'
 import { createClient } from '@/lib/supabase/client'
 
 type SupabaseClient = any
@@ -613,4 +613,273 @@ export async function rsvpEvent(
   } catch {
     return true
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+// STORE INVENTORY & MERCHANT MANAGEMENT SERVICES
+// ─────────────────────────────────────────────────────────────
+
+export const DEMO_STORE_INVENTORY: StoreInventoryItem[] = [
+  {
+    id: 'inv-1',
+    store_id: 'store-diwan-zamalek',
+    title: 'The Blue Elephant (الفيل الأزرق)',
+    title_ar: 'الفيل الأزرق',
+    author: 'أحمد مراد (Ahmed Mourad)',
+    isbn: '9789770932223',
+    category_name: 'روايات وتشويق',
+    condition: 'LIKE_NEW',
+    price: 130,
+    original_price: 170,
+    stock_quantity: 18,
+    cover_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80',
+    is_active: true,
+    created_at: '2026-09-01T10:00:00Z',
+  },
+  {
+    id: 'inv-2',
+    store_id: 'store-diwan-zamalek',
+    title: 'Palace Walk (بين القصرين)',
+    title_ar: 'بين القصرين — ثلاثية القاهرة',
+    author: 'نجيب محفوظ (Naguib Mahfouz)',
+    isbn: '9789770912345',
+    category_name: 'أدب عربي وكلاسيكيات',
+    condition: 'NEW',
+    price: 160,
+    original_price: 200,
+    stock_quantity: 25,
+    cover_url: 'https://images.unsplash.com/photo-1507842229451-7f01be7ac102?auto=format&fit=crop&w=600&q=80',
+    is_active: true,
+    created_at: '2026-09-02T11:00:00Z',
+  },
+  {
+    id: 'inv-3',
+    store_id: 'store-diwan-zamalek',
+    title: 'Atomic Habits (العادات الذرية)',
+    title_ar: 'العادات الذرية — النسخة العربية المعتمدة',
+    author: 'جيمس كلير (James Clear)',
+    isbn: '9786035091800',
+    category_name: 'تطوير الذات وعلم النفس',
+    condition: 'NEW',
+    price: 190,
+    original_price: 240,
+    stock_quantity: 40,
+    cover_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80',
+    is_active: true,
+    created_at: '2026-09-03T12:00:00Z',
+  },
+  {
+    id: 'inv-4',
+    store_id: 'store-diwan-zamalek',
+    title: 'Granada Trilogy (ثلاثية غرناطة)',
+    title_ar: 'ثلاثية غرناطة',
+    author: 'رضوى عاشور (Radwa Ashour)',
+    isbn: '9789770908881',
+    category_name: 'روايات وتاريخ',
+    condition: 'LIKE_NEW',
+    price: 175,
+    original_price: 220,
+    stock_quantity: 12,
+    cover_url: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80',
+    is_active: true,
+    created_at: '2026-09-04T13:00:00Z',
+  },
+  {
+    id: 'inv-5',
+    store_id: 'store-bookish-online',
+    title: 'Mindset: The New Psychology of Success',
+    title_ar: 'طريقة التفكير (السيكولوجية الجديدة للنجاح)',
+    author: 'كارول دويك (Carol Dweck)',
+    isbn: '9780345472327',
+    category_name: 'تطوير الذات',
+    condition: 'NEW',
+    price: 140,
+    original_price: 190,
+    stock_quantity: 35,
+    cover_url: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=600&q=80',
+    is_active: true,
+    created_at: '2026-09-05T14:00:00Z',
+  },
+  {
+    id: 'inv-6',
+    store_id: 'store-azbakeya-heritage',
+    title: 'الأغاني للأصفهاني (طبعة نادرة مجلدة)',
+    title_ar: 'كتاب الأغاني لأبي الفرج الأصفهاني (المجلد الأول والثاني)',
+    author: 'أبو الفرج الأصفهاني',
+    category_name: 'تراث ونوادر',
+    condition: 'ACCEPTABLE',
+    price: 250,
+    original_price: 450,
+    stock_quantity: 2,
+    cover_url: 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&w=600&q=80',
+    is_active: true,
+    created_at: '2026-09-06T15:00:00Z',
+  },
+]
+
+const INVENTORY_STORAGE_KEY = 'waraq_store_inventory_v1'
+const STORES_STORAGE_KEY = 'waraq_custom_stores_v1'
+const OFFERS_STORAGE_KEY = 'waraq_custom_offers_v1'
+const EVENTS_STORAGE_KEY = 'waraq_custom_events_v1'
+
+/**
+ * Get bookstore inventory items
+ */
+export async function getStoreInventory(storeId: string): Promise<StoreInventoryItem[]> {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(`${INVENTORY_STORAGE_KEY}_${storeId}`)
+      if (stored) {
+        return JSON.parse(stored)
+      }
+    } catch {}
+  }
+  return DEMO_STORE_INVENTORY.filter(item => item.store_id === storeId)
+}
+
+/**
+ * Add a new book to the bookstore's inventory
+ */
+export async function addStoreBook(
+  item: Omit<StoreInventoryItem, 'id' | 'created_at'>
+): Promise<StoreInventoryItem> {
+  const newItem: StoreInventoryItem = {
+    ...item,
+    id: `inv-${Date.now()}`,
+    created_at: new Date().toISOString(),
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const current = await getStoreInventory(item.store_id)
+      const updated = [newItem, ...current]
+      localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${item.store_id}`, JSON.stringify(updated))
+    } catch {}
+  }
+
+  return newItem
+}
+
+/**
+ * Delete a book from bookstore inventory
+ */
+export async function deleteStoreBook(storeId: string, itemId: string): Promise<boolean> {
+  if (typeof window !== 'undefined') {
+    try {
+      const current = await getStoreInventory(storeId)
+      const updated = current.filter(i => i.id !== itemId)
+      localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${storeId}`, JSON.stringify(updated))
+      return true
+    } catch {}
+  }
+  return true
+}
+
+/**
+ * Update bookstore details (profile, working hours, map location, social channels)
+ */
+export async function updateBookstore(
+  storeId: string,
+  updates: Partial<Bookstore>
+): Promise<Bookstore> {
+  const target = DEMO_STORES.find(s => s.id === storeId) || DEMO_STORES[0]
+  const updatedStore: Bookstore = {
+    ...target,
+    ...updates,
+    updated_at: new Date().toISOString(),
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(STORES_STORAGE_KEY)
+      const map = stored ? JSON.parse(stored) : {}
+      map[storeId] = updatedStore
+      localStorage.setItem(STORES_STORAGE_KEY, JSON.stringify(map))
+    } catch {}
+  }
+
+  return updatedStore
+}
+
+/**
+ * Create a new store offer / bundle package
+ */
+export async function createStoreOffer(
+  offer: Omit<StoreOffer, 'id' | 'created_at'>
+): Promise<StoreOffer> {
+  const newOffer: StoreOffer = {
+    ...offer,
+    id: `offer-${Date.now()}`,
+    created_at: new Date().toISOString(),
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(OFFERS_STORAGE_KEY)
+      const list = stored ? JSON.parse(stored) : []
+      list.unshift(newOffer)
+      localStorage.setItem(OFFERS_STORAGE_KEY, JSON.stringify(list))
+    } catch {}
+  }
+
+  return newOffer
+}
+
+/**
+ * Delete a store offer
+ */
+export async function deleteStoreOffer(offerId: string): Promise<boolean> {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(OFFERS_STORAGE_KEY)
+      if (stored) {
+        const list = JSON.parse(stored)
+        const updated = list.filter((o: any) => o.id !== offerId)
+        localStorage.setItem(OFFERS_STORAGE_KEY, JSON.stringify(updated))
+      }
+    } catch {}
+  }
+  return true
+}
+
+/**
+ * Create a new store event / signing
+ */
+export async function createStoreEvent(
+  event: Omit<StoreEvent, 'id' | 'created_at' | 'current_attendees'>
+): Promise<StoreEvent> {
+  const newEvent: StoreEvent = {
+    ...event,
+    id: `event-${Date.now()}`,
+    current_attendees: 0,
+    created_at: new Date().toISOString(),
+  }
+
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(EVENTS_STORAGE_KEY)
+      const list = stored ? JSON.parse(stored) : []
+      list.unshift(newEvent)
+      localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(list))
+    } catch {}
+  }
+
+  return newEvent
+}
+
+/**
+ * Delete a store event
+ */
+export async function deleteStoreEvent(eventId: string): Promise<boolean> {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(EVENTS_STORAGE_KEY)
+      if (stored) {
+        const list = JSON.parse(stored)
+        const updated = list.filter((e: any) => e.id !== eventId)
+        localStorage.setItem(EVENTS_STORAGE_KEY, JSON.stringify(updated))
+      }
+    } catch {}
+  }
+  return true
 }

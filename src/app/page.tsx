@@ -7,9 +7,9 @@ import { Community } from '@/types'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'WARAQ — ورق | عالم جديد بين كل صفحة والتانية',
+  title: 'WaraqConnect — ورق كونكت | عالم جديد بين كل صفحة والتانية',
   description:
-    'عالم جديد بين كل صفحة والتانية. بادِل كتبك، اشترِ بأسعار رمزية، أو استعر مع مجتمع القراء في مدينتك وحيك بدون أي عمولات.',
+    'عالم جديد بين كل صفحة والتانية. منصة وتطبيق WaraqConnect (ورق كونكت) لتبادل وشراء واستعارة الكتب المستعملة، ونوادي القراءة في مدينتك وحيك بدون أي عمولات.',
 }
 
 export default async function HomePage() {

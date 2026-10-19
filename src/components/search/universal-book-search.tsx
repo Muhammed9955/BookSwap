@@ -78,7 +78,7 @@ function BookDetailModal({
   if (!book) return null
 
   const sourceLabel: Record<string, string> = {
-    bookswap: 'WARAQ | ورق',
+    bookswap: 'WaraqConnect | ورق كونكت',
     archive: 'Internet Archive',
     wikipedia: 'ويكيبيديا',
     openlibrary: 'Open Library',
@@ -157,7 +157,7 @@ function BookDetailModal({
                 {book.exists_on_platform && (
                   <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-500 text-white shadow">
                     <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                    {lang === 'ar' ? 'متوفر على وَرَق' : 'Available on WARAQ'}
+                    {lang === 'ar' ? 'متوفر على WaraqConnect' : 'Available on WaraqConnect'}
                   </span>
                 )}
                 {book.published_year && (
@@ -282,8 +282,8 @@ function BookDetailModal({
               <span className="text-xl flex-shrink-0">💡</span>
               <p className="text-sm text-amber-900 dark:text-amber-200 leading-relaxed">
                 {lang === 'ar'
-                  ? 'هذا الكتاب غير متوفر بعد على منصة وَرَق. إذا كان في مكتبتك، أضفه الآن لقرّاء مدينتك. أو سجّل اهتمامك وسنرسل لك إشعار فور توفره.'
-                  : 'This book is not yet on WARAQ. If you own it, list it now. Or save it to your wishlist for instant notifications.'}
+                  ? 'هذا الكتاب غير متوفر بعد على منصة WaraqConnect (ورق كونكت). إذا كان في مكتبتك، أضفه الآن لقرّاء مدينتك. أو سجّل اهتمامك وسنرسل لك إشعار فور توفره.'
+                  : 'This book is not yet on WaraqConnect. If you own it, list it now. Or save it to your wishlist for instant notifications.'}
               </p>
             </div>
           )}
@@ -711,7 +711,7 @@ export function UniversalBookSearch({
                       ) : (
                         <span className="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-muted text-muted-foreground font-bold text-xs border border-border">
                           <Sparkles className="h-3 w-3 text-amber-500" />
-                          <span>{lang === 'ar' ? 'غير متوفر بعد على وَرَق' : 'Not yet on WARAQ'}</span>
+                          <span>{lang === 'ar' ? 'غير متوفر بعد على WaraqConnect' : 'Not yet on WaraqConnect'}</span>
                         </span>
                       )}
                       {book.category_name && (

@@ -27,8 +27,8 @@ export function SiteFooter() {
   const email = 'muhamed.dev.95@gmail.com'
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(
     lang === 'ar'
-      ? 'مرحباً بفريق WARAQ | ورق! لدي استفسار.'
-      : 'Hello WARAQ team! I have an inquiry.'
+      ? 'مرحباً بفريق WaraqConnect | ورق كونكت! لدي استفسار.'
+      : 'Hello WaraqConnect team! I have an inquiry.'
   )}`
 
   return (
@@ -41,8 +41,8 @@ export function SiteFooter() {
 
             <p className="text-sm text-muted-foreground leading-relaxed max-w-sm pt-1">
               {lang === 'ar'
-                ? 'منصة وَرَق لتبادل واستعارة وشراء الكتب المستعملة ونوادي القراءة في مدينتك. عالم جديد بين كل صفحة والتانية، بدون أي عمولات أو تكاليف شحن مرهقة.'
-                : 'WARAQ — A World Between Every Page. The modern platform for swapping, borrowing, and discovering books with readers in your neighborhood.'}
+                ? 'منصة وتطبيق WaraqConnect (ورق كونكت) لتبادل واستعارة وشراء الكتب المستعملة ونوادي القراءة في مدينتك. عالم جديد بين كل صفحة والتانية، بدون أي عمولات أو تكاليف شحن مرهقة.'
+                : 'WaraqConnect — A World Between Every Page. The modern platform for swapping, borrowing, and discovering books with readers in your neighborhood.'}
             </p>
 
             <div className="flex items-center gap-3 pt-2">
@@ -79,21 +79,27 @@ export function SiteFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/communities" className="hover:text-foreground transition-colors flex items-center gap-1.5">
-                  <Users className="h-3.5 w-3.5 opacity-60" />
-                  <span>{lang === 'ar' ? 'نوادي القراءة بالمدن' : 'Reading Clubs'}</span>
+                <Link href="/challenges" className="hover:text-foreground transition-colors flex items-center gap-1.5 font-bold text-primary">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                  <span>{lang === 'ar' ? 'تحديات القراءة والأوسمة 🔥' : 'Reading Challenges 🔥'}</span>
                 </Link>
               </li>
               <li>
                 <Link href="/stores" className="hover:text-foreground transition-colors flex items-center gap-1.5">
                   <Store className="h-3.5 w-3.5 opacity-60" />
-                  <span>{lang === 'ar' ? 'نقاط التبادل والمتاجر' : 'Safe Hubs & Stores'}</span>
+                  <span>{lang === 'ar' ? 'المكتبات الشريكة' : 'Bookstores & Stores'}</span>
                 </Link>
               </li>
               <li>
-                <Link href="/books/add" className="hover:text-foreground transition-colors flex items-center gap-1.5">
+                <Link href="/events" className="hover:text-foreground transition-colors flex items-center gap-1.5">
+                  <BookOpen className="h-3.5 w-3.5 opacity-60" />
+                  <span>{lang === 'ar' ? 'أجندة الفعاليات وحفلات التوقيع' : 'Literary Events'}</span>
+                </Link>
+              </li>
+              <li>
+                <Link href="/download" className="hover:text-foreground transition-colors flex items-center gap-1.5 text-emerald-600 font-bold">
                   <MapPin className="h-3.5 w-3.5 opacity-60" />
-                  <span>{lang === 'ar' ? 'أضف كتابك للتبادل' : 'List a Book'}</span>
+                  <span>{lang === 'ar' ? 'تحميل تطبيق الموبايل 📱' : 'Download Mobile App 📱'}</span>
                 </Link>
               </li>
             </ul>
@@ -164,7 +170,7 @@ export function SiteFooter() {
         {/* Bottom Bar */}
         <div className="mt-12 pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-muted-foreground">
           <p className="flex items-center gap-1">
-            <span>© {new Date().getFullYear()} WARAQ | ورق.</span>
+            <span>© {new Date().getFullYear()} WaraqConnect | ورق كونكت.</span>
             <span>{lang === 'ar' ? 'صُنع بحب لكل عشاق القراءة في مصر والعالم العربي.' : 'Crafted with passion for readers across Egypt & the Arab World.'}</span>
           </p>
           <div className="flex items-center gap-4">

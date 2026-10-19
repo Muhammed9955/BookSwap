@@ -1,5 +1,6 @@
 // Store, Offers, and Events Types for BookSwap Egypt
 import type { City, Area, BookCondition, Book } from './index'
+export type { BookCondition }
 
 export type StoreType = 'OFFLINE' | 'ONLINE' | 'BOTH'
 
@@ -152,4 +153,21 @@ export interface EventRSVP {
     full_name_ar?: string
     avatar_url?: string
   }
+}
+
+export interface StoreInventoryItem {
+  id: string
+  store_id: string
+  title: string
+  title_ar?: string
+  author: string
+  isbn?: string
+  category_name?: string
+  condition: BookCondition
+  price: number
+  original_price?: number
+  stock_quantity: number
+  cover_url?: string
+  is_active: boolean
+  created_at: string
 }

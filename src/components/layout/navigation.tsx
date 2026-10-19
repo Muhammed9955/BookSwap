@@ -21,6 +21,8 @@ import {
   Flame,
   Users,
   Settings,
+  Store,
+  Smartphone,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLanguage } from '@/i18n/language-context'
@@ -448,6 +450,24 @@ export function TopNav({
               <span>{lang === 'ar' ? 'المجتمعات' : 'Communities'}</span>
             </Link>
 
+            {/* Challenges Link */}
+            <Link
+              href="/challenges"
+              className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            >
+              <Flame className="h-4 w-4 text-orange-500 fill-orange-500" />
+              <span>{lang === 'ar' ? 'التحديات' : 'Challenges'}</span>
+            </Link>
+
+            {/* Bookstores Link */}
+            <Link
+              href="/stores"
+              className="hidden xl:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+            >
+              <Store className="h-4 w-4 text-primary" />
+              <span>{lang === 'ar' ? 'المكتبات' : 'Bookstores'}</span>
+            </Link>
+
             {/* Quick Explore Icon/Link for Desktop */}
             <Link
               href="/explore"
@@ -695,6 +715,39 @@ export function TopNav({
                             <BookOpen className="h-4 w-4" />
                           </div>
                           <span>{lang === 'ar' ? 'عن منصة وَرَق' : 'About WARAQ'}</span>
+                        </Link>
+
+                        <Link
+                          href="/challenges"
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-foreground/90 hover:bg-accent hover:text-foreground transition-colors cursor-pointer group"
+                        >
+                          <div className="p-1 rounded-lg bg-orange-500/10 text-orange-500 group-hover:scale-110 transition-transform">
+                            <Flame className="h-4 w-4 fill-orange-500" />
+                          </div>
+                          <span>{lang === 'ar' ? 'تحديات القراءة والماراثونات 🔥' : 'Reading Challenges & Quests'}</span>
+                        </Link>
+
+                        <Link
+                          href="/stores/dashboard"
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-foreground/90 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 hover:text-emerald-600 transition-colors cursor-pointer group"
+                        >
+                          <div className="p-1 rounded-lg bg-emerald-500/10 text-emerald-600 group-hover:scale-110 transition-transform">
+                            <Store className="h-4 w-4" />
+                          </div>
+                          <span>{lang === 'ar' ? 'لوحة إدارة متجري والمخزون 🏬' : 'Store Manager Dashboard'}</span>
+                        </Link>
+
+                        <Link
+                          href="/download"
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-foreground/90 hover:bg-accent hover:text-foreground transition-colors cursor-pointer group"
+                        >
+                          <div className="p-1 rounded-lg bg-slate-500/10 text-slate-600 dark:text-slate-400 group-hover:scale-110 transition-transform">
+                            <Smartphone className="h-4 w-4" />
+                          </div>
+                          <span>{lang === 'ar' ? 'تحميل تطبيق الموبايل (PWA) 📱' : 'Download Mobile App'}</span>
                         </Link>
 
                         <Link

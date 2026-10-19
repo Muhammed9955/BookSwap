@@ -4,8 +4,8 @@
 export const translations = {
   ar: {
     // App
-    app_name: 'WARAQ',
-    app_name_ar: 'ورق',
+    app_name: 'WaraqConnect',
+    app_name_ar: 'ورق كونكت',
     tagline: 'عالم جديد بين كل صفحة والتانية.',
     
     // Navigation
@@ -212,8 +212,8 @@ export const translations = {
   },
   en: {
     // App
-    app_name: 'WARAQ',
-    app_name_ar: 'ورق',
+    app_name: 'WaraqConnect',
+    app_name_ar: 'ورق كونكت',
     tagline: 'A World Between Every Page.',
     
     // Navigation
