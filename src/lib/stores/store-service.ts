@@ -1,6 +1,6 @@
 import type { Bookstore, StoreOffer, StoreEvent, RSVPStatus, StoreType, OfferType, StoreInventoryItem, StoreApplication, StoreApplicationStatus, StoreOrder } from '@/types/store'
 import { createClient } from '@/lib/supabase/client'
-import { STORE_CATALOG_BOOKS } from '@/lib/stores/store-catalog-data'
+import { STORE_CATALOG_BOOKS, getStoreBookCover } from '@/lib/stores/store-catalog-data'
 
 type SupabaseClient = any
 
@@ -1210,7 +1210,7 @@ export async function getStoreInventory(storeId: string): Promise<StoreInventory
     price: book.price || 120,
     original_price: book.original_price || (book.price ? book.price + 40 : 160),
     stock_quantity: 12,
-    cover_url: book.cover_url || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80',
+    cover_url: getStoreBookCover(book),
     is_active: true,
     created_at: new Date().toISOString(),
   }))
@@ -1225,45 +1225,139 @@ export async function getStoreInventory(storeId: string): Promise<StoreInventory
 }
 
 /**
- * Submit a customer order to the bookstore (Single Book or Bundle Package)
+ * Submit a customer order to the bookstore (Single Book, Bundle Package, Curated Pack, or Series)
+ * Persists to Supabase DB via /api/stores/orders, creates in-app notification for owner, and dispatches email.
  */
 export async function submitStoreOrder(
   order: Omit<StoreOrder, 'id' | 'created_at' | 'status'>
 ): Promise<StoreOrder> {
-  const newOrder: StoreOrder = {
-    ...order,
-    id: `ORD-${Date.now().toString().slice(-6)}`,
-    status: 'NEW',
-    created_at: new Date().toISOString(),
+  let createdOrder: StoreOrder | null = null
+
+  // 1. Send to server API (Supabase store_orders + in-app notification + smart throttled email)
+  try {
+    const res = await fetch('/api/stores/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(order),
+    })
+    if (res.ok) {
+      const data = await res.json()
+      if (data.success && data.order) {
+        createdOrder = data.order
+      }
+    }
+  } catch (err) {
+    console.warn('[submitStoreOrder] API call error, falling back:', err)
   }
 
+  if (!createdOrder) {
+    const orderNumber = `ORD-${Date.now().toString(36).toUpperCase().slice(-5)}-${Math.floor(100 + Math.random() * 900)}`
+    createdOrder = {
+      ...order,
+      id: orderNumber,
+      order_number: orderNumber,
+      status: 'NEW',
+      created_at: new Date().toISOString(),
+    }
+  }
+
+  // 2. Cache in localStorage so store owner dashboard updates immediately
   if (typeof window !== 'undefined') {
     try {
       const key = `${ORDERS_STORAGE_KEY}_${order.store_id}`
       const stored = localStorage.getItem(key)
       const orders = stored ? JSON.parse(stored) : []
-      orders.unshift(newOrder)
-      localStorage.setItem(key, JSON.stringify(orders))
+      // Check if not already in local array
+      if (!orders.some((o: StoreOrder) => o.id === createdOrder?.id)) {
+        orders.unshift(createdOrder)
+        localStorage.setItem(key, JSON.stringify(orders))
+      }
     } catch {}
   }
 
-  return newOrder
+  return createdOrder
 }
 
 /**
- * Get orders received by a specific bookstore
+ * Get orders received by a specific bookstore (Supabase DB + local cache merge)
  */
 export async function getStoreOrders(storeId: string): Promise<StoreOrder[]> {
+  let serverOrders: StoreOrder[] = []
+
+  try {
+    const res = await fetch(`/api/stores/orders?store_id=${encodeURIComponent(storeId)}`)
+    if (res.ok) {
+      const data = await res.json()
+      if (data.success && Array.isArray(data.orders)) {
+        serverOrders = data.orders
+      }
+    }
+  } catch {}
+
+  let localOrders: StoreOrder[] = []
   if (typeof window !== 'undefined') {
     try {
       const key = `${ORDERS_STORAGE_KEY}_${storeId}`
       const stored = localStorage.getItem(key)
       if (stored) {
-        return JSON.parse(stored)
+        localOrders = JSON.parse(stored)
       }
     } catch {}
   }
-  return []
+
+  // Merge server and local orders uniquely by ID
+  const orderMap = new Map<string, StoreOrder>()
+  for (const o of serverOrders) {
+    orderMap.set(o.id, o)
+  }
+  for (const o of localOrders) {
+    if (!orderMap.has(o.id)) {
+      orderMap.set(o.id, o)
+    }
+  }
+
+  return Array.from(orderMap.values()).sort(
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  )
+}
+
+/**
+ * Fetch a single store order by order_number or order ID
+ */
+export async function getStoreOrder(orderIdentifier: string): Promise<StoreOrder | null> {
+  if (!orderIdentifier) return null
+
+  // 1. Fetch from server API / Supabase
+  try {
+    const res = await fetch(`/api/stores/orders?order_number=${encodeURIComponent(orderIdentifier)}`)
+    if (res.ok) {
+      const data = await res.json()
+      if (data.success && data.order) {
+        return data.order as StoreOrder
+      }
+    }
+  } catch {}
+
+  // 2. Fallback to localStorage cache
+  if (typeof window !== 'undefined') {
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && key.startsWith(ORDERS_STORAGE_KEY)) {
+          const stored = localStorage.getItem(key)
+          if (stored) {
+            const orders = JSON.parse(stored) as StoreOrder[]
+            const match = orders.find(
+              o => o.order_number === orderIdentifier || o.id === orderIdentifier
+            )
+            if (match) return match
+          }
+        }
+      }
+    } catch {}
+  }
+
+  return null
 }
 
 /**
@@ -1361,11 +1455,39 @@ export async function updateBookstore(
   storeId: string,
   updates: Partial<Bookstore>
 ): Promise<Bookstore> {
-  const target = DEMO_STORES.find(s => s.id === storeId) || DEMO_STORES[0]
+  let target: Bookstore | undefined
+
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(STORES_STORAGE_KEY)
+      if (stored) {
+        const map = JSON.parse(stored)
+        if (map[storeId]) {
+          target = map[storeId]
+        }
+      }
+    } catch {}
+  }
+
+  if (!target) {
+    target = DEMO_STORES.find(s => s.id === storeId)
+  }
+
+  if (!target) {
+    target = DEMO_STORES[0]
+  }
+
   const updatedStore: Bookstore = {
     ...target,
     ...updates,
+    id: storeId,
     updated_at: new Date().toISOString(),
+  }
+
+  // Update in memory DEMO_STORES if present
+  const demoIdx = DEMO_STORES.findIndex(s => s.id === storeId)
+  if (demoIdx !== -1) {
+    DEMO_STORES[demoIdx] = updatedStore
   }
 
   // Persist directly to Supabase DB bookstores table
@@ -1395,7 +1517,7 @@ export async function createStoreOffer(
 ): Promise<StoreOffer> {
   const newOffer: StoreOffer = {
     ...offer,
-    id: `offer-${Date.now()}`,
+    id: `offer-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     created_at: new Date().toISOString(),
   }
 
@@ -1426,6 +1548,20 @@ export async function deleteStoreOffer(offerId: string): Promise<boolean> {
     } catch {}
   }
   return true
+}
+
+/**
+ * Read offers created from the merchant dashboard (stored client-side) for one store
+ */
+export function getLocalStoreOffers(storeId: string): StoreOffer[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const stored = localStorage.getItem(OFFERS_STORAGE_KEY)
+    if (!stored) return []
+    return (JSON.parse(stored) as StoreOffer[]).filter(o => o.store_id === storeId)
+  } catch {
+    return []
+  }
 }
 
 /**

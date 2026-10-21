@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { STORE_CATALOG_BOOKS } from '@/lib/stores/store-catalog-data'
+import { STORE_CATALOG_BOOKS, getStoreBookCover } from '@/lib/stores/store-catalog-data'
 
 export interface SearchBookResult {
   id: string
@@ -66,7 +66,7 @@ export async function GET(request: Request) {
           author: b.author,
           author_ar: b.author_ar || b.author,
           category_name: b.category_name_ar || 'أدب وروايات',
-          cover_url: b.cover_url || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80',
+          cover_url: getStoreBookCover(b),
           suggested_price: b.price || 40,
           rating: b.rating || 4.8,
           source: 'catalog',

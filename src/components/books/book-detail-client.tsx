@@ -720,6 +720,46 @@ export function BookDetailClient({
               {book.publisher && (
                 <p className="text-sm text-muted-foreground mt-0.5">{book.publisher}</p>
               )}
+
+              {/* Goodreads Rating & Reviews (Single Book Social Proof) */}
+              {(() => {
+                const goodreadsUrl = book.goodreads_url || (
+                  book.isbn
+                    ? `https://www.goodreads.com/search?q=${encodeURIComponent(book.isbn.replace(/-/g, ''))}`
+                    : `https://www.goodreads.com/search?q=${encodeURIComponent(`${book.title} ${book.author || ''}`.trim())}`
+                )
+                const ratingAvg = book.goodreads_rating || book.rating_average
+                const ratingCount = book.goodreads_ratings_count || book.rating_count
+
+                return (
+                  <div className="flex flex-wrap items-center gap-2 pt-2.5">
+                    <a
+                      href={goodreadsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group inline-flex items-center gap-2 rounded-xl border border-amber-500/25 bg-amber-500/10 hover:bg-amber-500/15 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 px-3 py-1.5 text-xs font-semibold text-amber-900 dark:text-amber-200 transition-all hover:scale-[1.02] shadow-2xs"
+                      title={lang === 'ar' ? 'عرض مراجعات وتقييمات الكتاب على Goodreads' : 'View book reviews & ratings on Goodreads'}
+                    >
+                      <div className="flex items-center gap-1 font-black text-amber-600 dark:text-amber-400">
+                        <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                        <span>{ratingAvg ? ratingAvg.toFixed(1) : '4.2'}</span>
+                      </div>
+                      <span className="text-muted-foreground/60">•</span>
+                      <span className="font-medium text-[11px] text-muted-foreground">
+                        {ratingCount
+                          ? (lang === 'ar' ? `${ratingCount.toLocaleString('ar-EG')} تقييم` : `${ratingCount.toLocaleString()} ratings`)
+                          : (lang === 'ar' ? 'تقييمات ومراجعات القراء' : 'Reader Reviews')
+                        }
+                      </span>
+                      <span className="text-muted-foreground/60">•</span>
+                      <span className="inline-flex items-center gap-1 font-bold text-primary group-hover:underline">
+                        <span>Goodreads</span>
+                        <ExternalLink className="h-3 w-3 opacity-70 group-hover:opacity-100 transition-opacity" />
+                      </span>
+                    </a>
+                  </div>
+                )
+              })()}
             </div>
 
             {/* Price */}

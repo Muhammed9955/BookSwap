@@ -69,6 +69,9 @@ interface AiExtractedBook {
   suggested_fee_weekly?: number
   is_expensive_book?: boolean
   confidence?: number
+  goodreads_rating?: number
+  goodreads_ratings_count?: number
+  goodreads_url?: string
   source?: string
 }
 
@@ -490,6 +493,10 @@ export function AddBookForm({
       if (existingBook) {
         bookId = existingBook.id
       } else {
+        const grUrl = data.isbn
+          ? `https://www.goodreads.com/search?q=${encodeURIComponent(data.isbn.replace(/-/g, ''))}`
+          : `https://www.goodreads.com/search?q=${encodeURIComponent(`${data.title} ${data.author || ''}`.trim())}`
+
         const { data: newBook, error: bookErr } = await supabase
           .from('books')
           .insert({
@@ -502,6 +509,9 @@ export function AddBookForm({
             category_id: data.category_id || null,
             description: data.description || null,
             created_by: userId,
+            rating_average: aiExtractedInfo?.goodreads_rating || null,
+            rating_count: aiExtractedInfo?.goodreads_ratings_count || null,
+            goodreads_url: aiExtractedInfo?.goodreads_url || grUrl,
           })
           .select('id')
           .single()
@@ -891,10 +901,18 @@ export function AddBookForm({
                 <p className="text-muted-foreground font-medium">
                   <strong>{aiExtractedInfo.title}</strong> {aiExtractedInfo.author && `— ${aiExtractedInfo.author}`}
                 </p>
-                <div className="flex items-center gap-2 pt-0.5 text-[11px] text-emerald-800 dark:text-emerald-300 font-bold">
+                <div className="flex items-center gap-2 pt-0.5 text-[11px] text-emerald-800 dark:text-emerald-300 font-bold flex-wrap">
                   <span>{lang === 'ar' ? `السعر المقترح: ${aiExtractedInfo.estimated_price} ج.م` : `Est. Price: ${aiExtractedInfo.estimated_price} EGP`}</span>
                   <span>•</span>
                   <span>{lang === 'ar' ? `التأمين المقترح: ${aiExtractedInfo.suggested_deposit} ج.م` : `Deposit: ${aiExtractedInfo.suggested_deposit} EGP`}</span>
+                  {aiExtractedInfo.goodreads_rating && (
+                    <>
+                      <span>•</span>
+                      <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300">
+                        ⭐ {aiExtractedInfo.goodreads_rating.toFixed(1)} Goodreads
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

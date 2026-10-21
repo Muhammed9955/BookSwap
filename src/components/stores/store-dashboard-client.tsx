@@ -40,6 +40,8 @@ import {
   FileText,
   ListPlus,
   Wand2,
+  MessageCircle,
+  Navigation,
 } from 'lucide-react'
 import { MainLayout } from '@/components/layout/main-layout'
 import { Button } from '@/components/ui/button'
@@ -62,11 +64,12 @@ import {
   updateStoreOrderStatus,
 } from '@/lib/stores/store-service'
 import type { SearchBookResult } from '@/app/api/stores/books-search/route'
-import { STORE_CATALOG_BOOKS, GENRE_CATEGORIES } from '@/lib/stores/store-catalog-data'
+import { STORE_CATALOG_BOOKS, GENRE_CATEGORIES, getStoreBookCover } from '@/lib/stores/store-catalog-data'
 import { MapLocationPicker, type MapCoordinates } from '@/components/common/map-location-picker'
 import { SquareImageUpload } from '@/components/stores/square-image-upload'
 import { compressImageFile } from '@/lib/image-utils'
 import { uploadCommunityImage } from '@/lib/storage/upload-helper'
+import { OfferTemplatesPicker } from '@/components/stores/offer-templates-picker'
 
 interface StoreDashboardClientProps {
   initialStore: Bookstore
@@ -87,8 +90,9 @@ export function StoreDashboardClient({
 }: StoreDashboardClientProps) {
   const { lang, isRTL } = useLanguage()
   const [activeTab, setActiveTab] = useState<DashboardTab>('profile')
+  const [storesList, setStoresList] = useState<Bookstore[]>(allStores)
   const [activeStoreId, setActiveStoreId] = useState<string>(initialStore.id)
-  const currentStore = allStores.find(s => s.id === activeStoreId) || initialStore
+  const currentStore = storesList.find(s => s.id === activeStoreId) || initialStore
 
   // Store Profile Form State
   const [profileForm, setProfileForm] = useState({
@@ -102,9 +106,10 @@ export function StoreDashboardClient({
     latitude: currentStore.latitude || 30.0612,
     longitude: currentStore.longitude || 31.2185,
     website_url: currentStore.website_url || '',
+    phone: (currentStore as any).phone || currentStore.social_links?.whatsapp || '',
+    whatsapp: currentStore.social_links?.whatsapp || '',
     facebook: currentStore.social_links?.facebook || '',
     instagram: currentStore.social_links?.instagram || '',
-    whatsapp: currentStore.social_links?.whatsapp || '',
     tiktok: currentStore.social_links?.tiktok || '',
     opening_weekdays: currentStore.opening_hours?.['السبت - الخميس'] || '10:00 ص - 12:00 منتصف الليل',
     opening_friday: currentStore.opening_hours?.['الجمعة'] || '1:00 م - 11:00 م',
@@ -112,8 +117,34 @@ export function StoreDashboardClient({
     cover_url: currentStore.cover_url || '',
   })
 
+  // Synchronize profile form when active store changes
+  useEffect(() => {
+    setProfileForm({
+      name: currentStore.name,
+      name_ar: currentStore.name_ar || '',
+      slug: currentStore.slug,
+      description: currentStore.description || '',
+      description_ar: currentStore.description_ar || '',
+      store_type: currentStore.store_type,
+      address: currentStore.address || '',
+      latitude: currentStore.latitude || 30.0612,
+      longitude: currentStore.longitude || 31.2185,
+      website_url: currentStore.website_url || '',
+      phone: (currentStore as any).phone || currentStore.social_links?.whatsapp || '',
+      whatsapp: currentStore.social_links?.whatsapp || '',
+      facebook: currentStore.social_links?.facebook || '',
+      instagram: currentStore.social_links?.instagram || '',
+      tiktok: currentStore.social_links?.tiktok || '',
+      opening_weekdays: currentStore.opening_hours?.['السبت - الخميس'] || '10:00 ص - 12:00 منتصف الليل',
+      opening_friday: currentStore.opening_hours?.['الجمعة'] || '1:00 م - 11:00 م',
+      logo_url: currentStore.logo_url || '',
+      cover_url: currentStore.cover_url || '',
+    })
+  }, [currentStore])
+
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
 
   // Logo & Cover Upload with Client-Side Compression
   const logoInputRef = useRef<HTMLInputElement>(null)
@@ -245,10 +276,75 @@ export function StoreDashboardClient({
   // Handle Store Profile Save
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    // Form Validations
+    const errors: Record<string, string> = {}
+    if (!profileForm.name_ar.trim() || profileForm.name_ar.trim().length < 2) {
+      errors.name_ar = lang === 'ar' ? 'اسم المكتبة بالعربية مطلوب (حرفين على الأقل)' : 'Arabic store name is required (min 2 chars)'
+    }
+    if (!profileForm.name.trim() || profileForm.name.trim().length < 2) {
+      errors.name = lang === 'ar' ? 'اسم المكتبة بالإنجليزية مطلوب (حرفين على الأقل)' : 'English store name is required (min 2 chars)'
+    }
+    if (!profileForm.slug.trim()) {
+      errors.slug = lang === 'ar' ? 'الرابط المخصص (Slug) مطلوب' : 'Slug is required'
+    } else if (!/^[a-z0-9-]+$/i.test(profileForm.slug.trim())) {
+      errors.slug = lang === 'ar' ? 'الرابط يجب أن يحتوي فقط على أحرف إنجليزية وأرقام وعلامة -' : 'Slug must contain only letters, numbers, and hyphens'
+    }
+
+    const cleanWhatsapp = profileForm.whatsapp.trim().replace(/[\s-]/g, '')
+    if (!cleanWhatsapp) {
+      errors.whatsapp = lang === 'ar' ? 'رقم الواتساب مطلوب لاستقبال طلبات الكتب' : 'WhatsApp number is required to receive orders'
+    } else {
+      const isPhoneValid = /^(010|011|012|015)[0-9]{8}$/.test(cleanWhatsapp) || /^(\+?20)(10|11|12|15)[0-9]{8}$/.test(cleanWhatsapp) || /^\+?[0-9]{8,15}$/.test(cleanWhatsapp)
+      if (!isPhoneValid) {
+        errors.whatsapp = lang === 'ar' ? 'يرجى إدخال رقم هاتف صحيح (مثال: 01012345678)' : 'Please enter a valid phone number (e.g. 01012345678)'
+      }
+    }
+
+    const cleanPhone = profileForm.phone.trim().replace(/[\s-]/g, '')
+    if (cleanPhone) {
+      const isDirectPhoneValid =
+        /^(010|011|012|015)[0-9]{8}$/.test(cleanPhone) ||
+        /^(02|03|040|045|047|048|050|055|057|062|064|065|066|068|069|082|084|086|088|092|093|095|096|097)[0-9]{7,8}$/.test(cleanPhone) ||
+        /^(\+?20)[0-9]{8,12}$/.test(cleanPhone) ||
+        /^\+?[0-9]{7,15}$/.test(cleanPhone)
+      if (!isDirectPhoneValid) {
+        errors.phone = lang === 'ar' ? 'يرجى إدخال رقم هاتف أرضي أو محمول صحيح (مثال: 0227362140)' : 'Please enter a valid landline or mobile phone'
+      }
+    }
+
+    if (profileForm.website_url.trim()) {
+      const trimmedUrl = profileForm.website_url.trim()
+      if (!/^https?:\/\/.+/i.test(trimmedUrl)) {
+        errors.website_url = lang === 'ar' ? 'يجب أن يبدأ رابط الموقع بـ https://' : 'Website URL must start with https://'
+      }
+    }
+
+    if (profileForm.store_type !== 'ONLINE') {
+      if (!profileForm.address.trim() || profileForm.address.trim().length < 4) {
+        errors.address = lang === 'ar' ? 'العنوان التفصيلي مطلوب للفرع الفعلي (4 أحرف على الأقل)' : 'Detailed branch address is required (min 4 chars)'
+      }
+    }
+
+    setFormErrors(errors)
+    if (Object.keys(errors).length > 0) {
+      // Scroll to the first error
+      const firstErrorKey = Object.keys(errors)[0]
+      const el = document.getElementById(`store-field-${firstErrorKey}`)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        const input = el.querySelector('input, textarea') as HTMLElement | null
+        if (input) input.focus()
+      }
+      return
+    }
+
     setIsSaving(true)
     const isOnline = profileForm.store_type === 'ONLINE'
     try {
-      await updateBookstore(activeStoreId, {
+      const cleanPhone = profileForm.phone.trim()
+
+      const updated = await updateBookstore(activeStoreId, {
         name: profileForm.name,
         name_ar: profileForm.name_ar,
         slug: profileForm.slug,
@@ -259,10 +355,11 @@ export function StoreDashboardClient({
         latitude: isOnline ? undefined : profileForm.latitude,
         longitude: isOnline ? undefined : profileForm.longitude,
         website_url: profileForm.website_url,
+        phone: cleanPhone || cleanWhatsapp,
         social_links: {
           facebook: profileForm.facebook,
           instagram: profileForm.instagram,
-          whatsapp: profileForm.whatsapp,
+          whatsapp: cleanWhatsapp || cleanPhone,
           tiktok: profileForm.tiktok,
         },
         opening_hours: {
@@ -271,7 +368,9 @@ export function StoreDashboardClient({
         },
         logo_url: profileForm.logo_url,
         cover_url: profileForm.cover_url,
-      })
+      } as any)
+
+      setStoresList(prev => prev.map(s => s.id === activeStoreId ? updated : s))
       setSaveSuccess(true)
       setTimeout(() => setSaveSuccess(false), 3000)
     } finally {
@@ -320,7 +419,7 @@ export function StoreDashboardClient({
       price: catBook.price,
       original_price: catBook.original_price || (catBook.price + 45),
       stock_quantity: 10,
-      cover_url: catBook.cover_url || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80',
+      cover_url: getStoreBookCover(catBook),
     })
     setIsAddBookModalOpen(true)
   }
@@ -470,6 +569,7 @@ export function StoreDashboardClient({
     initialOffers.filter(o => o.store_id === currentStore.id)
   )
   const [isAddOfferModalOpen, setIsAddOfferModalOpen] = useState(false)
+  const [isTemplatePickerOpen, setIsTemplatePickerOpen] = useState(false)
   const [newOffer, setNewOffer] = useState({
     offer_type: 'CURATED_PACK' as 'CURATED_PACK' | 'BUNDLE',
     title: '',
@@ -744,9 +844,10 @@ export function StoreDashboardClient({
                     latitude: s.latitude || 30.0612,
                     longitude: s.longitude || 31.2185,
                     website_url: s.website_url || '',
+                    phone: (s as any).phone || s.social_links?.whatsapp || '',
+                    whatsapp: s.social_links?.whatsapp || '',
                     facebook: s.social_links?.facebook || '',
                     instagram: s.social_links?.instagram || '',
-                    whatsapp: s.social_links?.whatsapp || '',
                     tiktok: s.social_links?.tiktok || '',
                     opening_weekdays: s.opening_hours?.['السبت - الخميس'] || '9:00 ص - 11:00 م',
                     opening_friday: s.opening_hours?.['الجمعة'] || '1:00 م - 11:00 م',
@@ -842,15 +943,28 @@ export function StoreDashboardClient({
               </div>
             )}
 
-            {/* Basic Info */}
-            <div className="rounded-3xl border-2 border-border/80 bg-card p-6 space-y-5">
-              <h2 className="text-base font-black text-foreground flex items-center gap-2">
-                <Store className="h-4 w-4 text-primary" />
-                <span>{lang === 'ar' ? 'البيانات الأساسية للمكتبة' : 'General Store Information'}</span>
-              </h2>
+            {/* 1. GENERAL & CONTACT INFO (2-COLUMN INPUT GRID WITH FORM VALIDATION) */}
+            <div className="rounded-3xl border-2 border-border/80 bg-card p-6 space-y-5 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
+                <div>
+                  <h2 className="text-base font-black text-foreground flex items-center gap-2">
+                    <Store className="h-4 w-4 text-primary" />
+                    <span>{lang === 'ar' ? 'البيانات الأساسية ومعلومات التواصل' : 'General & Contact Information'}</span>
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {lang === 'ar'
+                      ? 'بيانات المتجر الرسمية وأرقام استقبال الطلبات والتواصل المباشر مع القراء'
+                      : 'Official bookstore profile, WhatsApp order receiving desk, and contact details'}
+                  </p>
+                </div>
+                <Badge variant="outline" className="text-[10px] font-bold self-start sm:self-auto">
+                  {lang === 'ar' ? 'البيانات الرسمية' : 'Official Details'}
+                </Badge>
+              </div>
 
+              {/* Arabic Name & English Name */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
+                <div id="store-field-name_ar" className="space-y-1.5">
                   <label className="text-xs font-black text-foreground">
                     {lang === 'ar' ? 'اسم المكتبة (بالعربية)' : 'Bookstore Name (Arabic)'} *
                   </label>
@@ -858,13 +972,25 @@ export function StoreDashboardClient({
                     type="text"
                     required
                     value={profileForm.name_ar}
-                    onChange={e => setProfileForm(prev => ({ ...prev, name_ar: e.target.value }))}
-                    className="w-full bg-muted/40 border-2 border-border rounded-xl px-3.5 py-2.5 text-xs font-bold text-foreground focus:outline-none focus:border-primary"
+                    onChange={e => {
+                      setProfileForm(prev => ({ ...prev, name_ar: e.target.value }))
+                      if (formErrors.name_ar) setFormErrors(prev => ({ ...prev, name_ar: '' }))
+                    }}
+                    className={cn(
+                      'w-full bg-muted/40 border-2 rounded-xl px-3.5 py-2.5 text-xs font-bold text-foreground focus:outline-none transition-colors',
+                      formErrors.name_ar ? 'border-destructive bg-destructive/5 focus:border-destructive' : 'border-border focus:border-primary'
+                    )}
                     placeholder="مثال: مكتبة ديوان — فرع الزمالك"
                   />
+                  {formErrors.name_ar && (
+                    <p className="text-[11px] font-bold text-destructive flex items-center gap-1 mt-1">
+                      <AlertCircle className="h-3 w-3 shrink-0" />
+                      <span>{formErrors.name_ar}</span>
+                    </p>
+                  )}
                 </div>
 
-                <div className="space-y-1.5">
+                <div id="store-field-name" className="space-y-1.5">
                   <label className="text-xs font-black text-foreground">
                     {lang === 'ar' ? 'اسم المكتبة (بالإنجليزية)' : 'Bookstore Name (English)'} *
                   </label>
@@ -872,27 +998,54 @@ export function StoreDashboardClient({
                     type="text"
                     required
                     value={profileForm.name}
-                    onChange={e => setProfileForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full bg-muted/40 border-2 border-border rounded-xl px-3.5 py-2.5 text-xs font-bold text-foreground focus:outline-none focus:border-primary"
+                    onChange={e => {
+                      setProfileForm(prev => ({ ...prev, name: e.target.value }))
+                      if (formErrors.name) setFormErrors(prev => ({ ...prev, name: '' }))
+                    }}
+                    className={cn(
+                      'w-full bg-muted/40 border-2 rounded-xl px-3.5 py-2.5 text-xs font-bold text-foreground focus:outline-none transition-colors',
+                      formErrors.name ? 'border-destructive bg-destructive/5 focus:border-destructive' : 'border-border focus:border-primary'
+                    )}
                     placeholder="e.g. Diwan Bookstore Zamalek"
                   />
+                  {formErrors.name && (
+                    <p className="text-[11px] font-bold text-destructive flex items-center gap-1 mt-1">
+                      <AlertCircle className="h-3 w-3 shrink-0" />
+                      <span>{formErrors.name}</span>
+                    </p>
+                  )}
                 </div>
+              </div>
 
-                <div className="space-y-1.5">
+              {/* Slug URL & Store Type */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div id="store-field-slug" className="space-y-1.5">
                   <label className="text-xs font-black text-foreground">
                     {lang === 'ar' ? 'الرابط التعريفي المخصص (Slug)' : 'Unique Slug URL'} *
                   </label>
-                  <div className="flex items-center bg-muted/40 border-2 border-border rounded-xl px-3 py-2 text-xs font-bold text-muted-foreground">
+                  <div className={cn(
+                    'flex items-center bg-muted/40 border-2 rounded-xl px-3 py-2 text-xs font-bold text-muted-foreground transition-colors',
+                    formErrors.slug ? 'border-destructive bg-destructive/5' : 'border-border'
+                  )}>
                     <span className="shrink-0 text-[11px] font-mono opacity-60 hidden sm:inline">waraqconnect.vercel.app/stores/</span>
                     <span className="shrink-0 text-[11px] font-mono opacity-60 sm:hidden">/stores/</span>
                     <input
                       type="text"
                       required
                       value={profileForm.slug}
-                      onChange={e => setProfileForm(prev => ({ ...prev, slug: e.target.value }))}
+                      onChange={e => {
+                        setProfileForm(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))
+                        if (formErrors.slug) setFormErrors(prev => ({ ...prev, slug: '' }))
+                      }}
                       className="w-full bg-transparent border-none text-xs font-bold text-foreground focus:outline-none ps-1"
                     />
                   </div>
+                  {formErrors.slug && (
+                    <p className="text-[11px] font-bold text-destructive flex items-center gap-1 mt-1">
+                      <AlertCircle className="h-3 w-3 shrink-0" />
+                      <span>{formErrors.slug}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-1.5">
@@ -911,7 +1064,77 @@ export function StoreDashboardClient({
                 </div>
               </div>
 
-              <div className="space-y-1.5 pt-2">
+              {/* WhatsApp Order Receiving Number & Hotline Phone (PROMINENT & TESTABLE) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                {/* WhatsApp Order Number */}
+                <div id="store-field-whatsapp" className="space-y-1.5 p-3.5 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                      <MessageCircle className="h-4 w-4 text-emerald-600" />
+                      <span>{lang === 'ar' ? 'رقم الواتساب لاستقبال الطلبات' : 'WhatsApp Order Receiving'} *</span>
+                    </label>
+                    {profileForm.whatsapp && (
+                      <a
+                        href={`https://wa.me/${profileForm.whatsapp.replace(/[^0-9]/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[10px] text-emerald-700 dark:text-emerald-300 underline font-black hover:opacity-80"
+                      >
+                        {lang === 'ar' ? 'تجربة فتح 💬' : 'Test Chat 💬'}
+                      </a>
+                    )}
+                  </div>
+                  <input
+                    type="tel"
+                    required
+                    value={profileForm.whatsapp}
+                    onChange={e => {
+                      setProfileForm(prev => ({ ...prev, whatsapp: e.target.value }))
+                      if (formErrors.whatsapp) setFormErrors(prev => ({ ...prev, whatsapp: '' }))
+                    }}
+                    className={cn(
+                      'w-full bg-background border rounded-xl px-3.5 py-2 text-xs font-bold text-foreground focus:outline-none font-mono transition-colors',
+                      formErrors.whatsapp ? 'border-destructive focus:border-destructive' : 'border-emerald-500/40 focus:border-emerald-600'
+                    )}
+                    placeholder="مثال: 01032137085 أو +2010..."
+                  />
+                  {formErrors.whatsapp ? (
+                    <p className="text-[11px] font-bold text-destructive flex items-center gap-1 mt-1">
+                      <AlertCircle className="h-3 w-3 shrink-0" />
+                      <span>{formErrors.whatsapp}</span>
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-muted-foreground leading-tight">
+                      {lang === 'ar'
+                        ? 'تُرسل إليه رسائل طلبات الكتب الفورية من السلة مع كود الشحن تلقائياً.'
+                        : 'Book purchase orders and shipping tracking codes are sent directly to this number.'}
+                    </p>
+                  )}
+                </div>
+
+                {/* Direct Phone / Hotline */}
+                <div className="space-y-1.5 p-3.5 rounded-2xl bg-primary/5 border-2 border-primary/20">
+                  <label className="text-xs font-black text-foreground flex items-center gap-1.5">
+                    <Phone className="h-4 w-4 text-primary" />
+                    <span>{lang === 'ar' ? 'رقم الهاتف الأرضي أو المحمول' : 'Direct Phone / Hotline'}</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={profileForm.phone}
+                    onChange={e => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
+                    className="w-full bg-background border border-border rounded-xl px-3.5 py-2 text-xs font-bold text-foreground focus:outline-none focus:border-primary font-mono"
+                    placeholder="مثال: 0227362140 أو 01012345678"
+                  />
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    {lang === 'ar'
+                      ? 'للاتصال الهاتفي المباشر بالفرع واستفسارات القراء وخدمة العملاء.'
+                      : 'For direct reader telephone calls, voice inquiries, and branch support.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* About / Bio */}
+              <div className="space-y-1.5 pt-1">
                 <label className="text-xs font-black text-foreground">
                   {lang === 'ar' ? 'نبذة عن المكتبة وتاريخها ورسالتها (بالعربية)' : 'About / Bio (Arabic)'}
                 </label>
@@ -923,68 +1146,71 @@ export function StoreDashboardClient({
                   placeholder="اكتب نبذة عن تاريخ مكتبتكم، الأقسام المميزة، وما تقدمونه لمجتمع القراء..."
                 />
               </div>
+            </div>
 
-              {/* Square & Catchy Visual Identity Upload Section */}
-              <div className="space-y-4 p-5 sm:p-6 rounded-3xl bg-muted/20 border-2 border-border/80 shadow-xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
-                  <div>
-                    <span className="text-xs sm:text-sm font-black text-foreground flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      <span>{lang === 'ar' ? 'هوية المتجر البصرية (شعار وغلاف بنسبة 1:1 مربعة وجذابة)' : 'Store Visual Identity (Square 1:1 Logo & Cover)'}</span>
-                    </span>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {lang === 'ar' ? 'بطاقات مربعة عصرية بنسبة 1:1 تدعم السحب والإفلات وضغط الصور WebP تلقائياً' : 'Square catchy cards with drag & drop and auto WebP compression'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 self-start sm:self-auto">
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
-                      ⚡ ضغط فوري WebP
-                    </span>
-                  </div>
+            {/* 2. STORE VISUAL IDENTITY */}
+            <div className="rounded-3xl border-2 border-border/80 bg-card p-6 space-y-5 shadow-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
+                <div>
+                  <h2 className="text-base font-black text-foreground flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <span>{lang === 'ar' ? 'الهوية البصرية والعلامة التجارية' : 'Store Visual Identity & Media'}</span>
+                  </h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {lang === 'ar'
+                      ? 'شعار المتجر وصورة الغلاف لإبراز مكتبتكم بشكل جذاب واحترافي في دليل المكتبات وصفحات البحث'
+                      : 'Bookstore logo and cover banner to professionally showcase your store in search and directory'}
+                  </p>
                 </div>
+                {/* <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 self-start sm:self-auto">
+                  ⚡ ضغط فوري WebP
+                </span> */}
+              </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  {/* Square Logo Upload */}
-                  <SquareImageUpload
-                    label={lang === 'ar' ? 'شعار المتجر الرسمي' : 'Official Store Logo'}
-                    subLabel={lang === 'ar' ? 'اسحب الشعار هنا أو اضغط للاختيار' : 'Drop store logo here or click to browse'}
-                    value={profileForm.logo_url}
-                    onChange={url => setProfileForm(prev => ({ ...prev, logo_url: url }))}
-                    onRemove={() => setProfileForm(prev => ({ ...prev, logo_url: '' }))}
-                    folder="logos"
-                    userId={currentUserId}
-                    theme="primary"
-                    tagText={lang === 'ar' ? '✨ الشعار (1:1)' : '✨ Store Logo (1:1)'}
-                    resolutionHint="Square 1:1 (400×400+)"
-                    lang={lang}
-                  />
+              {/* LOGO & COVER COMPACT IMAGE PICKERS */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Store Logo (Compact) */}
+                <SquareImageUpload
+                  label={lang === 'ar' ? 'شعار المكتبة الرسمي' : 'Official Bookstore Logo'}
+                  subLabel={lang === 'ar' ? 'الأيقونة الرمزية للمكتبة الظاهرة في نتائج البحث والبطاقات (مربع 1:1)' : 'Primary store avatar shown across book cards and search (Square 1:1)'}
+                  value={profileForm.logo_url}
+                  onChange={url => setProfileForm(prev => ({ ...prev, logo_url: url }))}
+                  onRemove={() => setProfileForm(prev => ({ ...prev, logo_url: '' }))}
+                  folder="logos"
+                  userId={currentUserId}
+                  theme="primary"
+                  tagText={lang === 'ar' ? 'شعار 1:1' : 'Logo 1:1'}
+                  resolutionHint="Square 1:1 (400×400+)"
+                  lang={lang}
+                  compact={true}
+                />
 
-                  {/* Square Cover Upload */}
-                  <SquareImageUpload
-                    label={lang === 'ar' ? 'غلاف واجهة المتجر' : 'Store Cover Banner'}
-                    subLabel={lang === 'ar' ? 'اسحب صورة الغلاف هنا أو اضغط للاختيار' : 'Drop store cover here or click to browse'}
-                    value={profileForm.cover_url}
-                    onChange={url => setProfileForm(prev => ({ ...prev, cover_url: url }))}
-                    onRemove={() => setProfileForm(prev => ({ ...prev, cover_url: '' }))}
-                    folder="covers"
-                    userId={currentUserId}
-                    theme="emerald"
-                    tagText={lang === 'ar' ? '🎨 الغلاف المربع (1:1)' : '🎨 Square Cover (1:1)'}
-                    resolutionHint="Square 1:1 (800×800+)"
-                    presets={[
-                      '/images/cover-placeholder.svg',
-                      'https://images.unsplash.com/photo-1507842229451-7f01be7ac102?auto=format&fit=crop&w=800&q=80',
-                      'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=800&q=80',
-                      'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=800&q=80',
-                      'https://images.unsplash.com/photo-1526721940322-10fb6e3ae94a?auto=format&fit=crop&w=800&q=80',
-                    ]}
-                    lang={lang}
-                  />
-                </div>
+                {/* Store Cover (Compact) */}
+                <SquareImageUpload
+                  label={lang === 'ar' ? 'غلاف واجهة المتجر' : 'Store Banner Cover'}
+                  subLabel={lang === 'ar' ? 'البانر الترويجي البارز أعلى واجهة المتجر وبطاقات العروض الحصرية (مربع 1:1)' : 'Featured header banner displayed on your store profile and offer cards (Square 1:1)'}
+                  value={profileForm.cover_url}
+                  onChange={url => setProfileForm(prev => ({ ...prev, cover_url: url }))}
+                  onRemove={() => setProfileForm(prev => ({ ...prev, cover_url: '' }))}
+                  folder="covers"
+                  userId={currentUserId}
+                  theme="emerald"
+                  tagText={lang === 'ar' ? 'غلاف 1:1' : 'Cover 1:1'}
+                  resolutionHint="Square 1:1 (800×800+)"
+                  presets={[
+                    '/images/cover-placeholder.svg',
+                    'https://images.unsplash.com/photo-1507842229451-7f01be7ac102?auto=format&fit=crop&w=800&q=80',
+                    'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=800&q=80',
+                    'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=800&q=80',
+                    'https://images.unsplash.com/photo-1526721940322-10fb6e3ae94a?auto=format&fit=crop&w=800&q=80',
+                  ]}
+                  lang={lang}
+                  compact={true}
+                />
               </div>
             </div>
 
-            {/* Location & Map Section (Conditioned: waived for ONLINE stores) */}
+            {/* 2-PART SECTION: PHYSICAL ADDRESS (LEFT) & INTERACTIVE MAP GPS (RIGHT) */}
             {profileForm.store_type === 'ONLINE' ? (
               <div className="rounded-3xl border-2 border-emerald-500/30 bg-emerald-500/5 p-6 space-y-4">
                 <div className="flex items-start gap-3">
@@ -1022,17 +1248,17 @@ export function StoreDashboardClient({
                 </div>
               </div>
             ) : (
-              <div className="rounded-3xl border-2 border-border/80 bg-card p-6 space-y-5">
-                <div className="flex items-center justify-between">
+              <div className="rounded-3xl border-2 border-border/80 bg-card p-6 space-y-5 shadow-xs">
+                <div className="flex items-center justify-between border-b border-border/60 pb-3">
                   <div>
                     <h2 className="text-base font-black text-foreground flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-emerald-600" />
-                      <span>{lang === 'ar' ? 'الموقع الفعلي على الخريطة' : 'Physical Address & Map GPS'}</span>
+                      <span>{lang === 'ar' ? 'موقع الفرع وخريطة الوصول' : 'Branch Location & GPS Navigation'}</span>
                     </h2>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {lang === 'ar'
-                        ? 'حدد موقع فرع المكتبة بدقة ليتمكن القراء من الوصول إليك ونقاط التبادل بسهولة.'
-                        : 'Pinpoint your exact branch on the map for easy reader footfall and meetup pickups.'}
+                        ? 'العنوان الدقيق وتحديد موقع الـ GPS لتسهيل وصول القراء وزوار الفرع ونقاط الاستلام'
+                        : 'Precise street address and interactive GPS pin for reader footfall and pickups'}
                     </p>
                   </div>
 
@@ -1047,87 +1273,140 @@ export function StoreDashboardClient({
                   </a>
                 </div>
 
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-black text-foreground">
-                      {lang === 'ar' ? 'العنوان التفصيلي' : 'Detailed Address'} *
-                    </label>
-                    <span className="text-[10px] text-muted-foreground">
-                      {lang === 'ar' ? 'أدخل اسم الشارع والمعالم والحي' : 'Street name, landmark & district'}
-                    </span>
-                  </div>
-                  <input
-                    type="text"
-                    required
-                    value={profileForm.address}
-                    onChange={e => setProfileForm(prev => ({ ...prev, address: e.target.value }))}
-                    className="w-full bg-muted/40 border-2 border-border rounded-xl px-3.5 py-2.5 text-xs font-bold text-foreground focus:outline-none focus:border-primary"
-                    placeholder="مثال: 159 شارع 26 يوليو، الزمالك، القاهرة"
-                  />
+                {/* 2-COLUMN LOCATION GRID */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                  {/* PART 1: Physical Address Details, Quick Chips & Coordinates */}
+                  <div className="space-y-4 p-5 rounded-2xl bg-muted/20 border-2 border-border/80">
+                    <div id="store-field-address" className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-black text-foreground">
+                          {lang === 'ar' ? 'العنوان التفصيلي للفرع' : 'Detailed Branch Address'} *
+                        </label>
+                        <span className="text-[10px] text-muted-foreground">
+                          {lang === 'ar' ? 'اسم الشارع والمعالم والحي' : 'Street name & landmark'}
+                        </span>
+                      </div>
+                      <input
+                        type="text"
+                        required
+                        value={profileForm.address}
+                        onChange={e => {
+                          setProfileForm(prev => ({ ...prev, address: e.target.value }))
+                          if (formErrors.address) setFormErrors(prev => ({ ...prev, address: '' }))
+                        }}
+                        className={cn(
+                          'w-full bg-background border-2 rounded-xl px-3.5 py-2.5 text-xs font-bold text-foreground focus:outline-none transition-colors',
+                          formErrors.address ? 'border-destructive bg-destructive/5 focus:border-destructive' : 'border-border focus:border-primary'
+                        )}
+                        placeholder="مثال: 159 شارع 26 يوليو، الزمالك، القاهرة"
+                      />
+                      {formErrors.address && (
+                        <p className="text-[11px] font-bold text-destructive flex items-center gap-1 mt-1">
+                          <AlertCircle className="h-3 w-3 shrink-0" />
+                          <span>{formErrors.address}</span>
+                        </p>
+                      )}
+                    </div>
 
-                  {/* Common Districts Quick Chips */}
-                  <div className="pt-1 space-y-1">
-                    <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
-                      <Sparkles className="h-3 w-3 text-amber-500" />
-                      <span>{lang === 'ar' ? 'إضافة حي بسرعة (القاهرة، الإسكندرية، الجيزة):' : 'Add district quickly (Cairo, Alex, Giza):'}</span>
-                    </span>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {['المعادي', 'الزمالك', 'مدينة نصر', 'مصر الجديدة', 'التجمع الخامس', 'وسط البلد', 'الدقي', 'المهندسين', 'الشيخ زايد', '6 أكتوبر', 'حدائق الأهرام', 'سموحة', 'سيدي جابر', 'محطة الرمل', 'ميامي', 'رشدي'].map(dist => (
+                    {/* Common Districts Quick Chips */}
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
+                        <Sparkles className="h-3 w-3 text-amber-500" />
+                        <span>{lang === 'ar' ? 'إضافة الحي بسرعة (القاهرة، الإسكندرية، الجيزة):' : 'Add district quickly (Cairo, Alex, Giza):'}</span>
+                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5 max-h-32 overflow-y-auto p-1">
+                        {['المعادي', 'الزمالك', 'مدينة نصر', 'مصر الجديدة', 'التجمع الخامس', 'وسط البلد', 'الدقي', 'المهندسين', 'الشيخ زايد', '6 أكتوبر', 'حدائق الأهرام', 'سموحة', 'سيدي جابر', 'محطة الرمل', 'ميامي', 'رشدي'].map(dist => (
+                          <button
+                            key={dist}
+                            type="button"
+                            onClick={() => {
+                              setProfileForm(prev => {
+                                if (prev.address.includes(dist)) return prev
+                                return {
+                                  ...prev,
+                                  address: prev.address ? `${prev.address}، ${dist}` : dist,
+                                }
+                              })
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-background hover:bg-primary/10 hover:text-primary text-[10px] font-bold border border-border transition-colors cursor-pointer"
+                          >
+                            {dist}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Coordinates Readout & Use Current Location Button */}
+                    <div className="pt-3 border-t border-border/80 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black text-foreground">
+                          {lang === 'ar' ? 'إحداثيات GPS المحددة بدقة:' : 'Pinpoint GPS Coordinates:'}
+                        </span>
                         <button
-                          key={dist}
                           type="button"
                           onClick={() => {
-                            setProfileForm(prev => {
-                              if (prev.address.includes(dist)) return prev
-                              return {
-                                ...prev,
-                                address: prev.address ? `${prev.address}، ${dist}` : dist,
-                              }
-                            })
+                            if (navigator.geolocation) {
+                              navigator.geolocation.getCurrentPosition(
+                                pos => {
+                                  setProfileForm(prev => ({
+                                    ...prev,
+                                    latitude: Number(pos.coords.latitude.toFixed(6)),
+                                    longitude: Number(pos.coords.longitude.toFixed(6)),
+                                  }))
+                                },
+                                () => alert(lang === 'ar' ? 'تعذر جلب إحداثيات موقعك' : 'Failed to retrieve current GPS location')
+                              )
+                            }
                           }}
-                          className="px-2 py-0.5 rounded-md bg-muted/60 hover:bg-primary/10 hover:text-primary text-[10px] font-medium border border-border transition-colors cursor-pointer"
+                          className="text-[11px] text-primary hover:underline font-bold flex items-center gap-1 cursor-pointer"
                         >
-                          {dist}
+                          <Navigation className="h-3 w-3" />
+                          <span>{lang === 'ar' ? 'موقعي الحالي 📍' : 'Use Current GPS 📍'}</span>
                         </button>
-                      ))}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 rounded-xl bg-background border border-border text-xs">
+                          <span className="text-[10px] font-bold text-muted-foreground block">Latitude (دائرة العرض):</span>
+                          <span className="font-mono font-bold text-primary">{profileForm.latitude}</span>
+                        </div>
+                        <div className="p-3 rounded-xl bg-background border border-border text-xs">
+                          <span className="text-[10px] font-bold text-muted-foreground block">Longitude (خط الطول):</span>
+                          <span className="font-mono font-bold text-primary">{profileForm.longitude}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Coordinates Preview */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="p-3 rounded-2xl bg-muted/40 border border-border text-xs">
-                    <span className="text-[10px] font-bold text-muted-foreground block">Latitude:</span>
-                    <span className="font-mono font-bold text-foreground">{profileForm.latitude}</span>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-muted/40 border border-border text-xs">
-                    <span className="text-[10px] font-bold text-muted-foreground block">Longitude:</span>
-                    <span className="font-mono font-bold text-foreground">{profileForm.longitude}</span>
-                  </div>
-                </div>
+                  {/* PART 2: Interactive Map Picker with drag pin */}
+                  <div className="space-y-2 p-5 rounded-2xl bg-muted/20 border-2 border-border/80">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black text-foreground flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-primary" />
+                        <span>{lang === 'ar' ? 'الخريطة التفاعلية (حرّك الدبوس لتحديث الموقع)' : 'Interactive Map (Drag Pin)'}</span>
+                      </label>
+                      <span className="text-[10px] text-muted-foreground font-bold">
+                        {lang === 'ar' ? 'تحديث تلقائي' : 'Auto updates'}
+                      </span>
+                    </div>
 
-                {/* Interactive Map Picker */}
-                <div className="space-y-2 pt-2">
-                  <label className="text-xs font-black text-foreground flex items-center gap-1.5">
-                    <MapPin className="h-3.5 w-3.5 text-primary" />
-                    <span>{lang === 'ar' ? 'حرّك الدبوس على الخريطة لتحديث الإحداثيات تلقائياً:' : 'Drag the pin to update coordinates:'}</span>
-                  </label>
-                  <div className="rounded-2xl overflow-hidden border-2 border-border shadow-xs">
-                    <MapLocationPicker
-                      latitude={profileForm.latitude}
-                      longitude={profileForm.longitude}
-                      height="320px"
-                      lang={lang}
-                      showHubOption={false}
-                      onLocationSelect={(coords: MapCoordinates) => {
-                        setProfileForm(prev => ({
-                          ...prev,
-                          latitude: coords.lat,
-                          longitude: coords.lng,
-                          address: coords.address || prev.address,
-                        }))
-                      }}
-                    />
+                    <div className="rounded-2xl overflow-hidden border-2 border-border shadow-xs">
+                      <MapLocationPicker
+                        latitude={profileForm.latitude}
+                        longitude={profileForm.longitude}
+                        height="310px"
+                        lang={lang}
+                        showHubOption={false}
+                        onLocationSelect={(coords: MapCoordinates) => {
+                          setProfileForm(prev => ({
+                            ...prev,
+                            latitude: coords.lat,
+                            longitude: coords.lng,
+                            address: coords.address || prev.address,
+                          }))
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1342,13 +1621,13 @@ export function StoreDashboardClient({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-muted-foreground">WhatsApp Number:</label>
+                    <label className="text-[11px] font-bold text-muted-foreground">TikTok URL:</label>
                     <input
-                      type="text"
-                      value={profileForm.whatsapp}
-                      onChange={e => setProfileForm(prev => ({ ...prev, whatsapp: e.target.value }))}
+                      type="url"
+                      value={profileForm.tiktok}
+                      onChange={e => setProfileForm(prev => ({ ...prev, tiktok: e.target.value }))}
                       className="w-full bg-muted/40 border border-border rounded-xl px-3 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary"
-                      placeholder="+201001234567"
+                      placeholder="https://tiktok.com/@..."
                     />
                   </div>
 
@@ -1366,7 +1645,18 @@ export function StoreDashboardClient({
               </div>
             </div>
 
-            {/* Bottom Save Button */}
+            {/* Bottom Save Button & Validation Error Notice */}
+            {Object.keys(formErrors).length > 0 && (
+              <div className="p-4 rounded-2xl bg-destructive/10 border-2 border-destructive/30 text-destructive font-bold text-xs flex items-center gap-2 animate-in fade-in">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>
+                  {lang === 'ar'
+                    ? `يرجى مراجعة وتصحيح الحقول المطلوبة باللون الأحمر أعلاه قبل حفظ التغييرات (${Object.keys(formErrors).length} حقول تحتاج تصحيح).`
+                    : `Please review and correct the required fields marked in red above before saving (${Object.keys(formErrors).length} fields need attention).`}
+                </span>
+              </div>
+            )}
+
             <div className="flex items-center justify-end gap-3 pt-4 border-t border-border/80">
               <Button
                 type="submit"
@@ -1467,11 +1757,7 @@ export function StoreDashboardClient({
                           className="flex items-center gap-3 p-2.5 rounded-2xl bg-card border border-border/80 hover:border-primary/50 transition-all shadow-xs group"
                         >
                           <div className="relative h-14 w-10 rounded-lg overflow-hidden bg-muted shrink-0 border border-border/60">
-                            {book.cover_url ? (
-                              <Image src={book.cover_url} alt="" fill className="object-cover" />
-                            ) : (
-                              <div className="h-full w-full flex items-center justify-center text-xs">📖</div>
-                            )}
+                            <Image src={getStoreBookCover(book)} alt="" fill className="object-cover" />
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="font-bold text-xs text-foreground line-clamp-1">
@@ -2023,13 +2309,24 @@ export function StoreDashboardClient({
                 </p>
               </div>
 
-              <Button
-                onClick={() => setIsAddOfferModalOpen(true)}
-                className="rounded-2xl font-black text-xs gap-2 shadow-md shadow-orange-500/25 bg-orange-600 hover:bg-orange-700 text-white cursor-pointer"
-              >
-                <PlusCircle className="h-4 w-4" />
-                <span>{lang === 'ar' ? 'إنشاء باقة أو عرض جديد 🔥' : 'Create New Bundle 🔥'}</span>
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  onClick={() => setIsTemplatePickerOpen(true)}
+                  variant="outline"
+                  className="rounded-2xl font-black text-xs gap-2 border-primary/50 text-primary hover:bg-primary/10 shadow-xs cursor-pointer"
+                >
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span>{lang === 'ar' ? 'اختر من العروض الجاهزة (سلاسل وباقات) 🌟' : 'Ready Offers & Series 🌟'}</span>
+                </Button>
+
+                <Button
+                  onClick={() => setIsAddOfferModalOpen(true)}
+                  className="rounded-2xl font-black text-xs gap-2 shadow-md shadow-orange-500/25 bg-orange-600 hover:bg-orange-700 text-white cursor-pointer"
+                >
+                  <PlusCircle className="h-4 w-4" />
+                  <span>{lang === 'ar' ? 'إنشاء باقة أو عرض جديد 🔥' : 'Create New Bundle 🔥'}</span>
+                </Button>
+              </div>
             </div>
 
             {/* Offers Grid */}
@@ -2083,7 +2380,19 @@ export function StoreDashboardClient({
                     <div className="p-5 space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex flex-wrap items-center gap-2">
-                          {!isPack && offer.bundle_buy_qty && (
+                          {offer.offer_type === 'SERIES' && (
+                            <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-purple-600 text-white shadow-xs flex items-center gap-1">
+                              <Sparkles className="h-3 w-3" />
+                              <span>{lang === 'ar' ? `سلسلة (${offer.series_parts || 0} أجزاء)` : `Series (${offer.series_parts || 0} parts)`}</span>
+                            </span>
+                          )}
+                          {offer.offer_type === 'BUNDLE_TIER' && (
+                            <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-amber-600 text-white shadow-xs flex items-center gap-1">
+                              <Flame className="h-3 w-3" />
+                              <span>{lang === 'ar' ? `باقة (${offer.bundle_buy_qty} كتب + ${offer.bundle_free_qty || 0} هدية)` : `Bundle Tier`}</span>
+                            </span>
+                          )}
+                          {!isPack && offer.bundle_buy_qty && offer.offer_type !== 'BUNDLE_TIER' && (
                             <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-primary text-primary-foreground">
                               {offer.bundle_buy_qty} {lang === 'ar' ? 'كتب' : 'books bundle'}
                             </span>
@@ -2180,6 +2489,26 @@ export function StoreDashboardClient({
                 )
               })}
             </div>
+
+            {/* Modal: Offer Templates & Series Picker */}
+            {isTemplatePickerOpen && (
+              <OfferTemplatesPicker
+                storeId={activeStoreId}
+                existingOffers={offers}
+                onClose={() => setIsTemplatePickerOpen(false)}
+                onPublished={(created, removedIds) => {
+                  setOffers(prev => {
+                    const filtered = prev.filter(o => !removedIds.includes(o.id))
+                    return [...created, ...filtered]
+                  })
+                  setIsTemplatePickerOpen(false)
+                }}
+                onCreateCustom={() => {
+                  setIsTemplatePickerOpen(false)
+                  setIsAddOfferModalOpen(true)
+                }}
+              />
+            )}
 
             {/* Modal: Add Offer */}
             {isAddOfferModalOpen && (

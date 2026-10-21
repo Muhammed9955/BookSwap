@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import {
@@ -48,12 +48,16 @@ import {
   submitStoreRating,
   submitStoreOrder,
   rsvpEvent,
+  getLocalStoreOffers,
 } from '@/lib/stores/store-service'
 import {
   STORE_CATALOG_BOOKS,
   STORE_BUNDLE_TIERS,
   GENRE_CATEGORIES,
 } from '@/lib/stores/store-catalog-data'
+import { tiersFromOffers } from '@/lib/stores/offer-templates'
+import { StoreBookCard } from '@/components/stores/store-book-card'
+import { StoreOrderForm, type CustomerOrderData } from '@/components/stores/store-order-form'
 import type {
   Bookstore,
   StoreOffer,
@@ -135,13 +139,11 @@ export function StoreDetailClient({
   const [orderingBook, setOrderingBook] = useState<StoreCatalogBook | null>(null)
   const [bundleModalOpen, setBundleModalOpen] = useState(false)
 
-  // Order Details Form State
-  const [customerName, setCustomerName] = useState('')
-  const [customerPhone, setCustomerPhone] = useState('')
-  const [customerCity, setCustomerCity] = useState(EGYPT_GOVERNORATES[0])
-  const [customerAddress, setCustomerAddress] = useState('')
-  const [customerNotes, setCustomerNotes] = useState('')
+  // Order Customer Details Cached Ref (isolated from parent state to guarantee instantaneous typing)
+  const savedCustomerRef = useRef<Partial<CustomerOrderData>>({})
   const [orderSentSuccess, setOrderSentSuccess] = useState(false)
+  const [lastPlacedOrder, setLastPlacedOrder] = useState<StoreOrder | null>(null)
+  const [lastWhatsappUrl, setLastWhatsappUrl] = useState<string>('')
 
   // Load Real Follow & Rating State on Mount
   useEffect(() => {
@@ -169,6 +171,9 @@ export function StoreDetailClient({
         price: item.price,
         original_price: item.original_price || (item.price + 35),
         in_stock: item.stock_quantity > 0,
+        stock_quantity: item.stock_quantity,
+        condition: item.condition,
+        isbn: item.isbn,
         cover_url: item.cover_url,
         badge: item.condition === 'NEW' ? 'جديد 🏷️' : 'مستعمل بحالة ممتازة ✨',
       }))
@@ -179,16 +184,40 @@ export function StoreDetailClient({
     return STORE_CATALOG_BOOKS
   }, [initialInventory])
 
-  // Filtered offers by selected genre (applies to Curated Packs, leaves open mix-and-match bundles visible)
+  // Dynamic Effective Offers (props merged with local published offers)
+  const [localOffers, setLocalOffers] = useState<StoreOffer[]>([])
+
+  useEffect(() => {
+    setLocalOffers(getLocalStoreOffers(store.id))
+  }, [store.id])
+
+  const effectiveOffers = useMemo(() => {
+    const merged = new Map<string, StoreOffer>()
+    for (const o of offers) {
+      merged.set(o.id, o)
+    }
+    for (const o of localOffers) {
+      merged.set(o.id, o)
+    }
+    return Array.from(merged.values())
+  }, [offers, localOffers])
+
+  // Active dynamic bundle tiers (from store custom offers or fallback preset)
+  const activeBundleTiers: StoreBundleTier[] = useMemo(() => {
+    const customTiers = tiersFromOffers(effectiveOffers)
+    return customTiers && customTiers.length > 0 ? customTiers : STORE_BUNDLE_TIERS
+  }, [effectiveOffers])
+
+  // Filtered offers by selected genre (applies to Curated Packs, leaves open mix-and-match bundles and series visible)
   const filteredOffers = useMemo(() => {
-    return offers.filter(offer => {
+    return effectiveOffers.filter(offer => {
       const isCuratedPack = offer.offer_type === 'CURATED_PACK' || (Boolean(offer.book_count) && offer.book_count! <= 5)
-      // 2nd bundle can have many genres so no need to search for: keep it visible!
+      // Open bundles and series stay visible
       if (!isCuratedPack) return true
       if (selectedPackGenre === 'ALL') return true
       return offer.genre === selectedPackGenre
     })
-  }, [offers, selectedPackGenre])
+  }, [effectiveOffers, selectedPackGenre])
 
   // Filtered books catalog
   const filteredBooks = useMemo(() => {
@@ -213,24 +242,28 @@ export function StoreDetailClient({
   const selectedCount = selectedBooksList.length
 
   const currentTier = useMemo(() => {
-    if (selectedCount >= 20) return STORE_BUNDLE_TIERS[4]
-    if (selectedCount >= 15) return STORE_BUNDLE_TIERS[3]
-    if (selectedCount >= 10) return STORE_BUNDLE_TIERS[2]
-    if (selectedCount >= 5) return STORE_BUNDLE_TIERS[1]
-    if (selectedCount >= 3) return STORE_BUNDLE_TIERS[0]
-    return null
-  }, [selectedCount])
+    const sorted = [...activeBundleTiers].sort((a, b) => b.required_books - a.required_books)
+    return sorted.find(t => selectedCount >= t.required_books) || null
+  }, [activeBundleTiers, selectedCount])
 
   const nextTier = useMemo(() => {
-    if (selectedCount < 3) return STORE_BUNDLE_TIERS[0]
-    if (selectedCount < 5) return STORE_BUNDLE_TIERS[1]
-    if (selectedCount < 10) return STORE_BUNDLE_TIERS[2]
-    if (selectedCount < 15) return STORE_BUNDLE_TIERS[3]
-    if (selectedCount < 20) return STORE_BUNDLE_TIERS[4]
-    return null
-  }, [selectedCount])
+    const sorted = [...activeBundleTiers].sort((a, b) => a.required_books - b.required_books)
+    return sorted.find(t => selectedCount < t.required_books) || null
+  }, [activeBundleTiers, selectedCount])
 
   const booksToNextTier = nextTier ? nextTier.required_books - selectedCount : 0
+
+  const basketTotalPrice = useMemo(() => {
+    if (currentTier) return currentTier.price
+    return selectedBooksList.reduce((sum, b) => sum + (b.price || 0), 0)
+  }, [currentTier, selectedBooksList])
+
+  const basketOriginalValue = useMemo(() => {
+    if (currentTier) return currentTier.original_value
+    return selectedBooksList.reduce((sum, b) => sum + (b.original_price || (b.price + 35) || 0), 0)
+  }, [currentTier, selectedBooksList])
+
+  const basketSavings = basketOriginalValue > basketTotalPrice ? basketOriginalValue - basketTotalPrice : 0
 
   const toggleBookInBundle = (bookId: string) => {
     setBundleSelectedBookIds(prev =>
@@ -244,8 +277,8 @@ export function StoreDetailClient({
   }
 
   const handleOpenBundleOrder = () => {
-    if (!currentTier) {
-      alert(lang === 'ar' ? 'يرجى اختيار 3 كتب على الأقل من القائمة لتفعيل باكدج التوفير!' : 'Please pick at least 3 books to unlock a bundle tier!')
+    if (selectedCount === 0) {
+      alert(lang === 'ar' ? 'يرجى اختيار كتاب واحد على الأقل لإتمام الطلب!' : 'Please pick at least one book to order!')
       return
     }
     setBundleModalOpen(true)
@@ -258,22 +291,38 @@ export function StoreDetailClient({
     setOrderSentSuccess(false)
   }
 
-  const executeSingleBookWhatsApp = async (book: StoreCatalogBook) => {
-    const storeWhatsapp = store.social_links?.whatsapp || '01012345678'
-    const cleanPhone = storeWhatsapp.replace(/[^0-9]/g, '')
-    const targetPhone = cleanPhone.startsWith('0') ? '2' + cleanPhone : cleanPhone
+  // Helper to reliably get bookstore WhatsApp number in international format
+  const getStoreTargetWhatsApp = (bStore: Bookstore): string => {
+    let raw = (bStore.social_links?.whatsapp || (bStore as any).phone || '').trim()
+    if (!raw) {
+      raw = '01012345678'
+    }
+    const digits = raw.replace(/[^0-9]/g, '')
+    if (digits.startsWith('0')) {
+      return '2' + digits
+    }
+    return digits
+  }
+
+  const executeSingleBookWhatsApp = async (book: StoreCatalogBook, customer: CustomerOrderData) => {
+    savedCustomerRef.current = customer
+    const targetPhone = getStoreTargetWhatsApp(store)
+    const subtotal = book.price
+    const shippingFee = customer.shippingFee !== undefined ? customer.shippingFee : 35
+    const finalTotal = customer.finalTotal !== undefined ? customer.finalTotal : subtotal + shippingFee
 
     // Persist to store orders
+    let savedOrder: StoreOrder | null = null
     try {
-      await submitStoreOrder({
+      savedOrder = await submitStoreOrder({
         store_id: store.id,
         order_type: 'SINGLE_BOOK',
-        total_price: book.price,
-        customer_name: customerName || 'قارئ مهتم',
-        customer_phone: customerPhone || 'مذكور في المحادثة',
-        customer_city: customerCity,
-        customer_address: customerAddress || 'توصيل منزلي',
-        customer_notes: customerNotes,
+        total_price: finalTotal,
+        customer_name: customer.customerName,
+        customer_phone: customer.customerPhone,
+        customer_city: customer.customerCity,
+        customer_address: customer.customerAddress || 'توصيل منزلي',
+        customer_notes: customer.customerNotes,
         items: [{
           book_id: book.id,
           title: book.title,
@@ -288,44 +337,71 @@ export function StoreDetailClient({
       console.warn('submitStoreOrder error:', e)
     }
 
-    const message = `مرحباً، أود طلب كتاب من مكتبة *${lang === 'ar' && store.name_ar ? store.name_ar : store.name}* عبر منصة *WaraqConnect (ورق كونكت)*:
-📖 *الكتاب:* ${book.title_ar || book.title}
-✍️ *المؤلف:* ${book.author_ar || book.author}
-💰 *السعر:* ${book.price} ج.م (بدلاً من ${book.original_price} ج.م)
+    const orderCode = savedOrder?.order_number || savedOrder?.id || `ORD-${Date.now().toString(36).toUpperCase().slice(-5)}`
+    if (savedOrder) {
+      setLastPlacedOrder(savedOrder)
+    }
 
-*بيانات التوصيل والاستلام:*
-👤 *اسم المستلم:* ${customerName || 'قارئ مهتم'}
-📱 *رقم الهاتف:* ${customerPhone || 'سيتم تأكيده في المحادثة'}
-📍 *المحافظة والعنوان:* ${customerCity} - ${customerAddress || 'المقر'}
-${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
+    const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://waraqconnect.com'
+    const trackingUrl = `${origin}/orders/${orderCode}`
+    const storeName = lang === 'ar' && store.name_ar ? store.name_ar : store.name
 
-يرجى تأكيد التوافر وموعد الشحن. شكراً!`
+    const message = [
+      `📦 *طلب كتاب منفرد*`,
+      `من مكتبة: *${storeName}*`,
+      `عبر منصة: *WaraqConnect (ورق كونكت)*`,
+      ``,
+      `🔖 *رقم الطلب:* #${orderCode}`,
+      ``,
+      `📖 *الكتاب:* ${book.title_ar || book.title}`,
+      `✍️ *المؤلف:* ${book.author_ar || book.author}`,
+      `💰 *سعر الكتاب:* ${subtotal} ج.م${book.original_price && book.original_price > subtotal ? ` (بدلاً من ${book.original_price} ج.م)` : ''}`,
+      `🚚 *مصاريف التوصيل والشحن:* ${shippingFee === 0 ? 'مجاني (عرض ترويجي 🔥)' : `${shippingFee} ج.م`}`,
+      `💵 *الإجمالي النهائي للدفع عند الاستلام:* ${finalTotal} ج.م`,
+      ``,
+      `📍 *بيانات التوصيل والاستلام:*`,
+      `👤 *اسم المستلم:* ${customer.customerName}`,
+      `📱 *رقم الهاتف:* ${customer.customerPhone}`,
+      `🏡 *المحافظة والعنوان:* ${customer.customerCity} - ${customer.customerAddress || 'المقر'}`,
+      customer.customerNotes ? `📝 *ملاحظات:* ${customer.customerNotes}\n` : '',
+      `🚚 *رابط متابعة حالة الطلب والشحن خطوة بخطوة:*`,
+      `${trackingUrl}`,
+      ``,
+      `يرجى تأكيد التوافر وتجهيز الشحن. شكراً جزيلاً!`
+    ].filter(Boolean).join('\n')
 
-    window.open(`https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`, '_blank')
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=${targetPhone}&text=${encodeURIComponent(message)}`
+    setLastWhatsappUrl(whatsappUrl)
+    window.open(whatsappUrl, '_blank')
     setOrderSentSuccess(true)
   }
 
-  const executeBundleWhatsApp = async () => {
-    if (!currentTier) return
-    const storeWhatsapp = store.social_links?.whatsapp || '01012345678'
-    const cleanPhone = storeWhatsapp.replace(/[^0-9]/g, '')
-    const targetPhone = cleanPhone.startsWith('0') ? '2' + cleanPhone : cleanPhone
+  const executeBundleWhatsApp = async (customer: CustomerOrderData) => {
+    if (selectedCount === 0) return
+    savedCustomerRef.current = customer
+    const targetPhone = getStoreTargetWhatsApp(store)
+    const subtotal = basketTotalPrice
+    const shippingFee = customer.shippingFee !== undefined ? customer.shippingFee : 35
+    const finalTotal = customer.finalTotal !== undefined ? customer.finalTotal : subtotal + shippingFee
 
-    const titlesList = selectedBooksList.map((b, idx) => `${idx + 1}. ${b.title_ar || b.title}`).join('\n')
+    const titlesList = selectedBooksList
+      .map((b, idx) => `${idx + 1}. *${b.title_ar || b.title}* (${b.author_ar || b.author}) - ${b.price} ج.م`)
+      .join('\n')
 
     // Persist to store orders
+    let savedOrder: StoreOrder | null = null
     try {
-      await submitStoreOrder({
+      savedOrder = await submitStoreOrder({
         store_id: store.id,
-        order_type: 'BUNDLE_PACKAGE',
-        bundle_title: currentTier.name_ar,
-        bundle_size: currentTier.required_books,
-        total_price: currentTier.price,
-        customer_name: customerName || 'قارئ مهتم',
-        customer_phone: customerPhone || 'مذكور في المحادثة',
-        customer_city: customerCity,
-        customer_address: customerAddress || 'توصيل منزلي',
-        customer_notes: customerNotes,
+        order_type: currentTier ? 'BUNDLE_PACKAGE' : selectedCount === 1 ? 'SINGLE_BOOK' : 'BUNDLE_PACKAGE',
+        bundle_title: currentTier ? currentTier.name_ar : selectedCount === 1 ? 'طلب كتاب منفرد' : `طلب ${selectedCount} كتب`,
+        bundle_size: selectedCount,
+        total_price: finalTotal,
+        customer_name: customer.customerName,
+        customer_phone: customer.customerPhone,
+        customer_city: customer.customerCity,
+        customer_address: customer.customerAddress || 'توصيل منزلي',
+        customer_notes: customer.customerNotes,
         items: selectedBooksList.map(b => ({
           book_id: b.id,
           title: b.title,
@@ -340,57 +416,112 @@ ${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
       console.warn('submitStoreOrder error:', e)
     }
 
-    const message = `🔥 *طلب باكدج عروض التوفير والهدايا (${currentTier.required_books} كتب)* من مكتبة *${lang === 'ar' && store.name_ar ? store.name_ar : store.name}* عبر منصة *WaraqConnect (ورق كونكت)*:
+    const orderCode = savedOrder?.order_number || savedOrder?.id || `ORD-${Date.now().toString(36).toUpperCase().slice(-5)}`
+    if (savedOrder) {
+      setLastPlacedOrder(savedOrder)
+    }
 
-📦 *نوع الباكدج:* ${currentTier.name_ar}
-💰 *السعر الإجمالي:* ${currentTier.price} ج.م (وفرت أكثر من ${currentTier.original_value - currentTier.price} ج.م!)
-🎁 *الهدايا المجانية المتضمنة:*
-- ${currentTier.free_gift_books} كتاب هدية عشوائي من اختيار المكتبة 😍
-- ${currentTier.free_bookmarks} بوك مارك فواصل كتب مجانية 🔖
+    const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://waraqconnect.com'
+    const trackingUrl = `${origin}/orders/${orderCode}`
+    const storeName = lang === 'ar' && store.name_ar ? store.name_ar : store.name
 
-📚 *قائمة الكتب التي اخترتها بنفسي (${selectedBooksList.length} كتب):*
-${titlesList}
+    let message = ''
+    if (currentTier) {
+      message = [
+        `🔥 *طلب باكدج عروض التوفير والهدايا (${currentTier.required_books} كتب)*`,
+        `من مكتبة: *${storeName}*`,
+        `عبر منصة: *WaraqConnect (ورق كونكت)*`,
+        ``,
+        `🔖 *رقم الطلب:* #${orderCode}`,
+        ``,
+        `📦 *نوع الباكدج:* ${currentTier.name_ar}`,
+        `💰 *سعر الباكدج:* ${subtotal} ج.م (وفرت أكثر من ${currentTier.original_value - subtotal} ج.م!)`,
+        `🚚 *مصاريف الشحن والتوصيل:* ${shippingFee === 0 ? 'مجاني (عرض ترويجي 🔥)' : `${shippingFee} ج.م`}`,
+        `💵 *الإجمالي النهائي للدفع عند الاستلام:* ${finalTotal} ج.م`,
+        `🎁 *الهدايا المجانية المتضمنة:*`,
+        `- ${currentTier.free_gift_books} كتاب هدية عشوائي من اختيار المكتبة 😍`,
+        `- ${currentTier.free_bookmarks} بوك مارك فواصل كتب مجانية 🔖`,
+        ``,
+        `📚 *قائمة الكتب التي اخترتها بنفسي (${selectedBooksList.length} كتب):*`,
+        `${titlesList}`,
+        ``,
+        `📍 *بيانات التوصيل والاستلام:*`,
+        `👤 *اسم المستلم:* ${customer.customerName}`,
+        `📱 *رقم الهاتف:* ${customer.customerPhone}`,
+        `🏡 *المحافظة والعنوان:* ${customer.customerCity} - ${customer.customerAddress || 'يرجى التنسيق'}`,
+        customer.customerNotes ? `📝 *ملاحظات:* ${customer.customerNotes}\n` : '',
+        `🚚 *رابط متابعة حالة الطلب والشحن خطوة بخطوة:*`,
+        `${trackingUrl}`,
+        ``,
+        `يرجى تجهيز الباكدج وتأكيد الشحن. شكراً جزيلاً!`
+      ].filter(Boolean).join('\n')
+    } else {
+      message = [
+        `📦 *طلب كتب من السلة (${selectedCount} ${selectedCount === 1 ? 'كتاب' : 'كتب'})*`,
+        `من مكتبة: *${storeName}*`,
+        `عبر منصة: *WaraqConnect (ورق كونكت)*`,
+        ``,
+        `🔖 *رقم الطلب:* #${orderCode}`,
+        ``,
+        `💰 *سعر الكتب:* ${subtotal} ج.م`,
+        basketSavings > 0 ? `🔥 *إجمالي التوفير:* ${basketSavings} ج.م\n` : '',
+        `🚚 *مصاريف الشحن والتوصيل:* ${shippingFee === 0 ? 'مجاني (عرض ترويجي 🔥)' : `${shippingFee} ج.م`}`,
+        `💵 *الإجمالي النهائي للدفع عند الاستلام:* ${finalTotal} ج.م`,
+        `📚 *الكتب المطلوبة:*`,
+        `${titlesList}`,
+        ``,
+        `📍 *بيانات التوصيل والاستلام:*`,
+        `👤 *اسم المستلم:* ${customer.customerName}`,
+        `📱 *رقم الهاتف:* ${customer.customerPhone}`,
+        `🏡 *المحافظة والعنوان:* ${customer.customerCity} - ${customer.customerAddress || 'يرجى التنسيق'}`,
+        customer.customerNotes ? `📝 *ملاحظات:* ${customer.customerNotes}\n` : '',
+        `🚚 *رابط متابعة حالة الطلب والشحن خطوة بخطوة:*`,
+        `${trackingUrl}`,
+        ``,
+        `يرجى تأكيد التوافر وتجهيز الشحن. شكراً جزيلاً!`
+      ].filter(Boolean).join('\n')
+    }
 
-*بيانات التوصيل والاستلام:*
-👤 *اسم المستلم:* ${customerName || 'قارئ مهتم'}
-📱 *رقم الهاتف:* ${customerPhone || 'مذكور في المحادثة'}
-📍 *المحافظة والعنوان:* ${customerCity} - ${customerAddress || 'يرجى التنسيق'}
-${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
-
-يرجى تجهيز الباكدج وتأكيد الشحن. شكراً جزيلاً!`
-
-    window.open(`https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`, '_blank')
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=${targetPhone}&text=${encodeURIComponent(message)}`
+    setLastWhatsappUrl(whatsappUrl)
+    window.open(whatsappUrl, '_blank')
     setOrderSentSuccess(true)
   }
 
-  const executeCuratedPackWhatsApp = async () => {
+  const executeCuratedPackWhatsApp = async (customer: CustomerOrderData) => {
     if (!selectedCuratedPack) return
-    const storeWhatsapp = store.social_links?.whatsapp || '01012345678'
-    const cleanPhone = storeWhatsapp.replace(/[^0-9]/g, '')
-    const targetPhone = cleanPhone.startsWith('0') ? '2' + cleanPhone : cleanPhone
+    savedCustomerRef.current = customer
+    const targetPhone = getStoreTargetWhatsApp(store)
 
+    const isSeriesOrder = selectedCuratedPack.offer_type === 'SERIES'
     const packTitle = lang === 'ar' && selectedCuratedPack.title_ar ? selectedCuratedPack.title_ar : selectedCuratedPack.title
-    const packPrice = selectedCuratedPack.offer_price || selectedCuratedPack.bundle_price || 200
+    const subtotal = selectedCuratedPack.offer_price || selectedCuratedPack.bundle_price || 200
+    const shippingFee = customer.shippingFee !== undefined ? customer.shippingFee : 35
+    const finalTotal = customer.finalTotal !== undefined ? customer.finalTotal : subtotal + shippingFee
     const booksListText = (selectedCuratedPack.included_books || []).map((t, idx) => `${idx + 1}. ${t}`).join('\n')
 
     // Persist to store orders
+    let savedOrder: StoreOrder | null = null
     try {
-      await submitStoreOrder({
+      savedOrder = await submitStoreOrder({
         store_id: store.id,
-        order_type: 'CURATED_PACK',
+        order_type: isSeriesOrder ? 'SERIES' : 'CURATED_PACK',
         pack_title: packTitle,
         pack_image_url: selectedCuratedPack.cover_image_url,
-        total_price: packPrice,
-        customer_name: customerName || 'قارئ مهتم',
-        customer_phone: customerPhone || 'سيتم التأكيد عبر واتساب',
-        customer_city: customerCity,
-        customer_address: customerAddress || 'توصيل منزلي',
-        customer_notes: customerNotes,
-        items: (selectedCuratedPack.included_books || []).map((t, idx) => ({
+        total_price: finalTotal,
+        customer_name: customer.customerName,
+        customer_phone: customer.customerPhone,
+        customer_city: customer.customerCity,
+        customer_address: customer.customerAddress || 'توصيل منزلي',
+        customer_notes: customer.customerNotes,
+        items: (selectedCuratedPack.included_books && selectedCuratedPack.included_books.length > 0
+          ? selectedCuratedPack.included_books
+          : [packTitle]
+        ).map((t, idx) => ({
           book_id: `pack-item-${idx}`,
           title: t,
           title_ar: t,
-          price: Math.round(packPrice / (selectedCuratedPack.book_count || 2)),
+          price: Math.round(subtotal / (selectedCuratedPack.series_parts || selectedCuratedPack.book_count || 1)),
           quantity: 1,
           cover_url: selectedCuratedPack.cover_image_url,
         })),
@@ -399,22 +530,48 @@ ${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
       console.warn('Error saving store order:', e)
     }
 
-    const message = `🔥 *طلب باكدج عروض خاص (${selectedCuratedPack.book_count || 2} كتب)* من مكتبة *${lang === 'ar' && store.name_ar ? store.name_ar : store.name}* عبر منصة *WaraqConnect (ورق كونكت)*:
-📦 *اسم الباكدج:* ${packTitle}
-💰 *السعر المخفض للباكدج:* ${packPrice} ج.م ${selectedCuratedPack.original_price ? `(بدلاً من ${selectedCuratedPack.original_price} ج.م)` : ''}
-${selectedCuratedPack.gift_description ? `🎁 *الهدايا المرفقة:* ${selectedCuratedPack.gift_description}\n` : ''}
-📚 *الكتب المتضمنة في هذا الباكدج:*
-${booksListText || 'حسب وصف الباكدج'}
+    const orderCode = savedOrder?.order_number || savedOrder?.id || `ORD-${Date.now().toString(36).toUpperCase().slice(-5)}`
+    if (savedOrder) {
+      setLastPlacedOrder(savedOrder)
+    }
 
-*بيانات الشحن والاستلام:*
-👤 *اسم المستلم:* ${customerName || 'قارئ مهتم'}
-📱 *رقم الهاتف:* ${customerPhone || 'سيتم التأكيد في المحادثة'}
-📍 *المحافظة والعنوان:* ${customerCity} - ${customerAddress || 'المقر'}
-${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
+    const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://waraqconnect.com'
+    const trackingUrl = `${origin}/orders/${orderCode}`
+    const storeName = lang === 'ar' && store.name_ar ? store.name_ar : store.name
 
-يرجى تأكيد استلام الطلب وتجهيز الشحن. شكراً!`
+    const orderHeader = isSeriesOrder
+      ? `🌟 *طلب سلسلة روايات كاملة (${selectedCuratedPack.series_parts || selectedCuratedPack.book_count || ''} أجزاء)*`
+      : `🔥 *طلب باكدج عروض خاص (${selectedCuratedPack.book_count || 2} كتب)*`
 
-    window.open(`https://wa.me/${targetPhone}?text=${encodeURIComponent(message)}`, '_blank')
+    const message = [
+      orderHeader,
+      `من مكتبة: *${storeName}*`,
+      `عبر منصة: *WaraqConnect (ورق كونكت)*`,
+      ``,
+      `🔖 *رقم الطلب:* #${orderCode}`,
+      ``,
+      `📦 *اسم العرض:* ${packTitle}`,
+      `💰 *سعر العرض:* ${subtotal} ج.م${selectedCuratedPack.original_price ? ` (بدلاً من ${selectedCuratedPack.original_price} ج.م)` : ''}`,
+      `🚚 *مصاريف الشحن والتوصيل:* ${shippingFee === 0 ? 'مجاني (عرض ترويجي 🔥)' : `${shippingFee} ج.م`}`,
+      `💵 *الإجمالي النهائي للدفع عند الاستلام:* ${finalTotal} ج.م`,
+      selectedCuratedPack.gift_description ? `🎁 *الهدايا المرفقة:* ${selectedCuratedPack.gift_description}\n` : '',
+      `📚 *الكتب المتضمنة:*`,
+      `${booksListText || 'حسب وصف العرض/السلسلة'}`,
+      ``,
+      `📍 *بيانات الشحن والاستلام:*`,
+      `👤 *اسم المستلم:* ${customer.customerName}`,
+      `📱 *رقم الهاتف:* ${customer.customerPhone}`,
+      `🏡 *المحافظة والعنوان:* ${customer.customerCity} - ${customer.customerAddress || 'المقر'}`,
+      customer.customerNotes ? `📝 *ملاحظات:* ${customer.customerNotes}\n` : '',
+      `🚚 *رابط متابعة حالة الطلب والشحن خطوة بخطوة:*`,
+      `${trackingUrl}`,
+      ``,
+      `يرجى تجهيز الطلب وتأكيد الشحن. شكراً جزيلاً!`
+    ].filter(Boolean).join('\n')
+
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=${targetPhone}&text=${encodeURIComponent(message)}`
+    setLastWhatsappUrl(whatsappUrl)
+    window.open(whatsappUrl, '_blank')
     setOrderSentSuccess(true)
   }
 
@@ -611,8 +768,8 @@ ${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
                 },
                 {
                   id: 'offers',
-                  labelAr: `عروض وكوبونات المتجر (${offers.length}) 🎁`,
-                  labelEn: `Store Offers (${offers.length}) 🎁`,
+                  labelAr: `عروض وكوبونات المتجر (${effectiveOffers.length}) 🎁`,
+                  labelEn: `Store Offers (${effectiveOffers.length}) 🎁`,
                   icon: Gift,
                 },
                 {
@@ -648,8 +805,8 @@ ${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
         </div>
       </div>
 
-      {/* Main Tab Content */}
-      <div className="page-container py-10 max-w-5xl">
+      {/* Main Tab Content: Expanded width for 5-column book grid */}
+      <div className="page-container py-10 max-w-7xl">
         {/* TAB 0: BOOKS CATALOG & PRICES */}
         {activeTab === 'books' && (
           <div className="space-y-8 animate-in fade-in">
@@ -675,9 +832,9 @@ ${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
                   </p>
                 </div>
 
-                {/* 4 Bundle Tiers Overview Cards */}
+                {/* Bundle Tiers Overview Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-                  {STORE_BUNDLE_TIERS.map(tier => (
+                  {activeBundleTiers.map(tier => (
                     <div
                       key={tier.id}
                       onClick={() => setActiveTab('bundle')}
@@ -790,119 +947,17 @@ ${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
               </div>
             </div>
 
-            {/* Books Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {filteredBooks.map(book => {
-                const isSelectedInBundle = bundleSelectedBookIds.includes(book.id)
-                const title = lang === 'ar' && book.title_ar ? book.title_ar : book.title
-                const author = lang === 'ar' && book.author_ar ? book.author_ar : book.author
-
-                return (
-                  <div
-                    key={book.id}
-                    className={cn(
-                      "group rounded-3xl border-2 bg-card p-4 transition-all flex flex-col justify-between relative shadow-xs hover:shadow-lg",
-                      isSelectedInBundle
-                        ? "border-primary bg-primary/5 shadow-md shadow-primary/10 ring-2 ring-primary/40"
-                        : "border-border/80 hover:border-primary/50"
-                    )}
-                  >
-                    {/* Top action: Bundle selection toggle button */}
-                    <div className="flex items-start justify-between gap-2 mb-3">
-                      <span className="px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-muted text-muted-foreground border border-border">
-                        {book.category_name_ar || book.category}
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() => toggleBookInBundle(book.id)}
-                        className={cn(
-                          "px-2 py-1 rounded-xl text-[11px] font-black transition-all cursor-pointer flex items-center gap-1 shadow-2xs",
-                          isSelectedInBundle
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted/70 text-muted-foreground hover:bg-primary/15 hover:text-primary border border-border"
-                        )}
-                        title={isSelectedInBundle ? "إزالة من باكدج التوفير" : "إضافة إلى باكدج التوفير"}
-                      >
-                        {isSelectedInBundle ? (
-                          <>
-                            <Check className="h-3 w-3 stroke-[3]" />
-                            <span>في الباكدج</span>
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="h-3 w-3" />
-                            <span>باكدج 🔥</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    {/* Book Visual Mockup */}
-                    <div className="space-y-3">
-                      <div className={cn(
-                        "relative h-36 rounded-2xl p-4 flex flex-col justify-between text-white shadow-inner bg-gradient-to-tr overflow-hidden",
-                        book.cover_color || "from-slate-700 to-slate-900"
-                      )}>
-                        {/* Book Spine texture & styling */}
-                        <div className="absolute top-0 bottom-0 start-0 w-3 bg-black/25 border-e border-white/20" />
-                        <div className="space-y-1 relative z-10 ms-2">
-                          <div className="text-[10px] font-bold opacity-80 uppercase tracking-widest">Waraq Books</div>
-                          <div className="text-xs font-black line-clamp-2 leading-snug drop-shadow-sm">{title}</div>
-                        </div>
-
-                        <div className="flex items-center justify-between text-[10px] opacity-90 relative z-10 ms-2">
-                          <span className="truncate max-w-[100px] font-semibold">{author}</span>
-                          <span className="flex items-center gap-0.5 font-bold">
-                            <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" />
-                            <span>{book.rating || 4.8}</span>
-                          </span>
-                        </div>
-
-                        <div className="absolute -bottom-4 -end-4 h-16 w-16 rounded-full bg-white/10 blur-xl pointer-events-none" />
-                      </div>
-
-                      {/* Info & Price */}
-                      <div className="space-y-1">
-                        <h3 className="text-sm font-black text-foreground group-hover:text-primary transition-colors line-clamp-1">
-                          {title}
-                        </h3>
-                        <p className="text-xs text-muted-foreground font-semibold line-clamp-1">
-                          {author}
-                        </p>
-                      </div>
-
-                      {/* Pricing Tag */}
-                      <div className="flex items-baseline gap-2 pt-1">
-                        <span className="text-base font-black text-foreground">
-                          {book.price} ج.م
-                        </span>
-                        {book.original_price && (
-                          <span className="text-xs text-muted-foreground line-through font-semibold">
-                            {book.original_price} ج.م
-                          </span>
-                        )}
-                        <span className="ms-auto text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
-                          متوفر للشحن
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Action: Single Book Order button */}
-                    <div className="pt-3 mt-3 border-t border-border/60">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleOpenSingleBookOrder(book)}
-                        className="w-full rounded-xl text-xs font-bold gap-1.5 border-border hover:border-primary/50 hover:bg-primary/5 cursor-pointer shadow-2xs"
-                      >
-                        <ShoppingBag className="h-3.5 w-3.5 text-primary" />
-                        <span>{lang === 'ar' ? 'طلب الكتاب منفرد' : 'Order Single'}</span>
-                      </Button>
-                    </div>
-                  </div>
-                )
-              })}
+            {/* Books Grid: 5 Books a line */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+              {filteredBooks.map(book => (
+                <StoreBookCard
+                  key={book.id}
+                  book={book}
+                  isSelectedInBundle={bundleSelectedBookIds.includes(book.id)}
+                  onToggleBundle={toggleBookInBundle}
+                  onOrderSingle={handleOpenSingleBookOrder}
+                />
+              ))}
             </div>
 
             {filteredBooks.length === 0 && (
@@ -950,9 +1005,9 @@ ${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
               </p>
             </div>
 
-            {/* 4 Tiers Detail Cards */}
+            {/* Tiers Detail Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {STORE_BUNDLE_TIERS.map(tier => {
+              {activeBundleTiers.map(tier => {
                 const isCurrent = currentTier?.id === tier.id
                 const isReached = selectedCount >= tier.required_books
 
@@ -1136,40 +1191,15 @@ ${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                {STORE_CATALOG_BOOKS.map(b => {
-                  const isChecked = bundleSelectedBookIds.includes(b.id)
-                  return (
-                    <div
-                      key={b.id}
-                      onClick={() => toggleBookInBundle(b.id)}
-                      className={cn(
-                        "rounded-2xl border p-3 cursor-pointer transition-all flex flex-col justify-between text-start select-none",
-                        isChecked
-                          ? "border-primary bg-primary/10 shadow-sm ring-1 ring-primary/40"
-                          : "border-border/80 bg-card hover:border-primary/40"
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-1">
-                        <span className="text-[10px] text-muted-foreground truncate">{b.category_name_ar}</span>
-                        <div className={cn(
-                          "h-4 w-4 rounded-md flex items-center justify-center shrink-0 border transition-colors",
-                          isChecked ? "bg-primary border-primary text-primary-foreground" : "border-border"
-                        )}>
-                          {isChecked && <Check className="h-3 w-3 stroke-[3]" />}
-                        </div>
-                      </div>
-                      <div className="mt-2 text-xs font-black text-foreground line-clamp-2 leading-snug">
-                        {b.title_ar || b.title}
-                      </div>
-                      <div className="mt-1 text-[11px] text-muted-foreground truncate">
-                        {b.author_ar || b.author}
-                      </div>
-                      <div className="mt-2 pt-1 border-t border-border/60 text-xs font-black text-primary">
-                        {b.price} ج.م
-                      </div>
-                    </div>
-                  )
-                })}
+                {STORE_CATALOG_BOOKS.map(b => (
+                  <StoreBookCard
+                    key={b.id}
+                    book={b}
+                    viewMode="bundle-picker"
+                    isSelectedInBundle={bundleSelectedBookIds.includes(b.id)}
+                    onToggleBundle={toggleBookInBundle}
+                  />
+                ))}
               </div>
             </div>
           </div>
@@ -1399,6 +1429,18 @@ ${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
                               : `Order This Pack (${priceToShow} EGP) 🚀`}
                           </span>
                         </Button>
+                      ) : offer.offer_type === 'SERIES' ? (
+                        <Button
+                          onClick={() => handleOpenCuratedPackOrder(offer)}
+                          className="w-full rounded-2xl font-black text-xs py-3 gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-md shadow-purple-600/20 cursor-pointer"
+                        >
+                          <Sparkles className="h-4 w-4" />
+                          <span>
+                            {lang === 'ar'
+                              ? `اطلب السلسلة كاملة (${priceToShow} ج.م) 🌟`
+                              : `Order Complete Series (${priceToShow} EGP) 🌟`}
+                          </span>
+                        </Button>
                       ) : store.social_links?.whatsapp ? (
                         <a
                           href={`https://wa.me/${store.social_links.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
@@ -1425,7 +1467,7 @@ ${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
               })}
             </div>
 
-            {filteredOffers.length === 0 && offers.length > 0 && (
+            {filteredOffers.length === 0 && effectiveOffers.length > 0 && (
               <div className="text-center py-12 px-4 rounded-3xl border-2 border-dashed border-border/80 bg-muted/10 space-y-3">
                 <div className="text-4xl">🔍</div>
                 <h3 className="text-base font-bold text-foreground">
@@ -1448,7 +1490,7 @@ ${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
               </div>
             )}
 
-            {offers.length === 0 && (
+            {effectiveOffers.length === 0 && (
               <div className="text-center py-16 px-4 rounded-3xl border-2 border-dashed border-border/80 bg-muted/10 space-y-3">
                 <div className="text-5xl">🎁</div>
                 <h3 className="text-lg font-bold text-foreground">
@@ -1707,10 +1749,10 @@ ${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
         )}
       </div>
 
-      {/* FLOATING STICKY BUNDLE FOOTER BAR */}
+      {/* FLOATING STICKY BUNDLE / BASKET FOOTER BAR */}
       {bundleSelectedBookIds.length > 0 && (
         <div className="fixed bottom-0 inset-x-0 z-40 p-3 sm:p-4 bg-card/95 backdrop-blur-md border-t-2 border-primary/40 shadow-2xl animate-in slide-in-from-bottom">
-          <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <div className="h-10 w-10 rounded-2xl bg-primary/15 text-primary flex items-center justify-center font-black text-sm shrink-0 border border-primary/30">
                 {selectedCount}
@@ -1718,18 +1760,28 @@ ${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-black text-foreground">
-                    {currentTier ? currentTier.name_ar : `${selectedCount} كتب في الباكدج`}
+                    {currentTier
+                      ? currentTier.name_ar
+                      : selectedCount === 1
+                        ? (lang === 'ar' ? 'كتاب واحد في السلة' : '1 Book in Basket')
+                        : (lang === 'ar' ? `${selectedCount} كتب في السلة` : `${selectedCount} Books in Basket`)}
                   </span>
-                  {currentTier && (
+                  {currentTier ? (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-white shadow-2xs">
                       +{currentTier.free_gift_books} هدية 🎁
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
+                      {lang === 'ar' ? 'شحن فوري' : 'Fast Shipping'}
                     </span>
                   )}
                 </div>
                 <p className="text-[11px] text-muted-foreground truncate">
                   {currentTier
                     ? `الإجمالي: ${currentTier.price} ج.م فقط (وفرت ${currentTier.original_value - currentTier.price} ج.م)`
-                    : `أضف ${booksToNextTier} كتب لتفعيل باكدج الـ 3 كتب والحصول على كتاب هدية!`}
+                    : lang === 'ar'
+                      ? `الإجمالي: ${basketTotalPrice} ج.م ${booksToNextTier > 0 ? `• (أضف ${booksToNextTier} كتب لتفعيل باكدج التوفير + كتاب هدية 🎁)` : ''}`
+                      : `Total: ${basketTotalPrice} EGP ${booksToNextTier > 0 ? `• (Add ${booksToNextTier} more to get bundle discount & gift 🎁)` : ''}`}
                 </p>
               </div>
             </div>
@@ -1744,15 +1796,14 @@ ${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
               </button>
 
               <Button
-                disabled={!currentTier}
                 onClick={handleOpenBundleOrder}
-                className="flex-1 sm:flex-initial rounded-xl font-black text-xs px-6 py-2.5 gap-2 bg-primary text-primary-foreground shadow-md shadow-primary/25 cursor-pointer disabled:opacity-50"
+                className="flex-1 sm:flex-initial rounded-xl font-black text-xs px-6 py-2.5 gap-2 bg-primary text-primary-foreground shadow-md shadow-primary/25 cursor-pointer hover:bg-primary/90"
               >
-                <MessageCircle className="h-4 w-4" />
+                <ShoppingBag className="h-4 w-4" />
                 <span>
                   {currentTier
                     ? lang === 'ar' ? `اطلب الباكدج (${currentTier.price} ج.م)` : `Order Bundle (${currentTier.price} EGP)`
-                    : lang === 'ar' ? `اختر ${booksToNextTier} كتب إضافية` : `Pick ${booksToNextTier} more`}
+                    : lang === 'ar' ? `إتمام الطلب (${basketTotalPrice} ج.م)` : `Checkout (${basketTotalPrice} EGP)`}
                 </span>
               </Button>
             </div>
@@ -1765,159 +1816,142 @@ ${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
           <div className="bg-card border-2 border-border/80 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl space-y-5 animate-in zoom-in-95 my-auto">
             {/* Modal Header */}
-            <div className="flex items-start justify-between gap-3 border-b border-border/80 pb-4">
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  "h-12 w-12 rounded-2xl flex items-center justify-center text-white font-black text-xs shadow-inner shrink-0 bg-gradient-to-tr",
-                  orderingBook.cover_color || "from-slate-700 to-slate-900"
-                )}>
-                  📖
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-foreground">
-                    {lang === 'ar' ? 'طلب كتاب منفرد' : 'Order Single Book'}
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    {orderingBook.title_ar || orderingBook.title} — {orderingBook.author_ar || orderingBook.author}
-                  </p>
-                </div>
+            <div className="flex items-start justify-between gap-3 border-b border-border/80 pb-3">
+              <div>
+                <h3 className="text-base font-black text-foreground">
+                  {lang === 'ar' ? 'طلب كتاب منفرد للشحن الفوري' : 'Order Single Book for Delivery'}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  {lang === 'ar'
+                    ? 'أدخل بيانات التوصيل وسيتم فتح محادثة الطلب مباشرة مع المكتبة على واتساب.'
+                    : 'Fill your details to confirm your order with the bookstore.'}
+                </p>
               </div>
 
               <button
                 type="button"
                 onClick={() => setOrderingBook(null)}
-                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer shrink-0"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            {/* Price tag in modal */}
-            <div className="p-3.5 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-between">
-              <div>
-                <span className="text-[11px] font-bold text-muted-foreground block">سعر الكتاب المخفض:</span>
-                <span className="text-xl font-black text-primary">{orderingBook.price} ج.م</span>
-                {orderingBook.original_price && (
-                  <span className="text-xs text-muted-foreground line-through ms-2 font-semibold">
-                    {orderingBook.original_price} ج.م
+            {orderSentSuccess && lastPlacedOrder ? (
+              <div className="py-4 text-center space-y-4 animate-in fade-in zoom-in-95">
+                <div className="h-14 w-14 rounded-full bg-emerald-500/15 border-2 border-emerald-500/30 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
+                  <CheckCircle2 className="h-8 w-8" />
+                </div>
+
+                <div className="space-y-1">
+                  <h4 className="text-base sm:text-lg font-black text-foreground">
+                    {lang === 'ar' ? 'تم تجهيز وإرسال الطلب بنجاح! 🚀' : 'Order Placed & Sent Successfully!'}
+                  </h4>
+                  <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                    {lang === 'ar'
+                      ? `تم توجيه طلبك مباشرة لمكتبة ${store.name_ar || store.name} على واتساب.`
+                      : `Your order was sent directly to ${store.name} on WhatsApp.`}
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-muted/50 border border-border flex items-center justify-between max-w-sm mx-auto">
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold text-muted-foreground block">
+                      {lang === 'ar' ? 'كود متابعة الطلب والشحن:' : 'Tracking Order Code:'}
+                    </span>
+                    <span className="text-sm font-black text-primary font-mono">
+                      #{lastPlacedOrder.order_number || lastPlacedOrder.id}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                    {lang === 'ar' ? 'قيد التجهيز' : 'Processing'}
                   </span>
-                )}
-              </div>
-              <span className="px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                متوفر للشحن الفوري
-              </span>
-            </div>
-
-            {/* Form Fields */}
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-xs font-black text-foreground">
-                  {lang === 'ar' ? 'اسم المستلم الثلاثي *' : 'Recipient Name *'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={customerName}
-                  onChange={e => setCustomerName(e.target.value)}
-                  placeholder={lang === 'ar' ? 'أحمد محمد علي' : 'Full Name'}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-black text-foreground">
-                    {lang === 'ar' ? 'رقم الهاتف / الواتساب *' : 'Phone / WhatsApp *'}
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={customerPhone}
-                    onChange={e => setCustomerPhone(e.target.value)}
-                    placeholder="01012345678"
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    dir="ltr"
-                  />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-black text-foreground">
-                    {lang === 'ar' ? 'المحافظة *' : 'Governorate *'}
-                  </label>
-                  <select
-                    value={customerCity}
-                    onChange={e => setCustomerCity(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                <div className="space-y-2 max-w-sm mx-auto pt-2">
+                  <Link
+                    href={`/orders/${lastPlacedOrder.order_number || lastPlacedOrder.id}`}
+                    className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
                   >
-                    {EGYPT_GOVERNORATES.map(gov => (
-                      <option key={gov} value={gov}>{gov}</option>
-                    ))}
-                  </select>
+                    <Truck className="h-4 w-4" />
+                    <span>{lang === 'ar' ? 'متابعة مراحل الشحن والتوصيل خطوة بخطوة 🚚' : 'Track Shipping Progress Step-by-Step 🚚'}</span>
+                  </Link>
+
+                  {lastWhatsappUrl && (
+                    <a
+                      href={lastWhatsappUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-bold text-xs border border-border transition-all cursor-pointer"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>{lang === 'ar' ? 'إعادة فتح محادثة الواتساب مع المكتبة 💬' : 'Reopen WhatsApp Chat 💬'}</span>
+                    </a>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrderingBook(null)
+                      setOrderSentSuccess(false)
+                      setLastPlacedOrder(null)
+                    }}
+                    className="text-xs text-muted-foreground hover:text-foreground underline pt-1 block mx-auto cursor-pointer"
+                  >
+                    {lang === 'ar' ? 'إغلاق ومتابعة تصفح المكتبة' : 'Close and continue browsing'}
+                  </button>
                 </div>
               </div>
+            ) : (
+              <>
+                {/* Book Preview Card */}
+                <StoreBookCard book={orderingBook} viewMode="modal-preview" />
 
-              <div className="space-y-1">
-                <label className="text-xs font-black text-foreground">
-                  {lang === 'ar' ? 'العنوان بالتفصيل (الحي، الشارع، رقم العمارة):' : 'Detailed Address:'}
-                </label>
-                <input
-                  type="text"
-                  value={customerAddress}
-                  onChange={e => setCustomerAddress(e.target.value)}
-                  placeholder={lang === 'ar' ? 'مثال: حي الجامعة، شارع 10، عمارة 5' : 'Street address, building, apt'}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                {/* Validated Isolated Order Form */}
+                <StoreOrderForm
+                  initialValues={savedCustomerRef.current}
+                  subtotal={orderingBook.price}
+                  onSubmit={data => executeSingleBookWhatsApp(orderingBook, data)}
+                  onCancel={() => setOrderingBook(null)}
+                  submitLabel={lang === 'ar' ? 'تأكيد وإرسال الطلب عبر واتساب 💬' : 'Confirm & Order via WhatsApp'}
                 />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-black text-muted-foreground">
-                  {lang === 'ar' ? 'ملاحظات إضافية (اختياري):' : 'Notes (optional):'}
-                </label>
-                <input
-                  type="text"
-                  value={customerNotes}
-                  onChange={e => setCustomerNotes(e.target.value)}
-                  placeholder={lang === 'ar' ? 'أي ملاحظات بخصوص موعد التوصيل...' : 'Any special requests...'}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="space-y-2 pt-2 border-t border-border/80">
-              <Button
-                onClick={() => executeSingleBookWhatsApp(orderingBook)}
-                className="w-full rounded-xl font-black text-xs py-3 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/25 cursor-pointer"
-              >
-                <MessageCircle className="h-4 w-4" />
-                <span>{lang === 'ar' ? 'تأكيد وإرسال الطلب عبر واتساب 💬' : 'Confirm & Order via WhatsApp'}</span>
-              </Button>
-
-              <Button
-                variant="ghost"
-                onClick={() => setOrderingBook(null)}
-                className="w-full rounded-xl text-xs font-bold text-muted-foreground"
-              >
-                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-              </Button>
-            </div>
+              </>
+            )}
           </div>
         </div>
       )}
 
-      {/* BUNDLE PACKAGE ORDER MODAL */}
-      {bundleModalOpen && currentTier && (
+      {/* BUNDLE / BASKET ORDER MODAL */}
+      {bundleModalOpen && selectedCount > 0 && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
           <div className="bg-card border-2 border-border/80 rounded-3xl p-6 sm:p-7 max-w-lg w-full shadow-2xl space-y-5 animate-in zoom-in-95 my-auto max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="flex items-start justify-between gap-3 border-b border-border/80 pb-4">
               <div>
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                  <Flame className="h-3 w-3" />
-                  <span>{currentTier.name_ar}</span>
+                  {currentTier ? (
+                    <>
+                      <Flame className="h-3 w-3 text-amber-500" />
+                      <span>{currentTier.name_ar}</span>
+                    </>
+                  ) : selectedCount === 1 ? (
+                    <>
+                      <BookOpen className="h-3 w-3 text-primary" />
+                      <span>{lang === 'ar' ? 'طلب كتاب منفرد' : 'Single Book Order'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingBag className="h-3 w-3 text-primary" />
+                      <span>{lang === 'ar' ? `طلب ${selectedCount} كتب` : `${selectedCount} Books Order`}</span>
+                    </>
+                  )}
                 </div>
                 <h3 className="text-lg font-black text-foreground mt-1">
-                  {lang === 'ar' ? 'إتمام طلب باكدج التوفير والهدايا 🔥' : 'Confirm Bundle & Free Gifts'}
+                  {currentTier
+                    ? (lang === 'ar' ? 'إتمام طلب باكدج التوفير والهدايا 🔥' : 'Confirm Bundle & Free Gifts')
+                    : selectedCount === 1
+                      ? (lang === 'ar' ? 'إتمام طلب الكتاب للشحن الفوري 📦' : 'Confirm Book Order for Delivery 📦')
+                      : (lang === 'ar' ? 'إتمام طلب السلة للشحن الفوري 📦' : 'Confirm Basket Order for Delivery 📦')}
                 </h3>
               </div>
 
@@ -1930,140 +1964,161 @@ ${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
               </button>
             </div>
 
-            {/* Offer Summary Highlights */}
+            {/* Offer / Basket Summary Highlights */}
             <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-amber-500/10 to-muted/40 p-4 border border-primary/30 space-y-3">
               <div className="flex items-baseline justify-between">
                 <div>
-                  <span className="text-[11px] font-bold text-muted-foreground block">سعر الباكدج الإجمالي:</span>
-                  <span className="text-2xl font-black text-primary">{currentTier.price} ج.م</span>
+                  <span className="text-[11px] font-bold text-muted-foreground block">
+                    {currentTier
+                      ? (lang === 'ar' ? 'سعر الباكدج الإجمالي:' : 'Total Bundle Price:')
+                      : (lang === 'ar' ? 'إجمالي السلة:' : 'Basket Total:')}
+                  </span>
+                  <span className="text-2xl font-black text-primary">{basketTotalPrice} ج.م</span>
                 </div>
-                <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/15 px-2.5 py-1 rounded-xl border border-emerald-500/30">
-                  وفرت {currentTier.original_value - currentTier.price} ج.م!
-                </span>
+                {basketSavings > 0 && (
+                  <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/15 px-2.5 py-1 rounded-xl border border-emerald-500/30">
+                    {lang === 'ar' ? `وفرت ${basketSavings} ج.م!` : `Saved ${basketSavings} EGP!`}
+                  </span>
+                )}
               </div>
 
-              <div className="pt-2 border-t border-border/60 space-y-1.5 text-xs font-bold text-foreground">
-                <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
-                  <Gift className="h-4 w-4 text-amber-500 shrink-0" />
-                  <span>+ {currentTier.free_gift_books} كتاب هدية عشوائي من اختيار المكتبة 😍</span>
-                </div>
-                <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
-                  <Bookmark className="h-4 w-4 text-emerald-500 shrink-0" />
-                  <span>+ {currentTier.free_bookmarks} بوك مارك فواصل كتب مجانية 🔖</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Selected Books List in Modal */}
-            <div className="space-y-1.5">
-              <span className="text-xs font-black text-foreground block">
-                الكتب التي اخترتها بنفسك ({selectedBooksList.length} كتب):
-              </span>
-              <div className="max-h-36 overflow-y-auto space-y-1 rounded-2xl bg-muted/30 p-2.5 border border-border text-xs divide-y divide-border/60">
-                {selectedBooksList.map((b, idx) => (
-                  <div key={b.id} className="pt-1 first:pt-0 flex items-center justify-between text-muted-foreground">
-                    <span className="font-bold text-foreground truncate max-w-[260px]">
-                      {idx + 1}. {b.title_ar || b.title}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground font-semibold">{b.author_ar || b.author}</span>
+              {currentTier ? (
+                <div className="pt-2 border-t border-border/60 space-y-1.5 text-xs font-bold text-foreground">
+                  <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+                    <Gift className="h-4 w-4 text-amber-500 shrink-0" />
+                    <span>+ {currentTier.free_gift_books} كتاب هدية عشوائي من اختيار المكتبة 😍</span>
                   </div>
-                ))}
-              </div>
+                  <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-300">
+                    <Bookmark className="h-4 w-4 text-emerald-500 shrink-0" />
+                    <span>+ {currentTier.free_bookmarks} بوك مارك فواصل كتب مجانية 🔖</span>
+                  </div>
+                </div>
+              ) : booksToNextTier > 0 ? (
+                <div className="pt-2 border-t border-border/60 text-[11px] text-muted-foreground flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                  <span>
+                    {lang === 'ar'
+                      ? `أضف ${booksToNextTier} كتب إضافية لتفعيل باكدج التوفير والحصول على كتاب وفاصل مجانيين!`
+                      : `Add ${booksToNextTier} more books to unlock bundle savings & free gift!`}
+                  </span>
+                </div>
+              ) : null}
             </div>
 
-            {/* Delivery Inputs */}
-            <div className="space-y-3 pt-1">
-              <div className="space-y-1">
-                <label className="text-xs font-black text-foreground">
-                  {lang === 'ar' ? 'اسم المستلم *' : 'Recipient Name *'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={customerName}
-                  onChange={e => setCustomerName(e.target.value)}
-                  placeholder={lang === 'ar' ? 'أحمد محمد علي' : 'Full Name'}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-black text-foreground">
-                    {lang === 'ar' ? 'رقم الهاتف / الواتساب *' : 'Phone / WhatsApp *'}
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={customerPhone}
-                    onChange={e => setCustomerPhone(e.target.value)}
-                    placeholder="01012345678"
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    dir="ltr"
-                  />
+            {orderSentSuccess && lastPlacedOrder ? (
+              <div className="py-4 text-center space-y-4 animate-in fade-in zoom-in-95">
+                <div className="h-14 w-14 rounded-full bg-emerald-500/15 border-2 border-emerald-500/30 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
+                  <CheckCircle2 className="h-8 w-8" />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-black text-foreground">
-                    {lang === 'ar' ? 'المحافظة *' : 'Governorate *'}
-                  </label>
-                  <select
-                    value={customerCity}
-                    onChange={e => setCustomerCity(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  <h4 className="text-base sm:text-lg font-black text-foreground">
+                    {lang === 'ar' ? 'تم تجهيز وإرسال الطلب بنجاح! 🚀' : 'Order Placed & Sent Successfully!'}
+                  </h4>
+                  <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                    {lang === 'ar'
+                      ? `تم توجيه تفاصيل طلبك لمكتبة ${store.name_ar || store.name} على واتساب.`
+                      : `Your order was sent directly to ${store.name} on WhatsApp.`}
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-muted/50 border border-border flex items-center justify-between max-w-sm mx-auto">
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold text-muted-foreground block">
+                      {lang === 'ar' ? 'كود متابعة الطلب والشحن:' : 'Tracking Order Code:'}
+                    </span>
+                    <span className="text-sm font-black text-primary font-mono">
+                      #{lastPlacedOrder.order_number || lastPlacedOrder.id}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                    {lang === 'ar' ? 'قيد التجهيز' : 'Processing'}
+                  </span>
+                </div>
+
+                <div className="space-y-2 max-w-sm mx-auto pt-2">
+                  <Link
+                    href={`/orders/${lastPlacedOrder.order_number || lastPlacedOrder.id}`}
+                    className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
                   >
-                    {EGYPT_GOVERNORATES.map(gov => (
-                      <option key={gov} value={gov}>{gov}</option>
-                    ))}
-                  </select>
+                    <Truck className="h-4 w-4" />
+                    <span>{lang === 'ar' ? 'متابعة مراحل الشحن والتوصيل خطوة بخطوة 🚚' : 'Track Shipping Progress Step-by-Step 🚚'}</span>
+                  </Link>
+
+                  {lastWhatsappUrl && (
+                    <a
+                      href={lastWhatsappUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-bold text-xs border border-border transition-all cursor-pointer"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>{lang === 'ar' ? 'إعادة فتح محادثة الواتساب مع المكتبة 💬' : 'Reopen WhatsApp Chat 💬'}</span>
+                    </a>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBundleModalOpen(false)
+                      setOrderSentSuccess(false)
+                      setLastPlacedOrder(null)
+                    }}
+                    className="text-xs text-muted-foreground hover:text-foreground underline pt-1 block mx-auto cursor-pointer"
+                  >
+                    {lang === 'ar' ? 'إغلاق ومتابعة تصفح المكتبة' : 'Close and continue browsing'}
+                  </button>
                 </div>
               </div>
+            ) : (
+              <>
+                {/* Selected Books List in Modal */}
+                <div className="space-y-1.5">
+                  <span className="text-xs font-black text-foreground block">
+                    {selectedCount === 1
+                      ? (lang === 'ar' ? 'الكتاب المختار في السلة:' : 'Selected Book:')
+                      : (lang === 'ar' ? `الكتب المختارة (${selectedCount} كتب):` : `Selected Books (${selectedCount}):`)}
+                  </span>
+                  <div className="max-h-36 overflow-y-auto space-y-1 rounded-2xl bg-muted/30 p-2.5 border border-border text-xs divide-y divide-border/60">
+                    {selectedBooksList.map((b, idx) => (
+                      <div key={b.id} className="pt-1 first:pt-0 flex items-center justify-between text-muted-foreground">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-bold text-foreground truncate max-w-[220px]">
+                            {idx + 1}. {b.title_ar || b.title}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="font-black text-primary text-xs">{b.price} ج.م</span>
+                          <button
+                            type="button"
+                            onClick={() => toggleBookInBundle(b.id)}
+                            className="text-muted-foreground hover:text-destructive p-0.5 cursor-pointer"
+                            title={lang === 'ar' ? 'حذف من السلة' : 'Remove'}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-black text-foreground">
-                  {lang === 'ar' ? 'العنوان بالتفصيل:' : 'Detailed Address:'}
-                </label>
-                <input
-                  type="text"
-                  value={customerAddress}
-                  onChange={e => setCustomerAddress(e.target.value)}
-                  placeholder={lang === 'ar' ? 'الحي، الشارع، رقم العمارة' : 'Street address'}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                {/* Validated Isolated Order Form */}
+                <StoreOrderForm
+                  initialValues={savedCustomerRef.current}
+                  subtotal={basketTotalPrice}
+                  onSubmit={data => executeBundleWhatsApp(data)}
+                  onCancel={() => setBundleModalOpen(false)}
+                  submitLabel={
+                    currentTier
+                      ? (lang === 'ar' ? 'إرسال تفاصيل الباكدج بالكامل عبر واتساب 💬' : 'Send Full Bundle to WhatsApp')
+                      : selectedCount === 1
+                        ? (lang === 'ar' ? 'تأكيد وإرسال طلب الكتاب عبر واتساب 💬' : 'Confirm & Send Book Order to WhatsApp')
+                        : (lang === 'ar' ? `تأكيد وإرسال طلب الـ (${selectedCount}) كتب عبر واتساب 💬` : `Confirm & Send ${selectedCount} Books to WhatsApp`)
+                  }
                 />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-black text-muted-foreground">
-                  {lang === 'ar' ? 'ملاحظات خاصة بالتوصيل:' : 'Delivery Notes:'}
-                </label>
-                <input
-                  type="text"
-                  value={customerNotes}
-                  onChange={e => setCustomerNotes(e.target.value)}
-                  placeholder={lang === 'ar' ? 'مثال: يرجى الاتصال قبل الوصول' : 'Any notes'}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="space-y-2 pt-2 border-t border-border/80">
-              <Button
-                onClick={executeBundleWhatsApp}
-                className="w-full rounded-xl font-black text-xs py-3 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/25 cursor-pointer"
-              >
-                <MessageCircle className="h-4 w-4" />
-                <span>{lang === 'ar' ? 'إرسال تفاصيل الباكدج بالكامل عبر واتساب 💬' : 'Send Full Bundle to WhatsApp'}</span>
-              </Button>
-
-              <Button
-                variant="ghost"
-                onClick={() => setBundleModalOpen(false)}
-                className="w-full rounded-xl text-xs font-bold text-muted-foreground"
-              >
-                {lang === 'ar' ? 'إغلاق ومتابعة اختيار الكتب' : 'Close & Continue Selecting'}
-              </Button>
-            </div>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -2127,116 +2182,104 @@ ${customerNotes ? `📝 *ملاحظات:* ${customerNotes}` : ''}
               </div>
             </div>
 
-            {/* Included Books Preview */}
-            {selectedCuratedPack.included_books && selectedCuratedPack.included_books.length > 0 && (
-              <div className="space-y-1.5">
-                <span className="text-xs font-black text-foreground block">
-                  الكتب المتضمنة في هذا الباكدج ({selectedCuratedPack.included_books.length} كتب):
-                </span>
-                <div className="space-y-1 rounded-2xl bg-muted/40 p-3 border border-border text-xs divide-y divide-border/60">
-                  {selectedCuratedPack.included_books.map((bTitle, idx) => (
-                    <div key={idx} className="pt-1.5 first:pt-0 flex items-center gap-2 font-bold text-foreground">
-                      <Check className="h-3.5 w-3.5 text-emerald-600 stroke-[3] shrink-0" />
-                      <span>{bTitle}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Delivery Inputs */}
-            <div className="space-y-3 pt-1">
-              <div className="space-y-1">
-                <label className="text-xs font-black text-foreground">
-                  {lang === 'ar' ? 'اسم المستلم *' : 'Recipient Name *'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={customerName}
-                  onChange={e => setCustomerName(e.target.value)}
-                  placeholder={lang === 'ar' ? 'أحمد محمد علي' : 'Full Name'}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-black text-foreground">
-                    {lang === 'ar' ? 'رقم الهاتف / الواتساب *' : 'Phone / WhatsApp *'}
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={customerPhone}
-                    onChange={e => setCustomerPhone(e.target.value)}
-                    placeholder="01012345678"
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    dir="ltr"
-                  />
+            {orderSentSuccess && lastPlacedOrder ? (
+              <div className="py-4 text-center space-y-4 animate-in fade-in zoom-in-95">
+                <div className="h-14 w-14 rounded-full bg-emerald-500/15 border-2 border-emerald-500/30 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
+                  <CheckCircle2 className="h-8 w-8" />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-black text-foreground">
-                    {lang === 'ar' ? 'المحافظة *' : 'Governorate *'}
-                  </label>
-                  <select
-                    value={customerCity}
-                    onChange={e => setCustomerCity(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  <h4 className="text-base sm:text-lg font-black text-foreground">
+                    {lang === 'ar' ? 'تم تجهيز وإرسال الطلب بنجاح! 🚀' : 'Order Placed & Sent Successfully!'}
+                  </h4>
+                  <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                    {lang === 'ar'
+                      ? `تم توجيه تفاصيل طلبك لمكتبة ${store.name_ar || store.name} على واتساب.`
+                      : `Your order was sent directly to ${store.name} on WhatsApp.`}
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-muted/50 border border-border flex items-center justify-between max-w-sm mx-auto">
+                  <div className="text-right">
+                    <span className="text-[10px] font-bold text-muted-foreground block">
+                      {lang === 'ar' ? 'كود متابعة الطلب والشحن:' : 'Tracking Order Code:'}
+                    </span>
+                    <span className="text-sm font-black text-primary font-mono">
+                      #{lastPlacedOrder.order_number || lastPlacedOrder.id}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                    {lang === 'ar' ? 'قيد التجهيز' : 'Processing'}
+                  </span>
+                </div>
+
+                <div className="space-y-2 max-w-sm mx-auto pt-2">
+                  <Link
+                    href={`/orders/${lastPlacedOrder.order_number || lastPlacedOrder.id}`}
+                    className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
                   >
-                    {EGYPT_GOVERNORATES.map(gov => (
-                      <option key={gov} value={gov}>{gov}</option>
-                    ))}
-                  </select>
+                    <Truck className="h-4 w-4" />
+                    <span>{lang === 'ar' ? 'متابعة مراحل الشحن والتوصيل خطوة بخطوة 🚚' : 'Track Shipping Progress Step-by-Step 🚚'}</span>
+                  </Link>
+
+                  {lastWhatsappUrl && (
+                    <a
+                      href={lastWhatsappUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-bold text-xs border border-border transition-all cursor-pointer"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>{lang === 'ar' ? 'إعادة فتح محادثة الواتساب مع المكتبة 💬' : 'Reopen WhatsApp Chat 💬'}</span>
+                    </a>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPackModalOpen(false)
+                      setOrderSentSuccess(false)
+                      setLastPlacedOrder(null)
+                    }}
+                    className="text-xs text-muted-foreground hover:text-foreground underline pt-1 block mx-auto cursor-pointer"
+                  >
+                    {lang === 'ar' ? 'إغلاق ومتابعة تصفح المكتبة' : 'Close and continue browsing'}
+                  </button>
                 </div>
               </div>
+            ) : (
+              <>
+                {/* Included Books Preview */}
+                {selectedCuratedPack.included_books && selectedCuratedPack.included_books.length > 0 && (
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-black text-foreground block">
+                      الكتب المتضمنة في هذا الباكدج ({selectedCuratedPack.included_books.length} كتب):
+                    </span>
+                    <div className="space-y-1 rounded-2xl bg-muted/40 p-3 border border-border text-xs divide-y divide-border/60">
+                      {selectedCuratedPack.included_books.map((bTitle, idx) => (
+                        <div key={idx} className="pt-1.5 first:pt-0 flex items-center gap-2 font-bold text-foreground">
+                          <Check className="h-3.5 w-3.5 text-emerald-600 stroke-[3] shrink-0" />
+                          <span>{bTitle}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-              <div className="space-y-1">
-                <label className="text-xs font-black text-foreground">
-                  {lang === 'ar' ? 'العنوان بالتفصيل (الحي، الشارع، رقم العمارة):' : 'Detailed Address:'}
-                </label>
-                <input
-                  type="text"
-                  value={customerAddress}
-                  onChange={e => setCustomerAddress(e.target.value)}
-                  placeholder={lang === 'ar' ? 'مثال: حي الجامعة، شارع 10، عمارة 5' : 'Street address, building, apt'}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                {/* Validated Isolated Order Form */}
+                <StoreOrderForm
+                  initialValues={savedCustomerRef.current}
+                  subtotal={selectedCuratedPack?.offer_price || selectedCuratedPack?.bundle_price || 200}
+                  onSubmit={data => executeCuratedPackWhatsApp(data)}
+                  onCancel={() => setPackModalOpen(false)}
+                  submitLabel={
+                    selectedCuratedPack?.offer_type === 'SERIES'
+                      ? (lang === 'ar' ? 'تأكيد وإرسال طلب السلسلة عبر واتساب 💬' : 'Confirm & Order Series via WhatsApp')
+                      : (lang === 'ar' ? 'تأكيد وإرسال طلب الباكدج عبر واتساب 💬' : 'Confirm & Order Pack via WhatsApp')
+                  }
                 />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-black text-muted-foreground">
-                  {lang === 'ar' ? 'ملاحظات إضافية (اختياري):' : 'Notes (optional):'}
-                </label>
-                <input
-                  type="text"
-                  value={customerNotes}
-                  onChange={e => setCustomerNotes(e.target.value)}
-                  placeholder={lang === 'ar' ? 'أي ملاحظات بخصوص موعد التوصيل...' : 'Any special requests...'}
-                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                />
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="space-y-2 pt-2 border-t border-border/80">
-              <Button
-                onClick={executeCuratedPackWhatsApp}
-                className="w-full rounded-xl font-black text-xs py-3 gap-2 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/25 cursor-pointer"
-              >
-                <MessageCircle className="h-4 w-4" />
-                <span>{lang === 'ar' ? 'تأكيد وإرسال طلب الباكدج عبر واتساب 💬' : 'Confirm & Order Pack via WhatsApp'}</span>
-              </Button>
-
-              <Button
-                variant="ghost"
-                onClick={() => setPackModalOpen(false)}
-                className="w-full rounded-xl text-xs font-bold text-muted-foreground"
-              >
-                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-              </Button>
-            </div>
+              </>
+            )}
           </div>
         </div>
       )}

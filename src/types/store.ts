@@ -12,6 +12,8 @@ export type OfferType =
   | 'GIFT_WITH_BUY'   // buy book get gift free
   | 'SEASONAL'        // Ramadan, Eid, Back to School, Cairo Book Fair
   | 'CLEARANCE'       // bulk blowout sale
+  | 'BUNDLE_TIER'     // mix & match tier: pick N books + gift books + bookmarks for fixed price
+  | 'SERIES'          // complete book series (e.g. 6 parts) for a fixed price
 
 export type OfferStatus = 'DRAFT' | 'ACTIVE' | 'PAUSED' | 'EXPIRED' | 'SOLD_OUT'
 
@@ -110,6 +112,12 @@ export interface StoreOffer {
   included_books?: string[]
   badge_text?: string
   gift_description?: string
+  // Mix & match tier extras (BUNDLE_TIER)
+  bundle_bookmarks?: number
+  // Series offers (SERIES)
+  series_name?: string
+  series_parts?: number
+  template_id?: string
   starts_at?: string
   ends_at?: string
   stock_limit?: number
@@ -267,6 +275,9 @@ export interface StoreCatalogBook {
   cover_color?: string
   rating?: number
   badge?: string
+  condition?: BookCondition | string
+  isbn?: string
+  stock_quantity?: number
 }
 
 export interface StoreBundleTier {
@@ -293,8 +304,9 @@ export interface StoreOrderItem {
 
 export interface StoreOrder {
   id: string
+  order_number?: string
   store_id: string
-  order_type: 'SINGLE_BOOK' | 'BUNDLE_PACKAGE' | 'CURATED_PACK'
+  order_type: 'SINGLE_BOOK' | 'BUNDLE_PACKAGE' | 'CURATED_PACK' | 'SERIES'
   bundle_title?: string
   bundle_size?: number
   pack_title?: string

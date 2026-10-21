@@ -62,6 +62,69 @@ export const GENRE_CATEGORIES: { id: BookGenreCategory | 'ALL'; nameAr: string; 
   { id: 'PHILOSOPHY', nameAr: 'فكر وفلسفة ومجتمع', nameEn: 'Philosophy & Society', emoji: '💡' },
 ]
 
+export const GENRE_DEFAULT_COVERS: Record<string, string[]> = {
+  RELIGIOUS: [
+    'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1507842229451-7f01be7ac102?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1499209974431-9dddcece7f88?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1589829085413-56de8ae18c73?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=600&q=80',
+  ],
+  PSYCHOLOGY: [
+    'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1476275466078-4007374efbbe?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80',
+  ],
+  SELF_HELP: [
+    'https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?auto=format&fit=crop&w=600&q=80',
+  ],
+  NOVELS: [
+    'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1516979187457-637abb4f9353?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&w=600&q=80',
+  ],
+  THRILLER: [
+    'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1476820865390-c52aeebb9891?auto=format&fit=crop&w=600&q=80',
+  ],
+  PHILOSOPHY: [
+    'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1505664194779-8beaceb93744?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=600&q=80',
+    'https://images.unsplash.com/photo-1507842229451-7f01be7ac102?auto=format&fit=crop&w=600&q=80',
+  ],
+}
+
+/**
+ * Resolves a high quality realistic book cover for bookstore books.
+ * Falls back to deterministic, genre-curated book covers if cover_url is missing.
+ */
+export function getStoreBookCover(book: { cover_url?: string; category?: string; id?: string; title?: string }): string {
+  if (book.cover_url && book.cover_url.trim()) {
+    return book.cover_url
+  }
+
+  const category = (book.category || 'NOVELS').toUpperCase()
+  const pool = GENRE_DEFAULT_COVERS[category] || GENRE_DEFAULT_COVERS['NOVELS']
+  
+  const key = book.id || book.title || 'book'
+  let hash = 0
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash << 5) - hash + key.charCodeAt(i)
+    hash |= 0
+  }
+  const index = Math.abs(hash) % pool.length
+  return pool[index]
+}
+
 // Real curated list from user's provided bestselling book inventory
 export const STORE_CATALOG_BOOKS: StoreCatalogBook[] = [
   // 1. الدين والروحانيات

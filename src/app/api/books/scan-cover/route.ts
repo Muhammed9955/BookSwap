@@ -14,6 +14,9 @@ interface ScannedBookResult {
   suggested_fee_weekly: number
   is_expensive_book: boolean
   confidence: number
+  goodreads_rating?: number
+  goodreads_ratings_count?: number
+  goodreads_url?: string
   source: 'gemini_vision' | 'google_books' | 'openlibrary' | 'barcode'
 }
 
@@ -111,7 +114,9 @@ Read any visible text, barcode digits, and use your extensive literary knowledge
   "category": "One of: Fiction, Self Development, Business, Psychology, Programming, History, Science, Children, Academic, Language, Comics, Philosophy, Religion, Health, Other",
   "description": "Engaging, well-written 2-4 sentence synopsis of the book in the same language as the book (Arabic for Arabic books, English for English books)",
   "condition": "GOOD",
-  "estimated_market_price": estimated fair retail/market price in Egyptian Pounds EGP (number, e.g. 140 for regular novel, 350 for hardcovers, 700+ for academic textbooks)
+  "estimated_market_price": estimated fair retail/market price in Egyptian Pounds EGP (number, e.g. 140 for regular novel, 350 for hardcovers, 700+ for academic textbooks),
+  "goodreads_rating": estimated average rating on Goodreads out of 5 (e.g. 4.15),
+  "goodreads_ratings_count": estimated ratings count on Goodreads (e.g. 4200)
 }
 Return ONLY valid JSON.`,
                         },
@@ -139,6 +144,10 @@ Return ONLY valid JSON.`,
                 if (title && title !== 'Unknown' && title !== 'null') {
                   const estimatedPrice = parsed.estimated_market_price || 120
                   const terms = calculateBorrowTerms(estimatedPrice)
+                  const cleanIsbn = (parsed.isbn || '').replace(/-/g, '').trim()
+                  const grUrl = cleanIsbn 
+                    ? `https://www.goodreads.com/search?q=${encodeURIComponent(cleanIsbn)}`
+                    : `https://www.goodreads.com/search?q=${encodeURIComponent(`${title} ${parsed.author || ''}`.trim())}`
 
                   return NextResponse.json({
                     success: true,
@@ -157,6 +166,9 @@ Return ONLY valid JSON.`,
                       suggested_fee_weekly: terms.suggested_fee_weekly,
                       is_expensive_book: terms.is_expensive_book,
                       confidence: 0.98,
+                      goodreads_rating: typeof parsed.goodreads_rating === 'number' ? parsed.goodreads_rating : undefined,
+                      goodreads_ratings_count: typeof parsed.goodreads_ratings_count === 'number' ? parsed.goodreads_ratings_count : undefined,
+                      goodreads_url: grUrl,
                       source: 'gemini_vision',
                     },
                   })

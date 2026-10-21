@@ -41,6 +41,7 @@ export interface SquareImageUploadProps {
   lang?: 'ar' | 'en'
   required?: boolean
   className?: string
+  compact?: boolean
 }
 
 export function SquareImageUpload({
@@ -59,6 +60,7 @@ export function SquareImageUpload({
   lang = 'ar',
   required = false,
   className,
+  compact = false,
 }: SquareImageUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isDragging, setIsDragging] = useState(false)
@@ -172,6 +174,210 @@ export function SquareImageUpload({
   // Color theme variations
   const isEmerald = theme === 'emerald'
   const isPrimary = theme === 'primary'
+
+  if (compact) {
+    return (
+      <div className={cn("w-full space-y-2", className)}>
+        {/* Hidden Native File Input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={cn(
+            "rounded-2xl border-2 p-3.5 bg-card/70 hover:bg-card transition-all duration-200 shadow-xs",
+            isDragging
+              ? "border-primary bg-primary/10 ring-2 ring-primary/20 scale-[1.01]"
+              : "border-border/80 hover:border-border"
+          )}
+        >
+          <div className="flex items-start sm:items-center gap-3.5">
+            {/* Small Thumbnail Picker (1:1 Square) */}
+            <div
+              onClick={() => {
+                if (!isCompressing) fileInputRef.current?.click()
+              }}
+              className={cn(
+                "group relative h-24 w-24 sm:h-28 sm:w-28 rounded-2xl border-2 shrink-0 overflow-hidden cursor-pointer select-none transition-all",
+                isDragging
+                  ? "border-primary scale-105"
+                  : value
+                    ? "border-primary/40 bg-muted hover:border-primary hover:shadow-md"
+                    : isEmerald
+                      ? "border-emerald-500/30 hover:border-emerald-500/80 bg-emerald-500/5 hover:bg-emerald-500/10"
+                      : "border-primary/30 hover:border-primary/80 bg-primary/5 hover:bg-primary/10"
+              )}
+            >
+              {isCompressing ? (
+                <div className="h-full w-full flex flex-col items-center justify-center p-2 text-center bg-card/90">
+                  <Loader2 className={cn("h-6 w-6 animate-spin mb-1", isEmerald ? "text-emerald-500" : "text-primary")} />
+                  <span className="text-[9px] font-bold text-foreground">WebP...</span>
+                </div>
+              ) : value ? (
+                <>
+                  <img
+                    src={hasImgError ? IMG_NOT_FOUND_PLACEHOLDER : value}
+                    alt={label}
+                    onError={() => setHasImgError(true)}
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1 text-white">
+                    <RefreshCw className="h-4 w-4 text-emerald-300" />
+                    <span className="text-[9px] font-bold">{lang === 'ar' ? 'تغيير' : 'Change'}</span>
+                  </div>
+                  {stats && (
+                    <span className="absolute bottom-1 inset-x-1 text-center bg-black/80 text-emerald-300 font-mono text-[8px] font-bold rounded py-0.5 backdrop-blur-xs">
+                      -{stats.savedPct}%
+                    </span>
+                  )}
+                </>
+              ) : (
+                <div className="h-full w-full flex flex-col items-center justify-center gap-1 p-2 text-center">
+                  <div className={cn(
+                    "h-8 w-8 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110",
+                    isEmerald ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-primary/20 text-primary"
+                  )}>
+                    {folder === 'logos' ? <UploadCloud className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
+                  </div>
+                  <span className="text-[10px] font-bold text-foreground line-clamp-1">
+                    {lang === 'ar' ? 'اختر صورة' : 'Choose'}
+                  </span>
+                  <span className="text-[8px] text-muted-foreground font-mono">1:1 Square</span>
+                </div>
+              )}
+            </div>
+
+            {/* Descriptive Texts & Action Buttons */}
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="font-black text-xs text-foreground">{label}</span>
+                  {tagText && (
+                    <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 bg-muted/40">
+                      {tagText}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                  {subLabel || (lang === 'ar' ? 'صيغة مربعة بجودة عالية مع ضغط WebP التلقائي' : 'Square 1:1 image with auto WebP compression')}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  className={cn(
+                    "h-7 px-3 text-[11px] font-bold rounded-xl gap-1.5 cursor-pointer shadow-xs",
+                    isEmerald ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""
+                  )}
+                >
+                  <UploadCloud className="h-3 w-3" />
+                  <span>{value ? (lang === 'ar' ? 'تغيير الصورة' : 'Change') : (lang === 'ar' ? 'رفع صورة' : 'Upload')}</span>
+                </Button>
+
+                {value && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClear}
+                    className="h-7 px-2 text-[11px] font-bold text-destructive hover:bg-destructive/10 rounded-xl cursor-pointer"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    <span className="hidden sm:inline">{lang === 'ar' ? 'حذف' : 'Remove'}</span>
+                  </Button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setShowUrlInput(!showUrlInput)}
+                  className="text-[10px] font-bold text-muted-foreground hover:text-foreground underline transition-colors cursor-pointer"
+                >
+                  {lang === 'ar' ? 'رابط URL' : 'Direct URL'}
+                </button>
+              </div>
+
+              {stats ? (
+                <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold font-mono">
+                  ⚡ {stats.origKb} KB ← {stats.compKb} KB (وفرت {stats.savedPct}%)
+                </div>
+              ) : (
+                <div className="text-[9px] text-muted-foreground font-mono">
+                  {resolutionHint}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* URL Input Form if toggled */}
+          {showUrlInput && (
+            <form onSubmit={handleApplyUrl} className="mt-3 pt-2.5 border-t border-border flex items-center gap-1.5 animate-in fade-in">
+              <input
+                type="url"
+                value={directUrl}
+                onChange={e => {
+                  setDirectUrl(e.target.value)
+                  setUrlError('')
+                }}
+                placeholder="https://... (WebP / PNG / JPG)"
+                className="flex-1 rounded-xl border border-border bg-background px-3 py-1 text-xs text-foreground font-mono focus:outline-none focus:border-primary"
+                dir="ltr"
+              />
+              <Button type="submit" size="sm" className="h-7 text-xs font-bold px-2.5 rounded-xl">
+                {lang === 'ar' ? 'تطبيق' : 'Apply'}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowUrlInput(false)
+                  setUrlError('')
+                }}
+                className="h-7 text-xs font-bold rounded-xl"
+              >
+                ✕
+              </Button>
+            </form>
+          )}
+
+          {/* Preset Covers if any */}
+          {presets && presets.length > 0 && (
+            <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+              <span className="text-[10px] font-bold text-muted-foreground shrink-0">
+                {lang === 'ar' ? 'نماذج جاهزة:' : 'Presets:'}
+              </span>
+              {presets.map((url, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => {
+                    onChange(url)
+                    setStats(null)
+                  }}
+                  className={cn(
+                    "h-8 w-8 rounded-lg overflow-hidden border-2 shrink-0 cursor-pointer transition-all hover:scale-105 relative",
+                    value === url ? "border-primary ring-2 ring-primary/40 scale-105" : "border-border/80"
+                  )}
+                >
+                  <img src={url} alt="" className="h-full w-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className={cn("space-y-3 w-full", className)}>

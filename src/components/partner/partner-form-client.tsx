@@ -674,9 +674,9 @@ export function PartnerFormClient({ user }: PartnerFormClientProps) {
                         </p>
                       </div>
                       <div className="flex items-center gap-2 self-start sm:self-auto">
-                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
+                        {/* <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20">
                           ⚡ ضغط فوري WebP
-                        </span>
+                        </span> */}
                       </div>
                     </div>
 

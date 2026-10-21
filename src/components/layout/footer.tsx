@@ -158,11 +158,11 @@ export function SiteFooter() {
                   <span>{lang === 'ar' ? 'سياسة الخصوصية' : 'Privacy Policy'}</span>
                 </Link>
               </li>
-              <li>
+              {/* <li>
                 <span className="inline-block text-xs text-muted-foreground/80 bg-muted px-2 py-1 rounded-md">
                   {lang === 'ar' ? '🔒 تبادل آمن 100% بدون عمولات' : '🔒 100% Commission-Free'}
                 </span>
-              </li>
+              </li> */}
             </ul>
           </div>
         </div>

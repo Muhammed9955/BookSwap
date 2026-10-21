@@ -161,10 +161,16 @@ export function BookCard({
             </h3>
           </div>
           {/* Standardized Author Container Height */}
-          <div className="h-4 sm:h-5 overflow-hidden">
-            <p className="text-[11px] sm:text-xs text-muted-foreground font-semibold line-clamp-1">
+          <div className="h-4 sm:h-5 overflow-hidden flex items-center justify-between gap-1">
+            <p className="text-[11px] sm:text-xs text-muted-foreground font-semibold line-clamp-1 truncate">
               {lang === 'ar' && book?.author_ar ? book.author_ar : book?.author}
             </p>
+            {(book?.goodreads_rating || book?.rating_average) && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 shrink-0 bg-amber-500/10 px-1.5 py-0.2 rounded-sm" title="Goodreads Rating">
+                <Star className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />
+                <span>{(book.goodreads_rating || book.rating_average)?.toFixed(1)}</span>
+              </span>
+            )}
           </div>
         </div>
 

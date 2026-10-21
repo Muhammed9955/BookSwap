@@ -171,6 +171,13 @@ export interface Book {
   wishlist_count: number
   view_count: number
 
+  // Goodreads & Ratings
+  rating_average?: number
+  rating_count?: number
+  goodreads_url?: string
+  goodreads_rating?: number
+  goodreads_ratings_count?: number
+
   // Relations
   category?: Category
 
