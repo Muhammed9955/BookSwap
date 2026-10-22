@@ -155,18 +155,18 @@ export function BookCard({
       <div className="flex flex-col flex-1 justify-between p-3 sm:p-4">
         <div className="space-y-1">
           {/* Standardized Title Container Height */}
-          <div className="h-[2.5rem] sm:h-[2.85rem] overflow-hidden flex items-start">
-            <h3 className="text-xs sm:text-sm md:text-base font-black leading-snug line-clamp-2 text-foreground group-hover:text-primary transition-colors">
+          <div className="h-[2.85rem] sm:h-[3.2rem] overflow-hidden flex items-start">
+            <h3 className="text-sm sm:text-base font-black leading-snug line-clamp-2 text-foreground group-hover:text-primary transition-colors">
               {lang === 'ar' && book?.title_ar ? book.title_ar : book?.title}
             </h3>
           </div>
           {/* Standardized Author Container Height */}
           <div className="h-4 sm:h-5 overflow-hidden flex items-center justify-between gap-1">
-            <p className="text-[11px] sm:text-xs text-muted-foreground font-semibold line-clamp-1 truncate">
+            <p className="text-xs sm:text-sm text-muted-foreground font-semibold line-clamp-1 truncate">
               {lang === 'ar' && book?.author_ar ? book.author_ar : book?.author}
             </p>
             {(book?.goodreads_rating || book?.rating_average) && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 shrink-0 bg-amber-500/10 px-1.5 py-0.2 rounded-sm" title="Goodreads Rating">
+              <span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 shrink-0 bg-amber-500/10 px-1.5 py-0.2 rounded-sm" title="Goodreads Rating">
                 <Star className="h-2.5 w-2.5 fill-amber-500 text-amber-500" />
                 <span>{(book.goodreads_rating || book.rating_average)?.toFixed(1)}</span>
               </span>
@@ -179,7 +179,7 @@ export function BookCard({
           {/* Price & Condition Row */}
           <div className="flex items-center justify-between">
             <span className={cn(
-              'text-xs sm:text-base font-black',
+              'text-sm sm:text-base font-black',
               listing.listing_type === 'GIVEAWAY' ? 'text-green-600 dark:text-green-400' : 'text-foreground'
             )}>
               {listing.listing_type === 'GIVEAWAY'
@@ -193,7 +193,7 @@ export function BookCard({
                 listing.condition === 'VERY_GOOD' ? 'very-good' :
                 listing.condition === 'GOOD' ? 'good' : 'acceptable'
               }
-              className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5"
+              className="text-[10px] sm:text-xs font-bold px-1.5 py-0.5"
             >
               {getConditionLabel(listing.condition, lang)}
             </Badge>
@@ -211,7 +211,7 @@ export function BookCard({
                 {seller?.full_name ?? (lang === 'ar' ? 'مجهول' : 'Unknown')}
               </span>
               {seller?.rating_average && seller.rating_average > 0 && (
-                <span className="flex items-center gap-0.5 text-[10px] text-amber-500 font-bold">
+                <span className="flex items-center gap-0.5 text-[11px] text-amber-500 font-bold">
                   <Star className="h-3 w-3 fill-current" />
                   {seller.rating_average.toFixed(1)}
                 </span>
@@ -219,12 +219,12 @@ export function BookCard({
             </div>
 
             {(showDistance && distance !== undefined) ? (
-              <span className="flex items-center gap-0.5 text-[10px] font-semibold text-muted-foreground flex-shrink-0">
+              <span className="flex items-center gap-0.5 text-[11px] font-semibold text-muted-foreground flex-shrink-0">
                 <MapPin className="h-3 w-3" />
                 {`${distance.toFixed(1)} ${lang === 'ar' ? 'كم' : 'km'}`}
               </span>
             ) : listing.area ? (
-              <span className="flex items-center gap-0.5 text-[10px] font-semibold text-muted-foreground flex-shrink-0 truncate max-w-[90px]">
+              <span className="flex items-center gap-0.5 text-[11px] font-semibold text-muted-foreground flex-shrink-0 truncate max-w-[90px]">
                 <MapPin className="h-3 w-3" />
                 {lang === 'ar' ? listing.area.name_ar : listing.area.name_en}
               </span>

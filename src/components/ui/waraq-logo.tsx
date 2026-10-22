@@ -101,16 +101,18 @@ export function WaraqLogo({
             <span
               className={cn(
                 'tracking-tight font-extrabold text-[#173F32] dark:text-[#52b393] whitespace-nowrap shrink-0',
-                cfg.textSize
+                cfg.textSize,
+                lang === 'ar' ? 'hidden sm:inline' : 'inline'
               )}
             >
               {BRAND.name.en}
             </span>
-            <span className="text-muted-foreground/40 font-light text-xs shrink-0 select-none">|</span>
+            <span className="hidden sm:inline text-muted-foreground/40 font-light text-xs shrink-0 select-none">|</span>
             <span
               className={cn(
                 'font-black font-arabic text-[#173F32] dark:text-[#52b393] whitespace-nowrap shrink-0',
-                cfg.arabicSize
+                cfg.arabicSize,
+                lang === 'en' ? 'hidden sm:inline' : 'inline'
               )}
             >
               {BRAND.name.ar}

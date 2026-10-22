@@ -65,7 +65,7 @@ export function BottomNav() {
   const { unreadNotifications } = useAuth()
 
   return (
-    <nav className="bottom-nav md:hidden" aria-label="Mobile navigation">
+    <nav className="bottom-nav md:hidden px-1 bg-white dark:bg-slate-900 border-t border-border shadow-2xl" aria-label="Mobile navigation">
       {navItems.map((item) => {
         const isActive = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href)
         const Icon = item.icon
@@ -77,12 +77,12 @@ export function BottomNav() {
               href={item.href}
               prefetch={true}
               aria-label={t(item.labelKey, lang)}
-              className="relative -mt-6 flex flex-col items-center justify-center cursor-pointer group"
+              className="relative -mt-5 flex-1 max-w-[72px] flex flex-col items-center justify-center cursor-pointer group select-none"
             >
-              <div className="flex h-13 w-13 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/35 ring-4 ring-background transition-all duration-200 group-hover:scale-105 group-active:scale-95 cursor-pointer">
-                <Icon className="h-6 w-6 stroke-[2.5]" />
+              <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-4 ring-white dark:ring-slate-900 transition-all duration-200 group-hover:scale-105 group-active:scale-95 cursor-pointer">
+                <Icon className="h-5 w-5 sm:h-6 sm:w-6 stroke-[2.5]" />
               </div>
-              <span className="text-[10px] font-black text-primary mt-0.5 leading-none">
+              <span className="text-[11px] font-black text-primary mt-1 leading-none select-none">
                 {t(item.labelKey, lang)}
               </span>
             </Link>
@@ -96,21 +96,21 @@ export function BottomNav() {
             prefetch={true}
             aria-label={t(item.labelKey, lang)}
             className={cn(
-              'relative flex flex-col items-center justify-center gap-0.5 px-3 py-1 rounded-xl transition-all duration-200 cursor-pointer min-w-[56px]',
+              'relative flex-1 max-w-[72px] min-w-0 flex flex-col items-center justify-center gap-0.5 py-1 px-0.5 rounded-xl transition-all duration-200 cursor-pointer select-none',
               isActive
                 ? 'text-primary font-bold'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <div className="relative">
-              <Icon className={cn('h-5 w-5 transition-transform duration-200', isActive && 'scale-115')} />
+            <div className="relative flex items-center justify-center">
+              <Icon className={cn('h-5 w-5 transition-transform duration-200', isActive && 'scale-110')} />
               {item.key === 'notifications' && unreadNotifications > 0 && (
                 <span className="absolute -top-1.5 -end-2 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white shadow-xs animate-pulse">
                   {unreadNotifications > 9 ? '9+' : unreadNotifications}
                 </span>
               )}
             </div>
-            <span className="text-[10px] leading-tight">
+            <span className="text-[11px] leading-tight truncate max-w-full font-bold select-none">
               {item.key === 'notifications'
                 ? (lang === 'ar' ? 'إشعارات' : 'Alerts')
                 : item.key === 'search'
@@ -440,7 +440,7 @@ export function TopNav({
           </div>
 
           {/* Right Side Navigation & Actions */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {/* Communities Link */}
             <Link
               href="/communities"
@@ -487,24 +487,24 @@ export function TopNav({
               <Sparkles className="h-4.5 w-4.5 text-amber-500" />
             </Link>
 
-            {/* Mobile Search Button (Toggle mobile search bar) */}
+            {/* Mobile Search Button (Toggle mobile search bar) — hidden on <360px where bottom nav has search */}
             <button
               type="button"
               onClick={() => setMobileSearchOpen(prev => !prev)}
-              className="md:hidden flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="md:hidden hidden xs:flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
               aria-label="Toggle mobile search"
             >
-              <Search className="h-5 w-5 text-primary" />
+              <Search className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             </button>
 
             {/* Theme Toggle (Light / Dark) */}
-            <ThemeToggle />
+            <ThemeToggle className="h-8 w-8 sm:h-9 sm:w-9" />
 
             {/* Language Toggle */}
             <button
               type="button"
               onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-black bg-muted/80 hover:bg-accent text-foreground transition-colors cursor-pointer border border-border/60"
+              className="flex items-center justify-center h-8 px-2 sm:px-2.5 rounded-xl text-[11px] sm:text-xs font-black bg-muted/80 hover:bg-accent text-foreground transition-colors cursor-pointer border border-border/60"
               aria-label="Toggle language"
             >
               {lang === 'ar' ? 'EN' : 'عربي'}
@@ -527,13 +527,13 @@ export function TopNav({
                 <Link
                   href="/messages"
                   prefetch={true}
-                  className="relative flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                  className="relative flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
                   aria-label={t('nav_messages', lang)}
                   title={t('nav_messages', lang)}
                 >
-                  <MessageCircle className="h-5 w-5" />
+                  <MessageCircle className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
                   {unreadMessages > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-white font-black animate-pulse">
+                    <span className="absolute -top-0.5 -right-0.5 flex h-3.5 w-3.5 sm:h-4 sm:w-4 items-center justify-center rounded-full bg-primary text-[9px] sm:text-[10px] text-white font-black animate-pulse">
                       {unreadMessages > 9 ? '9+' : unreadMessages}
                     </span>
                   )}
@@ -558,7 +558,7 @@ export function TopNav({
                 {/* Add Book Button — Desktop CTA (Guaranteed no wrap with whitespace-nowrap and shrink-0) */}
                 <Link
                   href="/books/add"
-                  className="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-black shadow-xs hover:scale-105 active:scale-95 transition-all cursor-pointer whitespace-nowrap shrink-0"
+                  className="hidden md:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-black shadow-xs hover:scale-105 active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap shrink-0"
                 >
                   <PlusCircle className="h-4 w-4 shrink-0" />
                   <span className="whitespace-nowrap font-black">{t('nav_add', lang)}</span>
@@ -569,11 +569,11 @@ export function TopNav({
                   <button
                     type="button"
                     onClick={() => setDropdownOpen(prev => !prev)}
-                    className="flex items-center gap-1.5 p-0.5 rounded-full hover:bg-muted transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary select-none"
+                    className="flex items-center gap-1 p-0.5 rounded-full hover:bg-muted transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-primary select-none"
                     aria-label="User menu"
                   >
                     <div className="relative">
-                      <div className="h-9 w-9 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center ring-2 ring-primary/40 hover:ring-primary transition-all shadow-xs">
+                      <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center ring-2 ring-primary/40 hover:ring-primary transition-all shadow-xs">
                         {effectiveAvatar ? (
                           <img
                             src={effectiveAvatar}
@@ -582,13 +582,13 @@ export function TopNav({
                             referrerPolicy="no-referrer"
                           />
                         ) : (
-                          <span className="text-sm font-black text-primary">
+                          <span className="text-xs sm:text-sm font-black text-primary">
                             {(effectiveName?.charAt(0) ?? 'U').toUpperCase()}
                           </span>
                         )}
                       </div>
                       {/* Active status indicator dot */}
-                      <span className="absolute bottom-0 end-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-background shadow-xs" />
+                      <span className="absolute bottom-0 end-0 h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full bg-emerald-500 ring-2 ring-background shadow-xs" />
                     </div>
                     <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 hidden sm:block', dropdownOpen && 'rotate-180')} />
                   </button>

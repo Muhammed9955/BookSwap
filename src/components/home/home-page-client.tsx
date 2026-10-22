@@ -292,7 +292,7 @@ export function HomePageClient({
           {lang === 'ar' ? titleAr : titleEn}
         </h2>
         {(subtitleAr || subtitleEn) && (
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
+          <p className="text-sm sm:text-base text-muted-foreground mt-0.5 sm:mt-1">
             {lang === 'ar' ? subtitleAr : subtitleEn}
           </p>
         )}
@@ -300,7 +300,7 @@ export function HomePageClient({
       {href && (
         <Link
           href={href}
-          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-primary hover:text-primary/80 transition-colors shrink-0 group self-start sm:self-auto"
+          className="inline-flex items-center gap-1.5 text-sm sm:text-base font-bold text-primary hover:text-primary/80 transition-colors shrink-0 group self-start sm:self-auto"
         >
           <span>{lang === 'ar' ? 'عرض الكل' : 'View All'}</span>
           <ArrowRight
@@ -332,7 +332,7 @@ export function HomePageClient({
             {/* Left/Main Column: Headings, Quick Actions & Search Box */}
             <div className="lg:col-span-7 space-y-4 sm:space-y-6">
               {/* WARAQ Brand Pill */}
-              <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-white/10 backdrop-blur-md px-3 sm:px-4 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold text-emerald-300 border border-white/15 shadow-sm max-w-full">
+              <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-white/10 backdrop-blur-md px-3.5 sm:px-4 py-1.5 text-xs sm:text-sm font-bold text-emerald-300 border border-white/15 shadow-sm max-w-full">
                 <span className="flex h-2 w-2 relative shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
@@ -356,7 +356,7 @@ export function HomePageClient({
                       className="w-full h-full object-contain"
                     />
                   </div>
-                  <span className="text-lg sm:text-2xl font-black text-emerald-300 tracking-tight">
+                  <span className="text-xl sm:text-2xl font-black text-emerald-300 tracking-tight">
                     {lang === 'ar' ? 'ورق كونكت | WaraqConnect' : 'WaraqConnect | ورق كونكت'}
                   </span>
                 </div>
@@ -381,7 +381,7 @@ export function HomePageClient({
               </div>
 
               {/* Engaging Subtitle */}
-              <p className="text-xs sm:text-lg text-white/85 max-w-xl leading-relaxed font-medium">
+              <p className="text-sm sm:text-lg text-white/90 max-w-xl leading-relaxed font-medium">
                 {lang === 'ar'
                   ? 'منصة وتطبيق WaraqConnect (ورق كونكت) لتبادل وشراء واستعارة الكتب المستعملة وتحديات القراءة مع مجتمع القراء في مدينتك. كتابك المقروء كنز ينتظر قارئاً قريباً منك — التقي بأمان وبدون أي عمولات.'
                   : 'WaraqConnect connects readers to swap, borrow, buy secondhand books, and join reading challenges locally. 100% commission free.'}
@@ -419,7 +419,7 @@ export function HomePageClient({
                         ?.scrollIntoView({ behavior: 'smooth' })
                     }}
                     className={cn(
-                      'px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-black backdrop-blur-md transition-all cursor-pointer border whitespace-nowrap shrink-0',
+                      'px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-black backdrop-blur-md transition-all cursor-pointer border whitespace-nowrap shrink-0',
                       activeTab === item.tab
                         ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-lg shadow-amber-400/20 scale-105'
                         : 'bg-white/10 text-white/90 border-white/20 hover:bg-white/20'
@@ -470,8 +470,8 @@ export function HomePageClient({
                 </form>
 
                 {/* Popular / Trending Tags inside Search Card */}
-                <div className="mt-3 pt-2.5 border-t border-border/60 flex items-center gap-1.5 overflow-x-auto scrollbar-none sm:flex-wrap text-xs text-muted-foreground pb-0.5">
-                  <span className="font-bold flex items-center gap-1 text-foreground shrink-0">
+                <div className="mt-3 pt-2.5 border-t border-border/60 flex items-center gap-1.5 overflow-x-auto scrollbar-none sm:flex-wrap text-xs sm:text-sm text-muted-foreground pb-0.5">
+                  <span className="font-bold flex items-center gap-1 text-foreground shrink-0 text-xs sm:text-sm">
                     <Flame className="h-3.5 w-3.5 text-orange-500 fill-orange-500" />
                     <span>{lang === 'ar' ? 'شائع:' : 'Trending:'}</span>
                   </span>
@@ -489,7 +489,7 @@ export function HomePageClient({
                         setSearchQuery(trend.q)
                         router.push(`/search?q=${encodeURIComponent(trend.q)}`)
                       }}
-                      className="px-2.5 py-1 rounded-lg bg-muted hover:bg-primary/10 hover:text-primary text-[11px] font-semibold transition-colors cursor-pointer select-none whitespace-nowrap shrink-0"
+                      className="px-2.5 py-1 rounded-lg bg-muted hover:bg-primary/10 hover:text-primary text-xs sm:text-sm font-bold transition-colors cursor-pointer select-none whitespace-nowrap shrink-0"
                     >
                       {lang === 'ar' ? trend.labelAr : trend.labelEn}
                     </button>
@@ -502,7 +502,7 @@ export function HomePageClient({
                 <Link href="/books/add" className="w-full sm:w-auto">
                   <Button
                     size="lg"
-                    className="w-full sm:w-auto justify-center bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-xl shadow-primary/30 px-6 py-4 sm:py-6 rounded-xl sm:rounded-2xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-sm flex items-center gap-2 border border-white/20"
+                    className="w-full sm:w-auto justify-center bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-xl shadow-primary/30 px-6 py-4 sm:py-6 rounded-xl sm:rounded-2xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-sm sm:text-base flex items-center gap-2 border border-white/20"
                   >
                     <PlusCircle className="h-5 w-5" />
                     <span>{lang === 'ar' ? 'أضف كتابك مجاناً' : 'Add Your Book Free'}</span>
@@ -512,7 +512,7 @@ export function HomePageClient({
                   <Button
                     size="lg"
                     variant="ghost"
-                    className="w-full sm:w-auto justify-center border-2 border-white/30 hover:border-white/60 bg-white/10 hover:bg-white/20 text-white backdrop-blur-md px-6 py-4 sm:py-6 rounded-xl sm:rounded-2xl text-sm font-bold cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-md"
+                    className="w-full sm:w-auto justify-center border-2 border-white/30 hover:border-white/60 bg-white/10 hover:bg-white/20 text-white backdrop-blur-md px-6 py-4 sm:py-6 rounded-xl sm:rounded-2xl text-sm sm:text-base font-bold cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-md"
                   >
                     <span>{lang === 'ar' ? 'تصفح كل الكتب' : 'Explore All Books'}</span>
                     <ArrowRight className={cn('h-4 w-4 ms-1.5', isRTL && 'rotate-180')} />
@@ -521,7 +521,7 @@ export function HomePageClient({
               </div>
 
               {/* Trust Metric Chips */}
-              <div className="pt-2 flex items-center gap-2 sm:gap-6 text-white/90 text-xs sm:text-sm font-semibold overflow-x-auto scrollbar-none pb-1 -mx-2 px-2 sm:mx-0 sm:px-0 sm:flex-wrap">
+              <div className="pt-2 flex items-center gap-2 sm:gap-6 text-white/95 text-xs sm:text-sm font-bold overflow-x-auto scrollbar-none pb-1 -mx-2 px-2 sm:mx-0 sm:px-0 sm:flex-wrap">
                 <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:p-0 rounded-xl bg-white/10 sm:bg-transparent border border-white/15 sm:border-transparent shrink-0 whitespace-nowrap">
                   <ArrowRightLeft className="h-4 w-4 text-amber-400 shrink-0" />
                   <span>{lang === 'ar' ? '0% عمولات على التبادل' : '0% Commission on Swaps'}</span>
@@ -559,7 +559,7 @@ export function HomePageClient({
                 </div>
 
                 {/* Floating Badge 1: Direct Swap Guarantee */}
-                <div className="absolute top-3 sm:top-4 start-3 sm:start-4 bg-background/90 dark:bg-slate-900/90 backdrop-blur-md text-foreground px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-2xl shadow-xl border border-border/80 flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-black">
+                <div className="absolute top-3 sm:top-4 start-3 sm:start-4 bg-background/90 dark:bg-slate-900/90 backdrop-blur-md text-foreground px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-2xl shadow-xl border border-border/80 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-black">
                   <span className="flex h-2 w-2 sm:h-2.5 sm:w-2.5 relative">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-emerald-500"></span>
@@ -568,7 +568,7 @@ export function HomePageClient({
                 </div>
 
                 {/* Floating Badge 2: Safe Hub Guarantee */}
-                <div className="absolute bottom-3 sm:bottom-4 end-3 sm:end-4 bg-background/90 dark:bg-slate-900/90 backdrop-blur-md text-foreground px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-2xl shadow-xl border border-border/80 flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs font-black">
+                <div className="absolute bottom-3 sm:bottom-4 end-3 sm:end-4 bg-background/90 dark:bg-slate-900/90 backdrop-blur-md text-foreground px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-2xl shadow-xl border border-border/80 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-black">
                   <Coffee className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-amber-500" />
                   <span>{lang === 'ar' ? 'نقاط تبادل آمنة في كافيهات مدينتك ☕' : 'Safe Cafe Hubs in Your City ☕'}</span>
                 </div>
@@ -591,7 +591,7 @@ export function HomePageClient({
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
             </span>
-            <span className="text-xs font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+            <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
               <span>{lang === 'ar' ? 'نبض المجتمع المباشر:' : 'Live Reader Pulse:'}</span>
             </span>
           </div>
@@ -599,12 +599,12 @@ export function HomePageClient({
           {/* Rotating Activity Item */}
           <div className="flex-1 flex items-center justify-center sm:justify-start gap-2.5 min-w-0 overflow-hidden text-center sm:text-start">
             <span className="text-lg">{currentActivity.icon}</span>
-            <div className="text-xs font-bold text-foreground truncate">
+            <div className="text-xs sm:text-sm font-bold text-foreground truncate">
               <span className="text-primary font-black">{currentActivity.user}</span>{' '}
               <span className="text-muted-foreground font-medium">({currentActivity.location})</span>{' '}
               <span>{currentActivity.action}</span>
             </div>
-            <span className="text-[11px] text-muted-foreground/80 font-semibold shrink-0 hidden md:inline">
+            <span className="text-xs text-muted-foreground/80 font-semibold shrink-0 hidden md:inline">
               • {currentActivity.time}
             </span>
           </div>
@@ -613,7 +613,7 @@ export function HomePageClient({
           <div className="shrink-0 flex items-center gap-2">
             <Link
               href="/books/add"
-              className="text-xs font-black text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+              className="text-xs sm:text-sm font-black text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
             >
               <span>{lang === 'ar' ? 'أضف كتابك وانضم للنبض' : 'List a book & join pulse'}</span>
               <ArrowRight className={cn('h-3.5 w-3.5', isRTL && 'rotate-180')} />
@@ -627,10 +627,10 @@ export function HomePageClient({
         <section id="explore-books-section" className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-border/80 pb-4">
             <div>
-              <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
+              <h2 className="text-xl sm:text-3xl font-black text-foreground tracking-tight">
                 {lang === 'ar' ? '📚 رفوف الكتب المتاحة للتبادل والشراء' : '📚 Available Books for Swap & Sale'}
               </h2>
-              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+              <p className="text-sm sm:text-base text-muted-foreground mt-1">
                 {lang === 'ar'
                   ? 'اختر نوع المعاملة لتصفح الكتب المعروضة في حيك ومدينتك'
                   : 'Select trade type to browse titles listed in your area'}
@@ -665,14 +665,14 @@ export function HomePageClient({
                   type="button"
                   onClick={() => setActiveTab(tab.id as typeof activeTab)}
                   className={cn(
-                    'px-3.5 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center',
+                    'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-black transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center',
                     activeTab === tab.id
                       ? 'bg-background text-foreground shadow-xs'
                       : 'text-muted-foreground hover:text-foreground'
                   )}
                 >
                   <span>{lang === 'ar' ? tab.labelAr : tab.labelEn}</span>
-                  <span className="ms-1.5 text-[10px] opacity-75">({tab.count})</span>
+                  <span className="ms-1.5 text-xs opacity-75">({tab.count})</span>
                 </button>
               ))}
             </div>
@@ -799,7 +799,7 @@ export function HomePageClient({
                 key={cat.id}
                 href={`/explore?category=${cat.slug}`}
                 id={`category-${cat.slug}`}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl border bg-card hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 text-xs sm:text-sm font-semibold shadow-2xs group whitespace-nowrap shrink-0"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl border bg-card hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 text-sm font-bold shadow-2xs group whitespace-nowrap shrink-0"
               >
                 <span className="text-base group-hover:scale-110 transition-transform">{cat.icon}</span>
                 <span>{lang === 'ar' ? cat.name_ar : cat.name_en}</span>
@@ -1047,11 +1047,11 @@ export function HomePageClient({
                   onClick={() => router.push(`/search?q=${encodeURIComponent(book.title)}`)}
                   className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-card border border-amber-200 dark:border-amber-900/40 hover:border-primary hover:bg-primary/5 transition-all cursor-pointer shadow-2xs group shrink-0 whitespace-nowrap"
                 >
-                  <BookMarked className="h-4 w-4 text-amber-500 group-hover:text-primary transition-colors shrink-0" />
-                  <span className="text-xs sm:text-sm font-bold text-foreground line-clamp-1 max-w-[150px]">
+                  <BookMarked className="h-4.5 w-4.5 text-amber-500 group-hover:text-primary transition-colors shrink-0" />
+                  <span className="text-sm font-bold text-foreground line-clamp-1 max-w-[160px]">
                     {lang === 'ar' && book.title_ar ? book.title_ar : book.title}
                   </span>
-                  <Badge variant="warning" className="text-[10px] px-2 py-0.5 shrink-0 font-black">
+                  <Badge variant="warning" className="text-xs px-2 py-0.5 shrink-0 font-black">
                     {book.wishlist_count} {lang === 'ar' ? 'طلب' : 'wants'}
                   </Badge>
                 </div>
