@@ -286,13 +286,13 @@ export function HomePageClient({
     subtitleEn?: string
     href?: string
   }) => (
-    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-6">
+    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-1.5 sm:gap-2 mb-4 sm:mb-6">
       <div>
-        <h2 className="text-2xl sm:text-3xl font-black text-foreground tracking-tight flex items-center gap-2">
+        <h2 className="text-xl sm:text-3xl font-black text-foreground tracking-tight flex items-center gap-2">
           {lang === 'ar' ? titleAr : titleEn}
         </h2>
         {(subtitleAr || subtitleEn) && (
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
             {lang === 'ar' ? subtitleAr : subtitleEn}
           </p>
         )}
@@ -300,12 +300,12 @@ export function HomePageClient({
       {href && (
         <Link
           href={href}
-          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-primary hover:text-primary/80 transition-colors shrink-0 group"
+          className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-primary hover:text-primary/80 transition-colors shrink-0 group self-start sm:self-auto"
         >
           <span>{lang === 'ar' ? 'عرض الكل' : 'View All'}</span>
           <ArrowRight
             className={cn(
-              'h-4 w-4 transition-transform group-hover:translate-x-1',
+              'h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform group-hover:translate-x-1',
               isRTL && 'rotate-180 group-hover:-translate-x-1'
             )}
           />
@@ -327,27 +327,27 @@ export function HomePageClient({
           <div className="absolute -bottom-24 start-1/3 h-[320px] w-[320px] rounded-full bg-amber-500/15 blur-[110px]" />
         </div>
 
-        <div className="page-container max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 relative py-8 sm:py-12 md:py-20">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 items-center">
+        <div className="page-container max-w-7xl mx-auto px-3.5 sm:px-8 lg:px-12 relative py-6 sm:py-12 md:py-20">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-center">
             {/* Left/Main Column: Headings, Quick Actions & Search Box */}
-            <div className="lg:col-span-7 space-y-5 sm:space-y-6">
+            <div className="lg:col-span-7 space-y-4 sm:space-y-6">
               {/* WARAQ Brand Pill */}
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-md px-4 py-1.5 text-xs font-bold text-emerald-300 border border-white/15 shadow-sm">
-                <span className="flex h-2 w-2 relative">
+              <div className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full bg-white/10 backdrop-blur-md px-3 sm:px-4 py-1 sm:py-1.5 text-[11px] sm:text-xs font-bold text-emerald-300 border border-white/15 shadow-sm max-w-full">
+                <span className="flex h-2 w-2 relative shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400"></span>
                 </span>
-                <span>
+                <span className="truncate">
                   {lang === 'ar'
-                    ? '🌱 منصة WaraqConnect (ورق كونكت) • عالم جديد بين كل صفحة والتانية'
+                    ? '🌱 منصة WaraqConnect • عالم جديد بين كل صفحة والتانية'
                     : '🌱 WaraqConnect • A World Between Every Page'}
                 </span>
               </div>
 
               {/* Bold Catchy Headline with Official WARAQ Slogan */}
-              <div className="space-y-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-white p-1.5 flex items-center justify-center border border-white/80 shadow-md">
+              <div className="space-y-1.5 sm:space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white p-1 sm:p-1.5 flex items-center justify-center border border-white/80 shadow-md shrink-0">
                     <Image
                       src="/images/logo.png"
                       alt="WaraqConnect Logo"
@@ -356,12 +356,12 @@ export function HomePageClient({
                       className="w-full h-full object-contain"
                     />
                   </div>
-                  <span className="text-xl sm:text-2xl font-black text-emerald-300 tracking-tight">
+                  <span className="text-lg sm:text-2xl font-black text-emerald-300 tracking-tight">
                     {lang === 'ar' ? 'ورق كونكت | WaraqConnect' : 'WaraqConnect | ورق كونكت'}
                   </span>
                 </div>
 
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight text-white">
+                <h1 className="text-2xl xs:text-3xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight text-white">
                   {lang === 'ar' ? (
                     <>
                       عالم جديد.. <br className="hidden sm:inline" />
@@ -381,14 +381,14 @@ export function HomePageClient({
               </div>
 
               {/* Engaging Subtitle */}
-              <p className="text-base sm:text-lg text-white/85 max-w-xl leading-relaxed font-medium">
+              <p className="text-xs sm:text-lg text-white/85 max-w-xl leading-relaxed font-medium">
                 {lang === 'ar'
                   ? 'منصة وتطبيق WaraqConnect (ورق كونكت) لتبادل وشراء واستعارة الكتب المستعملة وتحديات القراءة مع مجتمع القراء في مدينتك. كتابك المقروء كنز ينتظر قارئاً قريباً منك — التقي بأمان وبدون أي عمولات.'
                   : 'WaraqConnect connects readers to swap, borrow, buy secondhand books, and join reading challenges locally. 100% commission free.'}
               </p>
 
               {/* Competitor-Style Mode Pills: Swap, Buy, Borrow, Free */}
-              <div className="flex items-center gap-2 pt-1 overflow-x-auto scrollbar-none max-w-full pb-1 sm:flex-wrap">
+              <div className="flex items-center gap-2 pt-1 overflow-x-auto scrollbar-none max-w-full pb-1 -mx-3.5 px-3.5 sm:mx-0 sm:px-0 sm:flex-wrap">
                 {[
                   {
                     id: 'SWAP',
@@ -398,14 +398,14 @@ export function HomePageClient({
                   },
                   {
                     id: 'SELL',
-                    labelAr: '💸 صفقات رمزية ومخفضة',
-                    labelEn: '💸 Discounted Deals',
+                    labelAr: '💸 صفقات مخفضة',
+                    labelEn: '💸 Deals',
                     tab: 'SELL' as const,
                   },
                   {
                     id: 'GIVEAWAY',
-                    labelAr: '🎁 كتب مجانية وإهداء',
-                    labelEn: '🎁 Free Giveaways',
+                    labelAr: '🎁 كتب مجانية',
+                    labelEn: '🎁 Free',
                     tab: 'GIVEAWAY' as const,
                   },
                 ].map(item => (
@@ -419,7 +419,7 @@ export function HomePageClient({
                         ?.scrollIntoView({ behavior: 'smooth' })
                     }}
                     className={cn(
-                      'px-3.5 py-1.5 rounded-full text-xs font-black backdrop-blur-md transition-all cursor-pointer border whitespace-nowrap shrink-0',
+                      'px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-black backdrop-blur-md transition-all cursor-pointer border whitespace-nowrap shrink-0',
                       activeTab === item.tab
                         ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-lg shadow-amber-400/20 scale-105'
                         : 'bg-white/10 text-white/90 border-white/20 hover:bg-white/20'
@@ -470,10 +470,10 @@ export function HomePageClient({
                 </form>
 
                 {/* Popular / Trending Tags inside Search Card */}
-                <div className="mt-3 pt-2.5 border-t border-border/60 flex items-center gap-1.5 flex-wrap text-xs text-muted-foreground">
+                <div className="mt-3 pt-2.5 border-t border-border/60 flex items-center gap-1.5 overflow-x-auto scrollbar-none sm:flex-wrap text-xs text-muted-foreground pb-0.5">
                   <span className="font-bold flex items-center gap-1 text-foreground shrink-0">
                     <Flame className="h-3.5 w-3.5 text-orange-500 fill-orange-500" />
-                    <span>{lang === 'ar' ? 'شائع الآن:' : 'Trending:'}</span>
+                    <span>{lang === 'ar' ? 'شائع:' : 'Trending:'}</span>
                   </span>
                   {[
                     { labelAr: 'العادات الذرية', labelEn: 'Atomic Habits', q: 'العادات الذرية' },
@@ -489,7 +489,7 @@ export function HomePageClient({
                         setSearchQuery(trend.q)
                         router.push(`/search?q=${encodeURIComponent(trend.q)}`)
                       }}
-                      className="px-2.5 py-1 rounded-lg bg-muted hover:bg-primary/10 hover:text-primary text-[11px] font-semibold transition-colors cursor-pointer select-none"
+                      className="px-2.5 py-1 rounded-lg bg-muted hover:bg-primary/10 hover:text-primary text-[11px] font-semibold transition-colors cursor-pointer select-none whitespace-nowrap shrink-0"
                     >
                       {lang === 'ar' ? trend.labelAr : trend.labelEn}
                     </button>
@@ -498,11 +498,11 @@ export function HomePageClient({
               </div>
 
               {/* Action Buttons & Quick Stats */}
-              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+              <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-4">
                 <Link href="/books/add" className="w-full sm:w-auto">
                   <Button
                     size="lg"
-                    className="w-full sm:w-auto justify-center bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-xl shadow-primary/30 px-6 py-5 sm:py-6 rounded-2xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-sm flex items-center gap-2 border border-white/20"
+                    className="w-full sm:w-auto justify-center bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-xl shadow-primary/30 px-6 py-4 sm:py-6 rounded-xl sm:rounded-2xl cursor-pointer hover:scale-105 active:scale-95 transition-all text-sm flex items-center gap-2 border border-white/20"
                   >
                     <PlusCircle className="h-5 w-5" />
                     <span>{lang === 'ar' ? 'أضف كتابك مجاناً' : 'Add Your Book Free'}</span>
@@ -512,7 +512,7 @@ export function HomePageClient({
                   <Button
                     size="lg"
                     variant="ghost"
-                    className="w-full sm:w-auto justify-center border-2 border-white/30 hover:border-white/60 bg-white/10 hover:bg-white/20 text-white backdrop-blur-md px-6 py-5 sm:py-6 rounded-2xl text-sm font-bold cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-md"
+                    className="w-full sm:w-auto justify-center border-2 border-white/30 hover:border-white/60 bg-white/10 hover:bg-white/20 text-white backdrop-blur-md px-6 py-4 sm:py-6 rounded-xl sm:rounded-2xl text-sm font-bold cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-md"
                   >
                     <span>{lang === 'ar' ? 'تصفح كل الكتب' : 'Explore All Books'}</span>
                     <ArrowRight className={cn('h-4 w-4 ms-1.5', isRTL && 'rotate-180')} />
@@ -521,16 +521,16 @@ export function HomePageClient({
               </div>
 
               {/* Trust Metric Chips */}
-              <div className="pt-2 grid grid-cols-1 sm:flex sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-8 text-white/90 text-xs sm:text-sm font-semibold">
-                <div className="flex items-center gap-2 p-2.5 sm:p-0 rounded-xl bg-white/10 sm:bg-transparent border border-white/15 sm:border-transparent">
+              <div className="pt-2 flex items-center gap-2 sm:gap-6 text-white/90 text-xs sm:text-sm font-semibold overflow-x-auto scrollbar-none pb-1 -mx-2 px-2 sm:mx-0 sm:px-0 sm:flex-wrap">
+                <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:p-0 rounded-xl bg-white/10 sm:bg-transparent border border-white/15 sm:border-transparent shrink-0 whitespace-nowrap">
                   <ArrowRightLeft className="h-4 w-4 text-amber-400 shrink-0" />
                   <span>{lang === 'ar' ? '0% عمولات على التبادل' : '0% Commission on Swaps'}</span>
                 </div>
-                <div className="flex items-center gap-2 p-2.5 sm:p-0 rounded-xl bg-white/10 sm:bg-transparent border border-white/15 sm:border-transparent">
+                <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:p-0 rounded-xl bg-white/10 sm:bg-transparent border border-white/15 sm:border-transparent shrink-0 whitespace-nowrap">
                   <Coffee className="h-4 w-4 text-emerald-400 shrink-0" />
                   <span>{lang === 'ar' ? 'نقاط تبادل آمنة في الكافيهات' : 'Safe Cafe Meetup Hubs'}</span>
                 </div>
-                <div className="flex items-center gap-2 p-2.5 sm:p-0 rounded-xl bg-white/10 sm:bg-transparent border border-white/15 sm:border-transparent">
+                <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 py-1.5 sm:p-0 rounded-xl bg-white/10 sm:bg-transparent border border-white/15 sm:border-transparent shrink-0 whitespace-nowrap">
                   <ShieldCheck className="h-4 w-4 text-violet-400 shrink-0" />
                   <span>{lang === 'ar' ? 'تأمين مسترد 100% للإعارة' : '100% Refundable Deposit'}</span>
                 </div>
@@ -622,7 +622,7 @@ export function HomePageClient({
         </div>
       </section>
 
-      <div className="page-container max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 py-10 space-y-16">
+      <div className="page-container max-w-7xl mx-auto px-3.5 sm:px-8 lg:px-12 py-6 sm:py-10 pb-28 sm:pb-16 space-y-10 sm:space-y-16">
         {/* ======== DYNAMIC BOOKSHELF WITH INTERACTIVE FILTER TABS (PROMINENT AT TOP) ======== */}
         <section id="explore-books-section" className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-border/80 pb-4">
@@ -793,13 +793,13 @@ export function HomePageClient({
             subtitleEn="Browse books by your academic and personal interests"
             href="/explore"
           />
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 overflow-x-auto scrollbar-none pb-2 -mx-3.5 px-3.5 sm:mx-0 sm:px-0 sm:flex-wrap">
             {categories.map(cat => (
               <Link
                 key={cat.id}
                 href={`/explore?category=${cat.slug}`}
                 id={`category-${cat.slug}`}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl border bg-card hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 text-xs sm:text-sm font-semibold shadow-2xs group"
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl border bg-card hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-200 text-xs sm:text-sm font-semibold shadow-2xs group whitespace-nowrap shrink-0"
               >
                 <span className="text-base group-hover:scale-110 transition-transform">{cat.icon}</span>
                 <span>{lang === 'ar' ? cat.name_ar : cat.name_en}</span>
@@ -1032,7 +1032,7 @@ export function HomePageClient({
 
         {/* ======== MOST WANTED BOOKS (WISHLIST ACCUMULATOR) ======== */}
         {wantedBooks.length > 0 && (
-          <section className="bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-card rounded-3xl p-6 sm:p-8 border-2 border-amber-500/20 space-y-4">
+          <section className="bg-gradient-to-br from-amber-500/10 via-orange-500/5 to-card rounded-2xl sm:rounded-3xl p-4 sm:p-8 border-2 border-amber-500/20 space-y-4">
             <SectionHeader
               titleAr="📣 كتب يبحث عنها القراء الآن"
               titleEn="📣 Books Readers Are Currently Looking For"
@@ -1040,14 +1040,14 @@ export function HomePageClient({
               subtitleEn="If you have any of these titles on your shelf, list them for instant matches!"
               href="/explore?sort=most_wished"
             />
-            <div className="flex flex-wrap gap-2.5">
+            <div className="flex gap-2.5 overflow-x-auto scrollbar-none pb-2 -mx-2 px-2 sm:mx-0 sm:px-0 sm:flex-wrap">
               {wantedBooks.slice(0, 12).map(book => (
                 <div
                   key={book.id}
                   onClick={() => router.push(`/search?q=${encodeURIComponent(book.title)}`)}
-                  className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-card border border-amber-200 dark:border-amber-900/40 hover:border-primary hover:bg-primary/5 transition-all cursor-pointer shadow-2xs group"
+                  className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-card border border-amber-200 dark:border-amber-900/40 hover:border-primary hover:bg-primary/5 transition-all cursor-pointer shadow-2xs group shrink-0 whitespace-nowrap"
                 >
-                  <BookMarked className="h-4 w-4 text-amber-500 group-hover:text-primary transition-colors" />
+                  <BookMarked className="h-4 w-4 text-amber-500 group-hover:text-primary transition-colors shrink-0" />
                   <span className="text-xs sm:text-sm font-bold text-foreground line-clamp-1 max-w-[150px]">
                     {lang === 'ar' && book.title_ar ? book.title_ar : book.title}
                   </span>
@@ -1061,7 +1061,7 @@ export function HomePageClient({
         )}
 
         {/* ======== VALUE PROPOSITION & COMPARISON BANNER (STORYGRAPH & THRIFTBOOKS STYLE) ======== */}
-        <section className="relative overflow-hidden rounded-3xl border-2 border-border/80 bg-gradient-to-br from-card via-background to-muted/40 p-6 sm:p-10 shadow-sm">
+        <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl border-2 border-border/80 bg-gradient-to-br from-card via-background to-muted/40 p-4 sm:p-10 shadow-sm">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             {/* Left Column: Why BookSwap vs Expensive Bookstores */}
             <div className="lg:col-span-7 space-y-4">

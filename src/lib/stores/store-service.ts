@@ -1,6 +1,7 @@
 import type { Bookstore, StoreOffer, StoreEvent, RSVPStatus, StoreType, OfferType, StoreInventoryItem, StoreApplication, StoreApplicationStatus, StoreOrder } from '@/types/store'
 import { createClient } from '@/lib/supabase/client'
 import { STORE_CATALOG_BOOKS, getStoreBookCover } from '@/lib/stores/store-catalog-data'
+import { REAL_STORE_INVENTORY_SEEDS } from './real-store-inventory-seeds'
 
 type SupabaseClient = any
 
@@ -42,7 +43,7 @@ export const DEMO_STORES: Bookstore[] = [
     follower_count: 1840,
     is_active: true,
     created_at: '2025-01-10T10:00:00Z',
-    offers_count: 2,
+    offers_count: 9,
   },
   {
     id: 'store-shorouk-downtown',
@@ -141,7 +142,7 @@ export const DEMO_STORES: Bookstore[] = [
     follower_count: 1280,
     is_active: true,
     created_at: '2025-02-15T14:00:00Z',
-    offers_count: 1,
+    offers_count: 0,
   },
   {
     id: 'store-bookish-online',
@@ -171,7 +172,7 @@ export const DEMO_STORES: Bookstore[] = [
     follower_count: 3600,
     is_active: true,
     created_at: '2025-01-20T11:00:00Z',
-    offers_count: 2,
+    offers_count: 3,
   },
 ]
 
@@ -244,6 +245,116 @@ export const DEMO_OFFERS: StoreOffer[] = [
     is_featured: true,
     status: 'ACTIVE',
     created_at: '2026-09-15T10:00:00Z',
+  },
+  {
+    id: 'offer-diwan-tier-3',
+    store_id: 'store-diwan-zamalek',
+    title: '3 Books Bundle + 1 Gift Book + 3 Bookmarks = 120 EGP',
+    title_ar: 'باكدج الـ 3 كتب',
+    description: 'Pick 3 books from our catalog and get 1 mystery gift book + 3 laser-cut bookmarks for 120 EGP',
+    description_ar: 'اختار اللي يعجبك من القائمة، والكتب الهدية من اختيار المكتبة عشوائي 😍',
+    offer_type: 'BUNDLE_TIER',
+    bundle_buy_qty: 3,
+    bundle_free_qty: 1,
+    bundle_bookmarks: 3,
+    bundle_price: 120,
+    offer_price: 120,
+    original_price: 210,
+    book_count: 3,
+    gift_description: 'كتاب هدية + 3 فواصل خشبية فاخرة',
+    is_featured: false,
+    status: 'ACTIVE',
+    starts_at: '2026-09-01T00:00:00Z',
+    ends_at: '2026-11-30T23:59:59Z',
+    created_at: '2026-09-01T10:00:00Z',
+  },
+  {
+    id: 'offer-diwan-tier-5',
+    store_id: 'store-diwan-zamalek',
+    title: '5 Books Bundle (Most Popular Deal) = 200 EGP',
+    title_ar: 'باكدج الـ 5 كتب (عرض التوفير الأكثر طلباً 🔥)',
+    description: 'Pick 5 books from our catalog and get 1 gift book + 5 bookmarks for 200 EGP',
+    description_ar: 'احصل على 5 كتب + 1 كتاب هدية + 5 فواصل خشبية فاخرة بسعر 200 ج.م فقط',
+    offer_type: 'BUNDLE_TIER',
+    bundle_buy_qty: 5,
+    bundle_free_qty: 1,
+    bundle_bookmarks: 5,
+    bundle_price: 200,
+    offer_price: 200,
+    original_price: 390,
+    book_count: 5,
+    gift_description: 'كتاب هدية + 5 فواصل خشبية فاخرة + شحن مخفض',
+    is_featured: true,
+    status: 'ACTIVE',
+    starts_at: '2026-09-01T00:00:00Z',
+    ends_at: '2026-11-30T23:59:59Z',
+    created_at: '2026-09-01T10:00:00Z',
+  },
+  {
+    id: 'offer-diwan-tier-10',
+    store_id: 'store-diwan-zamalek',
+    title: '10 Books Bundle = 380 EGP',
+    title_ar: 'باكدج الـ 10 كتب',
+    description: 'Pick 10 books from our catalog and get 2 gift books + 10 bookmarks for 380 EGP',
+    description_ar: '10 كتب من اختيارك + كتابين هدية + 10 فواصل قراءة',
+    offer_type: 'BUNDLE_TIER',
+    bundle_buy_qty: 10,
+    bundle_free_qty: 2,
+    bundle_bookmarks: 10,
+    bundle_price: 380,
+    offer_price: 380,
+    original_price: 780,
+    book_count: 10,
+    gift_description: 'كتابين هدية + 10 فواصل خشبية فاخرة',
+    is_featured: false,
+    status: 'ACTIVE',
+    starts_at: '2026-09-01T00:00:00Z',
+    ends_at: '2026-11-30T23:59:59Z',
+    created_at: '2026-09-01T10:00:00Z',
+  },
+  {
+    id: 'offer-diwan-tier-15',
+    store_id: 'store-diwan-zamalek',
+    title: '15 Books Bundle = 540 EGP',
+    title_ar: 'باكدج الـ 15 كتاب',
+    description: 'Pick 15 books from our catalog and get 3 gift books + 15 bookmarks for 540 EGP',
+    description_ar: '15 كتاب من اختيارك + 3 كتب هدية + 15 فاصل قراءة',
+    offer_type: 'BUNDLE_TIER',
+    bundle_buy_qty: 15,
+    bundle_free_qty: 3,
+    bundle_bookmarks: 15,
+    bundle_price: 540,
+    offer_price: 540,
+    original_price: 1150,
+    book_count: 15,
+    gift_description: '3 كتب هدية + 15 فاصل قراءة + مفكرة تدوين',
+    is_featured: false,
+    status: 'ACTIVE',
+    starts_at: '2026-09-01T00:00:00Z',
+    ends_at: '2026-11-30T23:59:59Z',
+    created_at: '2026-09-01T10:00:00Z',
+  },
+  {
+    id: 'offer-diwan-tier-20',
+    store_id: 'store-diwan-zamalek',
+    title: '20 Books Comprehensive Home Library Bundle = 690 EGP',
+    title_ar: 'باكدج الـ 20 كتاب الشامل للمكتبة المنزلية',
+    description: 'Pick 20 books from our catalog and get 4 gift books + 20 bookmarks for 690 EGP',
+    description_ar: '20 كتاب من اختيارك + 4 كتب هدية + 20 فاصل قراءة فاخر',
+    offer_type: 'BUNDLE_TIER',
+    bundle_buy_qty: 20,
+    bundle_free_qty: 4,
+    bundle_bookmarks: 20,
+    bundle_price: 690,
+    offer_price: 690,
+    original_price: 1550,
+    book_count: 20,
+    gift_description: '4 كتب هدية + 20 فاصل قراءة + شحن مجاني',
+    is_featured: false,
+    status: 'ACTIVE',
+    starts_at: '2026-09-01T00:00:00Z',
+    ends_at: '2026-11-30T23:59:59Z',
+    created_at: '2026-09-01T10:00:00Z',
   },
   {
     id: 'offer-azbakeya-clearance',
@@ -741,6 +852,17 @@ function filterDemoStores(params?: {
   return list
 }
 
+export const STORE_SLUG_ALIASES: Record<string, string> = {
+  'diwan-zamalek': 'diwan-bookstore',
+  'diwan': 'diwan-bookstore',
+  'shorouk-downtown': 'dar-el-shorouk',
+  'shorouk': 'dar-el-shorouk',
+  'dar-al-shorouk': 'dar-el-shorouk',
+  'azbakeya': 'azbakeya-heritage',
+  'readers-corner': 'readers-corner-alex',
+  'bookish': 'bookish-egypt',
+}
+
 /**
  * Get bookstore by slug with its active offers and events (queries DB first)
  */
@@ -750,12 +872,13 @@ export async function getStoreBySlug(slug: string, _client?: SupabaseClient): Pr
   events: StoreEvent[]
   inventory: StoreInventoryItem[]
 }> {
+  const canonicalSlug = STORE_SLUG_ALIASES[slug] || slug
   try {
     const supabase = _client ?? createClient()
     const { data: store, error } = await supabase
       .from('bookstores')
       .select('*')
-      .eq('slug', slug)
+      .or(`slug.eq.${slug},slug.eq.${canonicalSlug}`)
       .eq('is_active', true)
       .maybeSingle()
 
@@ -767,14 +890,14 @@ export async function getStoreBySlug(slug: string, _client?: SupabaseClient): Pr
         const stored = localStorage.getItem(STORES_STORAGE_KEY)
         if (stored) {
           const map = JSON.parse(stored)
-          activeStore = map[slug] || Object.values(map).find((s: any) => s.slug === slug) as Bookstore || null
+          activeStore = map[slug] || map[canonicalSlug] || Object.values(map).find((s: any) => s.slug === slug || s.slug === canonicalSlug) as Bookstore || null
         }
       } catch {}
     }
 
     // Fallback to DEMO_STORES
     if (!activeStore) {
-      activeStore = DEMO_STORES.find(s => s.slug === slug) || null
+      activeStore = DEMO_STORES.find(s => s.slug === slug || s.slug === canonicalSlug || s.id === slug) || null
     }
 
     if (!activeStore) return { store: null, offers: [], events: [], inventory: [] }
@@ -797,10 +920,17 @@ export async function getStoreBySlug(slug: string, _client?: SupabaseClient): Pr
       } catch {}
     }
 
+    const baseOffers = (offers && offers.length > 0)
+      ? (offers as StoreOffer[])
+      : DEMO_OFFERS.filter(o => o.store_id === activeStore!.id)
+
     const mergedOffers = customOffers.length > 0 
-      ? [...customOffers, ...(offers ? (offers as StoreOffer[]) : [])]
-      : (offers && offers.length > 0) ? (offers as StoreOffer[]) : DEMO_OFFERS.filter(o => o.store_id === activeStore!.id)
-    const mergedEvents = (events && events.length > 0) ? (events as StoreEvent[]) : DEMO_EVENTS.filter(e => e.store_id === activeStore!.id)
+      ? [...customOffers, ...baseOffers]
+      : baseOffers
+
+    const mergedEvents = (events && events.length > 0)
+      ? (events as StoreEvent[])
+      : DEMO_EVENTS.filter(e => e.store_id === activeStore!.id)
 
     // Load store inventory items
     const inventory = await getStoreInventory(activeStore.id)
@@ -812,12 +942,12 @@ export async function getStoreBySlug(slug: string, _client?: SupabaseClient): Pr
       inventory,
     }
   } catch {
-    const demoStore = DEMO_STORES.find(s => s.slug === slug) || null
+    const demoStore = DEMO_STORES.find(s => s.slug === slug || s.slug === canonicalSlug || s.id === slug) || null
     if (!demoStore) return { store: null, offers: [], events: [], inventory: [] }
-    const offers = DEMO_OFFERS.filter(o => o.store_id === demoStore.id)
-    const events = DEMO_EVENTS.filter(e => e.store_id === demoStore.id)
     const inventory = await getStoreInventory(demoStore.id)
-    return { store: demoStore, offers, events, inventory }
+    const storeOffers = DEMO_OFFERS.filter(o => o.store_id === demoStore.id)
+    const storeEvents = DEMO_EVENTS.filter(e => e.store_id === demoStore.id)
+    return { store: demoStore, offers: storeOffers, events: storeEvents, inventory }
   }
 }
 
@@ -1181,47 +1311,59 @@ const ORDERS_STORAGE_KEY = 'waraq_store_orders_v1'
 const FOLLOWS_STORAGE_KEY = 'waraq_store_follows_v1'
 const RATINGS_STORAGE_KEY = 'waraq_store_ratings_v1'
 
+export const STORE_ID_ALIASES: Record<string, string> = {
+  'diwan-bookstore': 'store-diwan-zamalek',
+  'diwan-zamalek': 'store-diwan-zamalek',
+  'dar-el-shorouk': 'store-shorouk-downtown',
+  'shorouk-downtown': 'store-shorouk-downtown',
+  'azbakeya-heritage': 'store-azbakeya-heritage',
+  'readers-corner-alex': 'store-readers-corner-alex',
+  'bookish-egypt': 'store-bookish-online',
+}
+
 /**
- * Get bookstore inventory items
+ * Get bookstore inventory items (Real saved inventory + authentic real bookstore presets)
  */
 export async function getStoreInventory(storeId: string): Promise<StoreInventoryItem[]> {
+  const resolvedStoreId = STORE_ID_ALIASES[storeId] || storeId
+  const seedItems = REAL_STORE_INVENTORY_SEEDS[resolvedStoreId] || []
+
   if (typeof window !== 'undefined') {
     try {
-      const stored = localStorage.getItem(`${INVENTORY_STORAGE_KEY}_${storeId}`)
+      const stored = localStorage.getItem(`${INVENTORY_STORAGE_KEY}_${resolvedStoreId}`)
       if (stored) {
-        return JSON.parse(stored)
+        const parsed = JSON.parse(stored) as StoreInventoryItem[]
+        // Filter out legacy auto-seeded dummy books
+        const realItems = parsed.filter(i => !i.id.startsWith('seed-'))
+
+        if (seedItems.length > 0) {
+          // If the stored items were a subset, ensure all authentic seed books are included
+          const storedMap = new Map(realItems.map(item => [item.id, item]))
+          const result: StoreInventoryItem[] = [...realItems]
+          for (const s of seedItems) {
+            if (!storedMap.has(s.id)) {
+              result.push(s)
+            }
+          }
+          if (result.length !== parsed.length) {
+            localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${resolvedStoreId}`, JSON.stringify(result))
+          }
+          return result
+        }
+
+        if (realItems.length > 0) {
+          return realItems
+        }
       }
     } catch {}
   }
 
-  const demoItems = DEMO_STORE_INVENTORY.filter(item => item.store_id === storeId)
-  if (demoItems.length > 0) return demoItems
-
-  // Seed default books from curated catalog for new bookstores so storefront is never empty
-  const seeded: StoreInventoryItem[] = STORE_CATALOG_BOOKS.slice(0, 8).map((book, idx) => ({
-    id: `seed-${storeId}-${idx}`,
-    store_id: storeId,
-    title: book.title,
-    title_ar: book.title_ar || book.title,
-    author: book.author,
-    isbn: `97897709${idx}4321`,
-    category_name: book.category_name_ar || 'أدب وروايات',
-    condition: 'NEW',
-    price: book.price || 120,
-    original_price: book.original_price || (book.price ? book.price + 40 : 160),
-    stock_quantity: 12,
-    cover_url: getStoreBookCover(book),
-    is_active: true,
-    created_at: new Date().toISOString(),
-  }))
-
-  if (typeof window !== 'undefined') {
-    try {
-      localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${storeId}`, JSON.stringify(seeded))
-    } catch {}
+  // Return authentic real bookstore inventory seeds for known stores
+  if (seedItems.length > 0) {
+    return seedItems
   }
 
-  return seeded
+  return []
 }
 
 /**
@@ -1279,6 +1421,120 @@ export async function submitStoreOrder(
 }
 
 /**
+ * Sample realistic store orders for demo stores to provide immediate interactive follow-up experience
+ */
+const DEMO_STORE_SAMPLE_ORDERS: Record<string, StoreOrder[]> = {
+  'store-1': [
+    {
+      id: 'ord-diwan-101',
+      order_number: 'ORD-DWN92-101',
+      store_id: 'store-1',
+      order_type: 'CURATED_PACK',
+      pack_title: 'باكدج نجيب محفوظ (اللص والكلاب + بين القصرين)',
+      total_price: 245,
+      customer_name: 'أحمد محمود عبد الرحمن',
+      customer_phone: '01012345678',
+      customer_city: 'القاهرة',
+      customer_address: 'مدينة نصر - الحي السابع - عمارة 14 ش الطيران',
+      customer_notes: 'يرجى التوصيل بعد الساعة 4 عصراً',
+      status: 'NEW',
+      items: [
+        {
+          book_id: 'bk-1',
+          title: 'بين القصرين',
+          title_ar: 'بين القصرين',
+          book_title: 'بين القصرين',
+          author: 'نجيب محفوظ',
+          price: 130,
+          quantity: 1,
+          cover_url: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=400&q=80',
+        },
+        {
+          book_id: 'bk-2',
+          title: 'اللص والكلاب',
+          title_ar: 'اللص والكلاب',
+          book_title: 'اللص والكلاب',
+          author: 'نجيب محفوظ',
+          price: 115,
+          quantity: 1,
+          cover_url: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=400&q=80',
+        },
+      ],
+      created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
+    },
+    {
+      id: 'ord-diwan-102',
+      order_number: 'ORD-DWN88-102',
+      store_id: 'store-1',
+      order_type: 'SINGLE_BOOK',
+      total_price: 180,
+      customer_name: 'سارة خالد المنشاوي',
+      customer_phone: '01123456789',
+      customer_city: 'الجيزة',
+      customer_address: 'الدقي - ميدان المساحة - شارع مصدق',
+      customer_notes: 'الدفع كاش عند الاستلام بالتمام',
+      status: 'CONFIRMED',
+      items: [
+        {
+          book_id: 'bk-3',
+          title: 'قواعد العشق الأربعون',
+          title_ar: 'قواعد العشق الأربعون',
+          book_title: 'قواعد العشق الأربعون',
+          author: 'إليف شافاق',
+          price: 180,
+          quantity: 1,
+          cover_url: 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80',
+        },
+      ],
+      created_at: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
+    },
+    {
+      id: 'ord-diwan-103',
+      order_number: 'ORD-DWN75-103',
+      store_id: 'store-1',
+      order_type: 'BUNDLE_PACKAGE',
+      bundle_title: 'باقة توفير 3 روايات أدبية + فاصل قراءة',
+      total_price: 320,
+      customer_name: 'محمود طارق الشامي',
+      customer_phone: '01234567890',
+      customer_city: 'الإسكندرية',
+      customer_address: 'سموحة - ش فوزي معاذ بجوار مسجد علي بن أبي طالب',
+      status: 'DISPATCHED',
+      items: [
+        {
+          book_id: 'bk-4',
+          title: 'عزازيل',
+          title_ar: 'عزازيل',
+          book_title: 'عزازيل',
+          author: 'يوسف زيدان',
+          price: 120,
+          quantity: 1,
+        },
+        {
+          book_id: 'bk-5',
+          title: 'ساق البامبو',
+          title_ar: 'ساق البامبو',
+          book_title: 'ساق البامبو',
+          author: 'سعود السنعوسي',
+          price: 110,
+          quantity: 1,
+        },
+        {
+          book_id: 'bk-6',
+          title: 'تراب الماس',
+          title_ar: 'تراب الماس',
+          book_title: 'تراب الماس',
+          author: 'أحمد مراد',
+          price: 90,
+          quantity: 1,
+        },
+      ],
+      created_at: new Date(Date.now() - 26 * 3600 * 1000).toISOString(),
+    },
+  ],
+}
+
+/**
  * Get orders received by a specific bookstore (Supabase DB + local cache merge)
  */
 export async function getStoreOrders(storeId: string): Promise<StoreOrder[]> {
@@ -1300,23 +1556,59 @@ export async function getStoreOrders(storeId: string): Promise<StoreOrder[]> {
       const key = `${ORDERS_STORAGE_KEY}_${storeId}`
       const stored = localStorage.getItem(key)
       if (stored) {
-        localOrders = JSON.parse(stored)
+        const parsed = JSON.parse(stored) as StoreOrder[]
+        // Remove dummy demo orders, keep only real customer orders
+        localOrders = parsed.filter(
+          o => !o.id.startsWith('ord-diwan-') && !o.order_number?.startsWith('ORD-DWN')
+        )
+        if (localOrders.length !== parsed.length) {
+          localStorage.setItem(key, JSON.stringify(localOrders))
+        }
       }
     } catch {}
   }
 
-  // Merge server and local orders uniquely by ID
+  // Filter server orders to exclude any dummy orders
+  serverOrders = serverOrders.filter(
+    o => !o.id.startsWith('ord-diwan-') && !o.order_number?.startsWith('ORD-DWN')
+  )
+
+  // Merge server and local orders: Map by both ID and order_number so status transitions are preserved
   const orderMap = new Map<string, StoreOrder>()
+
+  // 1. Load server orders
   for (const o of serverOrders) {
-    orderMap.set(o.id, o)
+    const key = o.order_number || o.id
+    orderMap.set(key, o)
+    if (o.id) orderMap.set(o.id, o)
   }
+
+  // 2. Overlay local orders (preserving client-side status updates or newly created orders)
   for (const o of localOrders) {
-    if (!orderMap.has(o.id)) {
-      orderMap.set(o.id, o)
+    const key = o.order_number || o.id
+    const existing = orderMap.get(key) || (o.id ? orderMap.get(o.id) : undefined)
+    if (existing) {
+      const merged = { ...existing, ...o }
+      orderMap.set(key, merged)
+      if (o.id) orderMap.set(o.id, merged)
+    } else {
+      orderMap.set(key, o)
+      if (o.id) orderMap.set(o.id, o)
     }
   }
 
-  return Array.from(orderMap.values()).sort(
+  // De-duplicate into clean array
+  const distinctOrders: StoreOrder[] = []
+  const seenCodes = new Set<string>()
+  for (const order of orderMap.values()) {
+    const code = order.order_number || order.id
+    if (!seenCodes.has(code)) {
+      seenCodes.add(code)
+      distinctOrders.push(order)
+    }
+  }
+
+  return distinctOrders.sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   )
 }
@@ -1362,28 +1654,69 @@ export async function getStoreOrder(orderIdentifier: string): Promise<StoreOrder
 
 /**
  * Update store order status (NEW, CONFIRMED, DISPATCHED, DELIVERED, CANCELLED)
+ * Persists to Supabase DB via PATCH /api/stores/orders and synchronizes localStorage
  */
 export async function updateStoreOrderStatus(
   storeId: string,
   orderId: string,
-  status: StoreOrder['status']
+  status: StoreOrder['status'],
+  extraDetails?: { admin_notes?: string; tracking_number?: string; tracking_carrier?: string }
 ): Promise<boolean> {
+  // 1. Send update to server API
+  try {
+    await fetch('/api/stores/orders', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        store_id: storeId,
+        order_id: orderId,
+        status,
+        ...extraDetails,
+      }),
+    })
+  } catch (err) {
+    console.warn('[updateStoreOrderStatus] Server API update warning:', err)
+  }
+
+  // 2. Synchronize localStorage cache for immediate UI reflect
   if (typeof window !== 'undefined') {
     try {
       const key = `${ORDERS_STORAGE_KEY}_${storeId}`
       const stored = localStorage.getItem(key)
       if (stored) {
         const orders = JSON.parse(stored) as StoreOrder[]
-        const target = orders.find(o => o.id === orderId)
+        const target = orders.find(o => o.id === orderId || o.order_number === orderId)
         if (target) {
           target.status = status
+          if (extraDetails?.admin_notes) target.admin_notes = extraDetails.admin_notes
+          if (extraDetails?.tracking_number) target.tracking_number = extraDetails.tracking_number
+          if (extraDetails?.tracking_carrier) target.tracking_carrier = extraDetails.tracking_carrier
+          target.updated_at = new Date().toISOString()
           localStorage.setItem(key, JSON.stringify(orders))
-          return true
         }
       }
+
+      // Also ensure cross-key synchronization if stored under another key
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i)
+        if (k && k.startsWith(ORDERS_STORAGE_KEY) && k !== key) {
+          const s = localStorage.getItem(k)
+          if (s) {
+            const ords = JSON.parse(s) as StoreOrder[]
+            const tgt = ords.find(o => o.id === orderId || o.order_number === orderId)
+            if (tgt) {
+              tgt.status = status
+              if (extraDetails?.admin_notes) tgt.admin_notes = extraDetails.admin_notes
+              tgt.updated_at = new Date().toISOString()
+              localStorage.setItem(k, JSON.stringify(ords))
+            }
+          }
+        }
+      }
+      return true
     } catch {}
   }
-  return false
+  return true
 }
 
 /**
@@ -1400,9 +1733,10 @@ export async function addStoreBook(
 
   if (typeof window !== 'undefined') {
     try {
-      const current = await getStoreInventory(item.store_id)
+      const resolvedStoreId = STORE_ID_ALIASES[item.store_id] || item.store_id
+      const current = await getStoreInventory(resolvedStoreId)
       const updated = [newItem, ...current]
-      localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${item.store_id}`, JSON.stringify(updated))
+      localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${resolvedStoreId}`, JSON.stringify(updated))
     } catch {}
   }
 
@@ -1423,10 +1757,11 @@ export async function addStoreBooksBatch(
 
   if (typeof window !== 'undefined' && items.length > 0) {
     try {
-      const storeId = items[0].store_id
-      const current = await getStoreInventory(storeId)
+      const rawStoreId = items[0].store_id
+      const resolvedStoreId = STORE_ID_ALIASES[rawStoreId] || rawStoreId
+      const current = await getStoreInventory(resolvedStoreId)
       const updated = [...newItems, ...current]
-      localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${storeId}`, JSON.stringify(updated))
+      localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${resolvedStoreId}`, JSON.stringify(updated))
     } catch {}
   }
 
@@ -1437,16 +1772,102 @@ export async function addStoreBooksBatch(
  * Delete a book from bookstore inventory
  */
 export async function deleteStoreBook(storeId: string, itemId: string): Promise<boolean> {
+  const resolvedStoreId = STORE_ID_ALIASES[storeId] || storeId
   if (typeof window !== 'undefined') {
     try {
-      const current = await getStoreInventory(storeId)
+      const current = await getStoreInventory(resolvedStoreId)
       const updated = current.filter(i => i.id !== itemId)
-      localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${storeId}`, JSON.stringify(updated))
+      localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${resolvedStoreId}`, JSON.stringify(updated))
       return true
     } catch {}
   }
   return true
 }
+
+/**
+ * Update a book in bookstore inventory
+ */
+export async function updateStoreBook(
+  storeId: string,
+  itemId: string,
+  updates: Partial<StoreInventoryItem>
+): Promise<StoreInventoryItem | null> {
+  const resolvedStoreId = STORE_ID_ALIASES[storeId] || storeId
+  if (typeof window !== 'undefined') {
+    try {
+      const current = await getStoreInventory(resolvedStoreId)
+      let updatedItem: StoreInventoryItem | null = null
+      const updated = current.map(item => {
+        if (item.id === itemId) {
+          updatedItem = { ...item, ...updates }
+          return updatedItem
+        }
+        return item
+      })
+      if (updatedItem) {
+        localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${resolvedStoreId}`, JSON.stringify(updated))
+      }
+      return updatedItem
+    } catch {}
+  }
+  return null
+}
+
+/**
+ * Delete multiple books from bookstore inventory
+ */
+export async function deleteStoreBooksBatch(storeId: string, itemIds: string[]): Promise<boolean> {
+  const resolvedStoreId = STORE_ID_ALIASES[storeId] || storeId
+  if (typeof window !== 'undefined') {
+    try {
+      const current = await getStoreInventory(resolvedStoreId)
+      const updated = current.filter(i => !itemIds.includes(i.id))
+      localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${resolvedStoreId}`, JSON.stringify(updated))
+      return true
+    } catch {}
+  }
+  return true
+}
+
+/**
+ * Delete all books from bookstore inventory
+ */
+export async function deleteAllStoreBooks(storeId: string): Promise<boolean> {
+  const resolvedStoreId = STORE_ID_ALIASES[storeId] || storeId
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${resolvedStoreId}`, JSON.stringify([]))
+      return true
+    } catch {}
+  }
+  return true
+}
+
+/**
+ * Batch update selected books in bookstore inventory (e.g. price, stock, condition, category)
+ */
+export async function updateStoreBooksBatch(
+  storeId: string,
+  itemIds: string[],
+  updates: Partial<StoreInventoryItem>
+): Promise<StoreInventoryItem[]> {
+  const resolvedStoreId = STORE_ID_ALIASES[storeId] || storeId
+  if (typeof window !== 'undefined') {
+    try {
+      const current = await getStoreInventory(resolvedStoreId)
+      const updated = current.map(item => {
+        if (itemIds.includes(item.id)) {
+          return { ...item, ...updates }
+        }
+        return item
+      })
+      localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${resolvedStoreId}`, JSON.stringify(updated))
+      return updated.filter(item => itemIds.includes(item.id))
+    } catch {}
+  }
+  return []
+}
+
 
 /**
  * Update bookstore details (profile, working hours, map location, social channels)
@@ -1543,6 +1964,48 @@ export async function deleteStoreOffer(offerId: string): Promise<boolean> {
       if (stored) {
         const list = JSON.parse(stored)
         const updated = list.filter((o: any) => o.id !== offerId)
+        localStorage.setItem(OFFERS_STORAGE_KEY, JSON.stringify(updated))
+      }
+    } catch {}
+  }
+  return true
+}
+
+/**
+ * Update an existing store offer
+ */
+export async function updateStoreOffer(
+  offerId: string,
+  updates: Partial<StoreOffer>
+): Promise<StoreOffer | null> {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(OFFERS_STORAGE_KEY)
+      if (stored) {
+        const list = JSON.parse(stored)
+        const idx = list.findIndex((o: any) => o.id === offerId)
+        if (idx !== -1) {
+          list[idx] = { ...list[idx], ...updates, updated_at: new Date().toISOString() }
+          localStorage.setItem(OFFERS_STORAGE_KEY, JSON.stringify(list))
+          return list[idx]
+        }
+      }
+    } catch {}
+  }
+  return null
+}
+
+/**
+ * Delete multiple store offers at once
+ */
+export async function deleteMultipleStoreOffers(offerIds: string[]): Promise<boolean> {
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(OFFERS_STORAGE_KEY)
+      if (stored) {
+        const list = JSON.parse(stored)
+        const idSet = new Set(offerIds)
+        const updated = list.filter((o: any) => !idSet.has(o.id))
         localStorage.setItem(OFFERS_STORAGE_KEY, JSON.stringify(updated))
       }
     } catch {}

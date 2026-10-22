@@ -165,21 +165,27 @@ export function OffersHubClient({ initialOffers }: OffersHubClientProps) {
                 className="group rounded-3xl border-2 border-border/80 bg-card overflow-hidden shadow-xs hover:shadow-xl hover:border-primary/50 transition-all flex flex-col justify-between"
               >
                 <div>
-                  {/* Cover */}
+                  {/* Cover - One Click to Store Page */}
                   <div className="relative h-48 w-full overflow-hidden bg-muted">
-                    {offer.cover_image_url ? (
-                      <Image
-                        src={offer.cover_image_url}
-                        alt=""
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <div className="h-full w-full bg-gradient-to-tr from-amber-500/20 to-primary/20 flex items-center justify-center text-4xl">
-                        📚
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    <Link
+                      href={store ? `/stores/${store.slug}` : '/stores'}
+                      className="block absolute inset-0 cursor-pointer"
+                      title={store ? (lang === 'ar' ? `زيارة متجر ${store.name_ar || store.name}` : `Visit ${store.name}`) : undefined}
+                    >
+                      {offer.cover_image_url ? (
+                        <Image
+                          src={offer.cover_image_url}
+                          alt=""
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                        />
+                      ) : (
+                        <div className="h-full w-full bg-gradient-to-tr from-amber-500/20 to-primary/20 flex items-center justify-center text-4xl">
+                          📚
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    </Link>
 
                     {/* Top Badges */}
                     <div className="absolute top-3 start-3 flex items-center gap-1.5">

@@ -171,16 +171,22 @@ export function EventsHubClient({ initialEvents, currentUserId }: EventsHubClien
                 key={event.id}
                 className="group rounded-3xl border-2 border-border/80 bg-card p-5 sm:p-6 shadow-xs hover:border-primary/50 transition-all flex flex-col md:flex-row gap-6"
               >
-                {/* Event Cover Image */}
+                {/* Event Cover Image - One Click to Store */}
                 {event.cover_image_url && (
                   <div className="relative h-44 md:h-auto md:w-60 rounded-2xl overflow-hidden bg-muted shrink-0">
-                    <Image
-                      src={event.cover_image_url}
-                      alt=""
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute top-2 start-2">
+                    <Link
+                      href={store ? `/stores/${store.slug}` : '/stores'}
+                      className="block absolute inset-0 cursor-pointer"
+                      title={store ? (lang === 'ar' ? `زيارة صفحة ${store.name_ar || store.name}` : `Visit ${store.name}`) : undefined}
+                    >
+                      <Image
+                        src={event.cover_image_url}
+                        alt=""
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    </Link>
+                    <div className="absolute top-2 start-2 pointer-events-none">
                       <span className="px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider backdrop-blur-md bg-black/75 text-white border border-white/20">
                         {event.is_free ? (lang === 'ar' ? 'دخول مجاني' : 'Free Entry') : `${event.price} EGP`}
                       </span>
@@ -209,6 +215,7 @@ export function EventsHubClient({ initialEvents, currentUserId }: EventsHubClien
                         <Clock className="h-3.5 w-3.5 text-primary" />
                         {new Date(event.starts_at).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US', {
                           weekday: 'long',
+                          year: 'numeric',
                           month: 'long',
                           day: 'numeric',
                           hour: 'numeric',

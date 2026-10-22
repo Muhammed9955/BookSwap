@@ -36,7 +36,8 @@ import {
   RefreshCw,
   FileCheck,
   FileText,
-  AlertCircle
+  AlertCircle,
+  BookOpen
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { compressImageFile } from '@/lib/image-utils'
@@ -69,6 +70,7 @@ import {
 
 interface PartnerFormClientProps {
   user: { id: string; profile?: Record<string, unknown> | null } | null
+  isUnauthorized?: boolean
 }
 
 const DEFAULT_LOGOS = [
@@ -87,7 +89,7 @@ const DEFAULT_COVERS = [
   'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=1200&q=80',
 ]
 
-export function PartnerFormClient({ user }: PartnerFormClientProps) {
+export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientProps) {
   const { lang, isRTL } = useLanguage()
 
   // Form State - Focused 100% on Bookstore/Store Partners
@@ -496,7 +498,175 @@ export function PartnerFormClient({ user }: PartnerFormClientProps) {
         </div>
       </section>
 
-      <div className="page-container py-10 max-w-6xl mx-auto">
+      <div className="page-container py-10 max-w-6xl mx-auto space-y-6">
+        {isUnauthorized && (
+          <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 text-amber-950 dark:text-amber-200 flex items-start gap-3.5 shadow-sm">
+            <AlertCircle className="h-6 w-6 text-amber-500 shrink-0 mt-0.5" />
+            <div className="space-y-1 text-sm">
+              <h4 className="font-bold text-base">
+                {lang === 'ar' ? 'لوحة إدارة المتاجر مخصصة فقط للمكتبات المعتمدة' : 'Store Dashboard Access Restricted'}
+              </h4>
+              <p className="leading-relaxed opacity-90 text-xs sm:text-sm">
+                {lang === 'ar'
+                  ? 'عفواً، لا يمتلك حسابك صلاحية شريك مكتبة للوصول إلى لوحة الإدارة. إذا كنت تدير مكتبة أو دار نشر أو متجر كتب، يرجى ملء طلب الشراكة التالي لاعتماد متجرك وتفعيل لوحة التحكم.'
+                  : 'Your account does not have bookstore partner privileges. If you operate a bookstore or publisher, please fill out the partner application below to verify your store and activate your dashboard.'}
+              </p>
+            </div>
+          </div>
+        )}
+        {/* ======================================================== */}
+        {/* INTERACTIVE FEATURE SHOWCASE: "كل ما تحتاجه لإدارة مكتبتك" */}
+        {/* ======================================================== */}
+        <section className="rounded-3xl border-2 border-emerald-500/25 bg-gradient-to-br from-card via-card to-emerald-500/5 p-6 sm:p-8 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600">
+                  <Sparkles className="h-5 w-5" />
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black text-foreground">
+                  {lang === 'ar' ? 'مميزات حصرية لمكتبتك في منصة ورق كونكت 🚀' : 'Exclusive Bookstore Features on WaraqConnect 🚀'}
+                </h2>
+              </div>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-2xl leading-relaxed">
+                {lang === 'ar'
+                  ? 'صممنا المنصة خصيصاً لتناسب طبيعة عمل المكتبات ومتاجر الكتب: أضف كتبك بسهولة، فعّل عروض التوفير، وتلقّ الطلبات المباشرة دون تعقيد.'
+                  : 'Built specifically for bookstores: effortlessly add single or bulk books, launch bundle deals, and receive direct WhatsApp customer orders.'}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => formTopRef.current?.scrollIntoView({ behavior: 'smooth' })}
+              className="px-5 py-2.5 rounded-xl font-black text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/20 transition-all cursor-pointer shrink-0 self-start sm:self-auto"
+            >
+              {lang === 'ar' ? 'سجّل مكتبتك في دقيقتين ✍️' : 'Register Store in 2 Mins ✍️'}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* 1. Smart Single Book Add */}
+            <div className="p-5 rounded-2xl bg-card border border-border/80 hover:border-emerald-500/40 hover:shadow-md transition-all space-y-3 group">
+              <div className="flex items-center justify-between">
+                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <BookOpen className="h-5 w-5" />
+                </div>
+                <Badge className="bg-emerald-600/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                  {lang === 'ar' ? 'إدخال فوري ذكي' : 'Instant AI Fetch'}
+                </Badge>
+              </div>
+              <h3 className="text-sm font-black text-foreground">
+                {lang === 'ar' ? 'إضافة الكتب الفردية الذكية 📖' : 'Smart Single Book Search & Add 📖'}
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {lang === 'ar'
+                  ? 'ابحث باسم الكتاب أو الكاتب، وسيقوم النظام فوراً بملء تقييم ومراجعات Goodreads، نبذة الرواية، عدد الصفحات، والغلاف بدقة عالية دون إدخال يدوي.'
+                  : 'Search any book to auto-fetch Goodreads reviews, synopsis, author details, genres, pages, and HD cover image.'}
+              </p>
+            </div>
+
+            {/* 2. Bulk Book Catalog Import */}
+            <div className="p-5 rounded-2xl bg-card border border-border/80 hover:border-primary/40 hover:shadow-md transition-all space-y-3 group">
+              <div className="flex items-center justify-between">
+                <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Layers className="h-5 w-5" />
+                </div>
+                <Badge className="bg-primary/15 text-primary border border-primary/30 text-[10px] font-bold">
+                  {lang === 'ar' ? '20-50 كتاب بضغطة زر' : 'Bulk Import'}
+                </Badge>
+              </div>
+              <h3 className="text-sm font-black text-foreground">
+                {lang === 'ar' ? 'الاستيراد الجماعي السريع لقوائم الكتب ⚡' : '1-Click Bulk Catalog Import ⚡'}
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {lang === 'ar'
+                  ? 'استورد قوائم الكتب الأكثر مبيعاً (روايات، كتب دينية، تطوير ذات) بنقرة واحدة لتجهيز متجرك بالكامل في ثوانٍ مع أسعارها وأغلفتها المعتمدة.'
+                  : 'Import 20-50 curated bestsellers in one click to populate your catalog with verified prices, covers, and ISBNs.'}
+              </p>
+            </div>
+
+            {/* 3. Curated 2-5 Books Packages */}
+            <div className="p-5 rounded-2xl bg-card border border-border/80 hover:border-orange-500/40 hover:shadow-md transition-all space-y-3 group">
+              <div className="flex items-center justify-between">
+                <div className="h-10 w-10 rounded-xl bg-orange-500/10 text-orange-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Package className="h-5 w-5" />
+                </div>
+                <Badge className="bg-orange-500/15 text-orange-700 dark:text-orange-300 border border-orange-500/30 text-[10px] font-bold">
+                  {lang === 'ar' ? 'منتجات للسلة 🛒' : 'Orderable Packs'}
+                </Badge>
+              </div>
+              <h3 className="text-sm font-black text-foreground">
+                {lang === 'ar' ? 'باكدجات وحزم الكتب المجهزة (2-5 كتب) 📦' : 'Curated 2-5 Books Packages 📦'}
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {lang === 'ar'
+                  ? 'أنشئ باكدجات محددة بغلاف وسعر خاص وهدايا، وتظهر كمنتج معروض في متجرك وسلة المشتري وتضاف للطلب بنقرة واحدة.'
+                  : 'Create 2-5 book bundles with uploaded cover & special pricing that sell as direct products in store and basket.'}
+              </p>
+            </div>
+
+            {/* 4. Ready Series & Tier Ladders */}
+            <div className="p-5 rounded-2xl bg-card border border-border/80 hover:border-purple-500/40 hover:shadow-md transition-all space-y-3 group">
+              <div className="flex items-center justify-between">
+                <div className="h-10 w-10 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <Badge className="bg-purple-500/15 text-purple-700 dark:text-purple-300 border border-purple-500/30 text-[10px] font-bold">
+                  {lang === 'ar' ? '21+ سلسلة وعروض توفير' : 'Series & Tiers'}
+                </Badge>
+              </div>
+              <h3 className="text-sm font-black text-foreground">
+                {lang === 'ar' ? 'عروض السلاسل وباقات التوفير الجاهزة 🌟' : 'Ready Novel Series & Tier Ladders 🌟'}
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {lang === 'ar'
+                  ? 'فعّل سلاسل روائية كاملة (ثلاثية نجيب محفوظ، أرض زيكولا، أبابيل...) وجدول مستويات توفير مرن ("اختار كتبك والهدايا والبوك مارك علينا").'
+                  : 'Activate 21+ popular novel series and customize "Pick Your Books" volume discount ladders with free gift bookmarks.'}
+              </p>
+            </div>
+
+            {/* 5. Custom Store URL & WhatsApp Orders */}
+            <div className="p-5 rounded-2xl bg-card border border-border/80 hover:border-emerald-500/40 hover:shadow-md transition-all space-y-3 group">
+              <div className="flex items-center justify-between">
+                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Globe className="h-5 w-5" />
+                </div>
+                <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                  {lang === 'ar' ? 'رابط مخصص + واتساب' : 'Custom URL & WhatsApp'}
+                </Badge>
+              </div>
+              <h3 className="text-sm font-black text-foreground">
+                {lang === 'ar' ? 'رابط متجر إلكتروني وتلقي طلبات الواتساب 💬' : 'Dedicated Store Link & WhatsApp Orders 💬'}
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {lang === 'ar'
+                  ? 'رابط مخصص لمكتبتك waraqconnect.com/stores/your-store تشاركه مع متابعيك، وتصلك طلبات الكتب مهيأة بالكامل على محادثة الواتساب.'
+                  : 'Get a clean custom bookstore link to share on social media. Customer orders arrive organized on WhatsApp with addresses & totals.'}
+              </p>
+            </div>
+
+            {/* 6. Production Order Tracking */}
+            <div className="p-5 rounded-2xl bg-card border border-border/80 hover:border-blue-500/40 hover:shadow-md transition-all space-y-3 group">
+              <div className="flex items-center justify-between">
+                <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Truck className="h-5 w-5" />
+                </div>
+                <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 text-[10px] font-bold">
+                  {lang === 'ar' ? 'تتبع طلبات حقيقي 🚚' : 'Live Order Tracking'}
+                </Badge>
+              </div>
+              <h3 className="text-sm font-black text-foreground">
+                {lang === 'ar' ? 'متابعة مراحل الشحن وروابط تتبع مباشرة 🚚' : 'Live Order Lifecycle & Tracking Links 🚚'}
+              </h3>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {lang === 'ar'
+                  ? 'تابع طلباتك من الاستلام والتجهيز حتى خروج المندوب، مع رابط تتبع إنتاج مباشر لكل عميل لمتابعة خط سير كتبه.'
+                  : 'Manage order status (NEW, CONFIRMED, DISPATCHED, DELIVERED) with live tracking URLs for customers to monitor fulfillment.'}
+              </p>
+            </div>
+          </div>
+        </section>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Main Onboarding Form (7 cols) */}
           <div className="lg:col-span-7 space-y-6">

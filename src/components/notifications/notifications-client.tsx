@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Check, BellOff, Bell, BellRing, Smartphone, Sparkles, Trash2, CheckCheck, Eye, EyeOff } from 'lucide-react'
+import { Check, BellOff, Bell, BellRing, Smartphone, Sparkles, Trash2, CheckCheck, Eye, EyeOff, Truck } from 'lucide-react'
 import { Notification } from '@/types'
 import { Button } from '@/components/ui/button'
 import { useLanguage } from '@/i18n/language-context'
@@ -41,6 +41,7 @@ const NOTIFICATION_ICONS: Record<string, string> = {
   COMMUNITY_HANDOVER_REQUEST: '☕',
   COMMUNITY_BOOK_APPROVED: '📚✅',
   COMMUNITY_BOOK_REJECTED: 'ℹ️',
+  STORE_NEW_ORDER: '📦',
 }
 
 interface NotificationsClientProps {
@@ -344,6 +345,37 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
                     </p>
                   )}
 
+                  {/* Order Specific Badges & Quick Action */}
+                  {(() => {
+                    const orderNumber = notif.data?.order_number ? String(notif.data.order_number) : undefined
+                    const orderId = notif.data?.order_id ? String(notif.data.order_id) : undefined
+                    const orderRef = orderNumber || orderId
+                    if (!orderRef && notif.type !== 'STORE_NEW_ORDER') return null
+
+                    return (
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        {orderNumber && (
+                          <span className="px-2 py-0.5 rounded-lg bg-primary/10 text-primary font-mono text-[11px] font-black border border-primary/20">
+                            #{orderNumber}
+                          </span>
+                        )}
+                        {orderRef && (
+                          <Link
+                            href={`/orders/${orderRef}`}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              if (!notif.is_read) markRead(notif.id)
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25 text-[11px] font-bold hover:bg-emerald-500/20 transition-colors"
+                          >
+                            <Truck className="h-3 w-3 text-emerald-600" />
+                            <span>{lang === 'ar' ? 'صفحة ومتابعة الطلب 📦' : 'Order Tracking Page 📦'}</span>
+                          </Link>
+                        )}
+                      </div>
+                    )
+                  })()}
+
                   <div className="flex items-center justify-between gap-2 mt-2 pt-1 border-t border-border/30">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] text-muted-foreground">
@@ -351,7 +383,7 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
                       </span>
                       {notif.action_url && (
                         <span className="text-[10px] font-bold text-primary group-hover:underline">
-                          {lang === 'ar' ? 'عرض الطلب ←' : 'View Request →'}
+                          {lang === 'ar' ? 'عرض في لوحة الإدارة ←' : 'View in Dashboard →'}
                         </span>
                       )}
                     </div>

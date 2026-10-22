@@ -34,6 +34,42 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "images.unsplash.com",
       },
+      {
+        protocol: "https",
+        hostname: "m.media-amazon.com",
+      },
+      {
+        protocol: "https",
+        hostname: "ak-asset.jarir.com",
+      },
+      {
+        protocol: "https",
+        hostname: "upload.wikimedia.org",
+      },
+      {
+        protocol: "https",
+        hostname: "i.gr-assets.com",
+      },
+      {
+        protocol: "https",
+        hostname: "s.gr-assets.com",
+      },
+      {
+        protocol: "https",
+        hostname: "cc02fu17ufx0v59u.public.blob.vercel-storage.com",
+      },
+      {
+        protocol: "https",
+        hostname: "cdn.samawy.com",
+      },
+      {
+        protocol: "https",
+        hostname: "atirbooks.com",
+      },
+      {
+        protocol: "https",
+        hostname: "**",
+      },
     ],
   },
   turbopack: {

@@ -19,12 +19,16 @@ import {
   ExternalLink,
   Quote,
   MessageSquare,
+  User,
+  Package,
+  Gift,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { useLanguage } from '@/i18n/language-context'
 import { getStoreBookCover } from '@/lib/stores/store-catalog-data'
+import { fuzzyMatchBook, findAuthorDetails } from '@/lib/stores/popular-arabic-books'
 import type { StoreCatalogBook } from '@/types/store'
 
 export interface StoreBookCardProps {
@@ -57,53 +61,67 @@ function StoreBookCardComponent({
 
   const title = lang === 'ar' && book.title_ar ? book.title_ar : book.title
   const author = lang === 'ar' && book.author_ar ? book.author_ar : book.author
-  const coverUrl = getStoreBookCover(book)
-  const displayCover = imageError ? '/images/book-placeholder.svg' : coverUrl
+  const popMatch = fuzzyMatchBook(title || book.title || '')?.entry
+  const bookCover = (book.cover_url && !book.cover_url.includes('noor-book.com')) ? book.cover_url : undefined
+  const coverUrl = bookCover || popMatch?.cover || getStoreBookCover(book)
+  const displayCover = imageError ? (popMatch?.cover || '/images/book-placeholder.svg') : coverUrl
 
-  const originalPrice = book.original_price || (book.price > 0 ? book.price + 35 : 0)
-  const hasDiscount = originalPrice > book.price
-  const savings = hasDiscount ? originalPrice - book.price : 0
-  const discountPercent = hasDiscount ? Math.round((savings / originalPrice) * 100) : 0
-  const ratingValue = book.rating ? Number(book.rating).toFixed(1) : '4.8'
+  // Author details fallback
+  const authorDetails =
+    (book as any).author_details ||
+    popMatch?.author_details ||
+    findAuthorDetails(author) ||
+    findAuthorDetails(book.author)
 
-  const goodreadsUrl = (book as any).goodreads_url || (
-    book.isbn
-      ? `https://www.goodreads.com/search?q=${encodeURIComponent(book.isbn.replace(/-/g, ''))}`
-      : `https://www.goodreads.com/search?q=${encodeURIComponent(`${title} ${author}`.trim())}`
+  // Strict check: Only show discount if original_price is explicitly provided and strictly greater than price
+  const hasDiscount = Boolean(
+    book.original_price &&
+    Number(book.original_price) > Number(book.price) &&
+    (book as any).has_discount !== false
+  )
+  const originalPrice = hasDiscount ? Number(book.original_price) : undefined
+  const savings = hasDiscount && originalPrice ? originalPrice - Number(book.price) : 0
+  const discountPercent = hasDiscount && originalPrice ? Math.round((savings / originalPrice) * 100) : 0
+
+  // Detect if book is an offer, pack, or bundle
+  const isOfferItem = Boolean(
+    (book as any).is_offer ||
+    (book as any).is_bundle ||
+    (book as any).offer_type ||
+    (book.badge && /عرض|توفير|باكدج|حزمة|بوكس|ثنائية|ثلاثية|رباعية|خماسية|offer|bundle/i.test(book.badge)) ||
+    /عرض|باكدج|حزمة|بوكس|توفير|ثنائية|ثلاثية|رباعية|خماسية|offer|bundle/i.test(title || '') ||
+    /عرض|باكدج|حزمة|بوكس|توفير|offer|bundle/i.test(book.title || '') ||
+    /عرض|باكدج|حزمة|بوكس|توفير|offer|bundle/i.test(book.title_ar || '')
   )
 
-  const reviewsList = [
-    {
-      name: lang === 'ar' ? 'أحمد رضوان' : 'Ahmed Radwan',
-      verified: true,
-      rating: 5,
-      date: lang === 'ar' ? 'منذ أسبوعين' : '2 weeks ago',
-      avatar: lang === 'ar' ? 'أ' : 'A',
-      text: lang === 'ar'
-        ? `من أفضل وأعمق الأعمال في تصنيف ${book.category_name_ar || 'هذا المجال'}! أسلوب السرد واللغة يبهرك من البداية حتى السطر الأخير. طبعة ممتازة وتستحق الاقتناء.`
-        : `One of the most captivating reads! The narrative depth and pacing are outstanding from start to finish. Highly recommended edition.`,
-    },
-    {
-      name: lang === 'ar' ? 'سارة محمود' : 'Sarah M.',
-      verified: true,
-      rating: 5,
-      date: lang === 'ar' ? 'منذ شهر' : '1 month ago',
-      avatar: lang === 'ar' ? 'س' : 'S',
-      text: lang === 'ar'
-        ? `كتاب ملهم جداً يغير نظرتك للأمور. جودة ورق الطباعة ممتازة والتوصيل من المكتبة كان سريعاً ومغلّفاً بإتقان.`
-        : `Truly inspiring and thought-provoking. The physical copy quality is pristine and delivery was exceptionally fast.`,
-    },
-    {
-      name: lang === 'ar' ? 'د. كريم شريف' : 'Dr. Karim Sherif',
-      verified: false,
-      rating: 4,
-      date: lang === 'ar' ? 'منذ 3 أسابيع' : '3 weeks ago',
-      avatar: lang === 'ar' ? 'ك' : 'K',
-      text: lang === 'ar'
-        ? `إصدار رائع يجمع بين المتعة والعمق المعرفي، إضافة قيّمة جداً للمكتبة المنزلية ولأي قارئ شغوف.`
-        : `A brilliant publication that balances depth with pure reading pleasure. A must-have for any home library.`,
-    },
-  ]
+  const ratingValue = (book.rating && Number(book.rating) > 0 ? Number(book.rating) : (popMatch?.rating ? Number(popMatch.rating) : undefined))?.toFixed(1)
+  const ratingCount = (book as any).rating_count || popMatch?.rating_count || undefined
+
+  const goodreadsUrl = (book as any).goodreads_url || popMatch?.goodreads_url || (
+    book.isbn && book.isbn.replace(/[-\s]/g, '').length >= 9
+      ? `https://www.goodreads.com/search?q=${encodeURIComponent(book.isbn.replace(/[-\s]/g, ''))}`
+      : title && author
+        ? `https://www.goodreads.com/search?q=${encodeURIComponent(`${title} ${author}`.trim())}`
+        : undefined
+  )
+
+  const rawReviews = (book as any).reviews
+  const realReviews = (
+    Array.isArray(rawReviews) && rawReviews.length > 0
+      ? rawReviews
+      : typeof rawReviews === 'string' && rawReviews.trim().length > 0
+      ? [{ name: 'مراجعة موثقة', text: rawReviews, rating: 5, date: '2024', verified: true }]
+      : popMatch?.reviews
+  ) as Array<{
+    name: string
+    text: string
+    rating?: number
+    date?: string
+    verified?: boolean
+    avatar?: string
+  }> | undefined
+  const hasRealReviews = Boolean(realReviews && realReviews.length > 0)
+  const hasGoodreadsLink = Boolean(goodreadsUrl)
 
   const handleFavoriteToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -133,7 +151,7 @@ function StoreBookCardComponent({
             className="object-cover"
             sizes="56px"
             onError={() => setImageError(true)}
-            unoptimized={displayCover.endsWith('.svg')}
+            unoptimized={true}
           />
           <div className="pointer-events-none absolute inset-y-0 start-0 w-2 bg-gradient-to-r from-black/40 via-white/10 to-transparent z-10" />
         </div>
@@ -258,7 +276,7 @@ function StoreBookCardComponent({
   // MODE: GRID (Main Bookstore Catalog Card)
   // Full-width image, Fav button, Wide Add button, Details popup
   // ==========================================
-  const bookDescription = (book as any).description || (
+  const bookDescription = (lang === 'ar' ? (book.description_ar || (book as any).description) : ((book as any).description || book.description_ar)) || (
     lang === 'ar'
       ? `إصدار مميز ومطلوب للكاتب ${author}. يقدم هذا الكتاب تجربة قراءة فريدة وملهمة ضمن تصنيف ${book.category_name_ar || 'الأدب'}، وتوفره المكتبة بطبعة أصلية ممتازة مع توفر التوصيل السريع لكافة أنحاء مصر.`
       : `An exceptional title by ${author}. Features an insightful read in ${book.category_name_ar || 'literature'}, curated in premium condition with instant doorstep delivery across Egypt.`
@@ -285,7 +303,7 @@ function StoreBookCardComponent({
             className="object-cover transition-transform duration-500 group-hover:scale-105"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 20vw"
             onError={() => setImageError(true)}
-            unoptimized={displayCover.endsWith('.svg')}
+            unoptimized={true}
             priority={false}
           />
 
@@ -295,12 +313,20 @@ function StoreBookCardComponent({
           <div className="pointer-events-none absolute inset-y-0 end-0 w-1 bg-gradient-to-l from-black/25 to-transparent z-10" />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/85 via-black/35 to-transparent z-10" />
 
-          {/* Top Overlays: Category Badge (Start) & Fav Button (End) */}
+          {/* Top Overlays: Category Badge & Offer Tag (Start) & Fav Button (End) */}
           <div className="absolute top-2 inset-x-2 z-20 flex items-start justify-between gap-1.5 pointer-events-auto">
-            {/* Category Pill */}
-            <span className="px-2 py-0.5 rounded-xl text-[10px] font-black uppercase tracking-wider backdrop-blur-md bg-black/65 text-white border border-white/20 shadow-xs truncate max-w-[110px]">
-              {book.category_name_ar || book.category}
-            </span>
+            {/* Category Pill + Offer Tag */}
+            <div className="flex items-center gap-1.5 flex-wrap max-w-[70%]">
+              <span className="px-2 py-0.5 rounded-xl text-[10px] font-black uppercase tracking-wider backdrop-blur-md bg-black/65 text-white border border-white/20 shadow-xs truncate max-w-[110px]">
+                {book.category_name_ar || book.category}
+              </span>
+              {isOfferItem && (
+                <span className="px-2 py-0.5 rounded-xl text-[10px] font-black bg-gradient-to-r from-orange-600 via-amber-600 to-red-600 text-white border border-orange-400/40 shadow-md flex items-center gap-1 animate-pulse shrink-0">
+                  <Flame className="h-3 w-3 fill-white" />
+                  <span>{lang === 'ar' ? 'عرض خاص' : 'Deal'}</span>
+                </span>
+              )}
+            </div>
 
             {/* Favorite (Heart) Button */}
             <button
@@ -318,41 +344,60 @@ function StoreBookCardComponent({
               <Heart className={cn('h-3.5 w-3.5 sm:h-4 sm:w-4 transition-transform', isFav && 'fill-current scale-110 text-white')} />
             </button>
           </div>
-
-          {/* Badges Stack under Top */}
-          <div className="absolute top-10 start-2 z-20 flex flex-col items-start gap-1">
-            {book.badge && (
-              <span className="px-2 py-0.5 rounded-lg text-[9px] sm:text-[10px] font-black backdrop-blur-md bg-amber-500/90 text-white shadow-xs border border-amber-400/30">
-                {book.badge}
-              </span>
-            )}
-            {hasDiscount && (
-              <span className="px-1.5 py-0.5 rounded-lg text-[9px] sm:text-[10px] font-black bg-red-600 text-white shadow-xs">
-                {lang === 'ar' ? `خصم %${discountPercent}` : `-${discountPercent}%`}
-              </span>
-            )}
-          </div>
-
-          {/* Bottom Overlays on Cover: Rating & Condition */}
-          <div className="absolute bottom-2 inset-x-2 z-20 flex items-center justify-between text-white text-[10px]">
-            {/* Rating */}
-            <span className="inline-flex items-center gap-1 font-bold backdrop-blur-md bg-black/60 px-2 py-0.5 rounded-lg border border-white/10 shadow-xs">
-              <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-              <span>{ratingValue}</span>
-            </span>
-
-            {/* Condition Pill */}
-            <span className="font-bold backdrop-blur-md bg-black/60 px-2 py-0.5 rounded-lg border border-white/10">
-              {book.condition === 'NEW' || !book.condition
-                ? (lang === 'ar' ? 'جديد 🏷️' : 'New')
-                : (lang === 'ar' ? 'ممتاز ✨' : 'Like New')}
-            </span>
-          </div>
         </div>
 
         {/* Content Section below Full-Width Cover Image */}
         <div className="p-3 sm:p-3.5 flex flex-col flex-1 justify-between space-y-2">
-          <div className="space-y-1.5">
+          <div className="space-y-2">
+            {/* Badges Row UNDER the Image: Offer Badge, Discount Tag or "جديد" + Goodreads Real Rating */}
+            <div className="flex items-center justify-between gap-1.5 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {isOfferItem ? (
+                  <span className="px-2.5 py-0.5 rounded-lg text-[10px] font-black bg-gradient-to-r from-orange-500/20 via-amber-500/20 to-red-500/20 text-orange-700 dark:text-orange-300 border border-orange-500/40 flex items-center gap-1 shadow-xs ring-1 ring-orange-500/25">
+                    <Flame className="h-3 w-3 text-orange-500 fill-orange-500 animate-pulse" />
+                    <span>{lang === 'ar' ? 'عرض توفير 🎁' : 'Special Offer 🎁'}</span>
+                  </span>
+                ) : hasDiscount ? (
+                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30 flex items-center gap-1 shadow-2xs">
+                    <span>{lang === 'ar' ? `خصم %${discountPercent}` : `-${discountPercent}% OFF`}</span>
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1 shadow-2xs">
+                    <span>{lang === 'ar' ? 'جديد 🏷️' : 'New'}</span>
+                  </span>
+                )}
+
+                {/* Show custom badge if it's not a long repetitive title */}
+                {book.badge &&
+                  book.badge !== 'جديد 🏷️' &&
+                  book.badge !== title &&
+                  book.badge.length <= 25 && (
+                    <span className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-primary/10 text-primary border border-primary/20">
+                      {book.badge}
+                    </span>
+                  )}
+              </div>
+
+              {/* Goodreads Real Rating & Link (or hidden if not exist) */}
+              {ratingValue && goodreadsUrl && (
+                <a
+                  href={goodreadsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="ms-auto inline-flex items-center gap-1 text-[10px] font-bold text-[#54381e] dark:text-[#f4ebd0] bg-[#54381e]/10 dark:bg-amber-500/10 hover:bg-[#54381e]/20 px-2 py-0.5 rounded-lg border border-[#54381e]/15 dark:border-amber-500/20 transition-colors group/gr"
+                  title={lang === 'ar' ? 'عرض التقييمات على Goodreads' : 'View on Goodreads'}
+                >
+                  <Star className="h-3 w-3 fill-amber-400 text-amber-400 shrink-0" />
+                  <span>{ratingValue}</span>
+                  {ratingCount && (
+                    <span className="text-[9px] text-muted-foreground opacity-80">({ratingCount})</span>
+                  )}
+                  <span className="font-serif font-black text-[9px] tracking-tight text-muted-foreground group-hover/gr:text-foreground">goodreads</span>
+                  <ExternalLink className="h-2.5 w-2.5 opacity-50 group-hover/gr:opacity-100" />
+                </a>
+              )}
+            </div>
             {/* Standardized Title Container Height */}
             <div className="min-h-[2.85rem] sm:min-h-[3.25rem] flex items-start">
               <h3
@@ -504,22 +549,31 @@ function StoreBookCardComponent({
                     className="object-cover"
                     sizes="(max-width: 640px) 144px, 176px"
                     onError={() => setImageError(true)}
-                    unoptimized={displayCover.endsWith('.svg')}
+                    unoptimized={true}
                   />
                   <div className="pointer-events-none absolute inset-y-0 start-0 w-3 bg-gradient-to-r from-black/50 via-white/10 to-transparent z-10" />
                   <div className="pointer-events-none absolute inset-y-0 start-3 w-[1px] bg-black/20 z-10" />
-
-                  {/* Condition badge pinned on cover */}
-                  <div className="absolute bottom-2 start-2 end-2 z-20 text-center">
-                    <span className="backdrop-blur-md bg-black/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-lg border border-white/20 block truncate">
-                      {book.condition === 'NEW' || !book.condition ? 'طبعة أصلية جديدة 🏷️' : 'مستعمل بحالة ممتازة ✨'}
-                    </span>
-                  </div>
                 </div>
 
                 {/* Details Next to Cover */}
                 <div className="flex-1 min-w-0 space-y-3 w-full">
                   <div>
+                    <div className="flex items-center gap-1.5 flex-wrap mb-1.5">
+                      {hasDiscount ? (
+                        <span className="px-2 py-0.5 rounded-lg text-xs font-black bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30">
+                          {lang === 'ar' ? `خصم %${discountPercent}` : `-${discountPercent}% OFF`}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-0.5 rounded-lg text-xs font-black bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                          {lang === 'ar' ? 'جديد 🏷️' : 'New'}
+                        </span>
+                      )}
+                      {book.badge && book.badge !== 'جديد 🏷️' && (
+                        <span className="px-2 py-0.5 rounded-lg text-xs font-black bg-primary/10 text-primary border border-primary/20">
+                          {book.badge}
+                        </span>
+                      )}
+                    </div>
                     <h2 className="text-2xl sm:text-3xl font-black text-foreground leading-tight tracking-tight">
                       {title}
                     </h2>
@@ -529,32 +583,41 @@ function StoreBookCardComponent({
                     </p>
                   </div>
 
-                  {/* Rating & Direct Goodreads Link */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-bold text-amber-700 dark:text-amber-400">
-                      <div className="flex items-center gap-0.5">
-                        {[1, 2, 3, 4, 5].map((s) => (
-                          <Star key={s} className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
-                        ))}
-                      </div>
-                      <span>{ratingValue} / 5.0</span>
-                    </div>
+                  {/* Rating & Direct Goodreads Link (only shown if real rating or goodreadsUrl exists) */}
+                  {(ratingValue || goodreadsUrl) && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {ratingValue && (
+                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-bold text-amber-700 dark:text-amber-400">
+                          <div className="flex items-center gap-0.5">
+                            {[1, 2, 3, 4, 5].map((s) => (
+                              <Star key={s} className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+                            ))}
+                          </div>
+                          <span>{ratingValue} / 5.0</span>
+                          {ratingCount && (
+                            <span className="text-[11px] opacity-75 font-normal">({ratingCount} تقييم)</span>
+                          )}
+                        </div>
+                      )}
 
-                    {/* Direct Clickable Goodreads Link */}
-                    <a
-                      href={goodreadsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#54381e]/10 hover:bg-[#54381e]/20 text-[#54381e] dark:text-[#f4ebd0] dark:bg-amber-500/10 dark:hover:bg-amber-500/20 border border-[#54381e]/20 dark:border-amber-500/30 text-xs font-bold transition-all shadow-2xs group"
-                      title={lang === 'ar' ? 'عرض الكتاب على جودريدز' : 'View book on Goodreads'}
-                    >
-                      <span className="font-serif font-black tracking-tight text-xs">goodreads</span>
-                      <span className="text-[11px] text-muted-foreground font-semibold">
-                        ({lang === 'ar' ? 'مراجعات القراء' : 'Reviews'})
-                      </span>
-                      <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                    </a>
-                  </div>
+                      {/* Direct Clickable Goodreads Link */}
+                      {goodreadsUrl && (
+                        <a
+                          href={goodreadsUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#54381e]/10 hover:bg-[#54381e]/20 text-[#54381e] dark:text-[#f4ebd0] dark:bg-amber-500/10 dark:hover:bg-amber-500/20 border border-[#54381e]/20 dark:border-amber-500/30 text-xs font-bold transition-all shadow-2xs group"
+                          title={lang === 'ar' ? 'عرض الكتاب على جودريدز' : 'View book on Goodreads'}
+                        >
+                          <span className="font-serif font-black tracking-tight text-xs">goodreads</span>
+                          <span className="text-[11px] text-muted-foreground font-semibold">
+                            ({lang === 'ar' ? 'مراجعات القراء الحقيقية' : 'Real Reader Reviews'})
+                          </span>
+                          <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                        </a>
+                      )}
+                    </div>
+                  )}
 
                   {/* Pricing Box */}
                   <div className="p-3 rounded-2xl bg-muted/40 border border-border/80 flex items-baseline justify-between gap-3">
@@ -587,19 +650,55 @@ function StoreBookCardComponent({
                 </div>
               </div>
 
+              {/* Bundle Specific: Included Books & Free Gifts */}
+              {book.is_bundle && book.included_books && book.included_books.length > 0 && (
+                <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 space-y-2">
+                  <span className="text-xs font-black text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                    <Package className="h-4 w-4 text-emerald-600" />
+                    <span>{lang === 'ar' ? `الكتب المتضمنة في هذا الباكدج (${book.included_books.length} كتب):` : 'Included Books in Pack:'}</span>
+                  </span>
+                  <ul className="space-y-1.5 text-xs">
+                    {book.included_books.map((bTitle, idx) => (
+                      <li key={idx} className="flex items-center gap-2 font-bold text-foreground">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                        <span>{bTitle}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {book.gift_description && (
+                    <div className="pt-2 border-t border-emerald-500/20 text-xs font-bold text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                      <Gift className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                      <span>{lang === 'ar' ? `هدية مجانية: ${book.gift_description}` : `Free Gift: ${book.gift_description}`}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Book Overview / Description */}
               <div className="space-y-1.5">
                 <span className="text-xs font-black text-foreground flex items-center gap-1.5">
                   <BookOpen className="h-3.5 w-3.5 text-primary" />
-                  <span>{lang === 'ar' ? 'نبذة عن الكتاب:' : 'About the Book:'}</span>
+                  <span>{book.is_bundle ? (lang === 'ar' ? 'تفاصيل الباكدج والعرض:' : 'Package Details:') : (lang === 'ar' ? 'نبذة عن الكتاب:' : 'About the Book:')}</span>
                 </span>
                 <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed p-3.5 rounded-2xl bg-muted/20 border border-border/60">
                   {bookDescription}
                 </p>
+
+                {/* Genres Pills from Goodreads */}
+                {Array.isArray((book as any).genres) && (book as any).genres.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                    <span className="text-[10px] font-bold text-muted-foreground">{lang === 'ar' ? 'الأنواع / Genres:' : 'Genres:'}</span>
+                    {(book as any).genres.map((g: string, i: number) => (
+                      <span key={i} className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-muted text-muted-foreground border border-border/60">
+                        {g}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Specifications Strip */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pt-1 text-xs">
                 <div className="p-2.5 rounded-xl bg-muted/30 border border-border/60">
                   <span className="text-[10px] text-muted-foreground block font-bold">{lang === 'ar' ? 'التصنيف:' : 'Genre:'}</span>
                   <span className="font-bold text-foreground truncate block">{book.category_name_ar || book.category}</span>
@@ -614,6 +713,28 @@ function StoreBookCardComponent({
                   <span className="text-[10px] text-muted-foreground block font-bold">ISBN:</span>
                   <span className="font-mono text-foreground font-bold truncate block">{book.isbn || '978-977-09-4321'}</span>
                 </div>
+                {(book as any).first_published && (
+                  <div className="p-2.5 rounded-xl bg-muted/30 border border-border/60">
+                    <span className="text-[10px] text-muted-foreground block font-bold">{lang === 'ar' ? 'أول نشر:' : 'First Published:'}</span>
+                    <span className="font-bold text-foreground truncate block">{(book as any).first_published}</span>
+                  </div>
+                )}
+                {(book as any).publisher && (
+                  <div className="p-2.5 rounded-xl bg-muted/30 border border-border/60">
+                    <span className="text-[10px] text-muted-foreground block font-bold">{lang === 'ar' ? 'دار النشر:' : 'Publisher:'}</span>
+                    <span className="font-bold text-foreground truncate block">
+                      {(book as any).publisher} {(book as any).published_year ? `(${(book as any).published_year})` : ''}
+                    </span>
+                  </div>
+                )}
+                {(book as any).pages_count && (
+                  <div className="p-2.5 rounded-xl bg-muted/30 border border-border/60">
+                    <span className="text-[10px] text-muted-foreground block font-bold">{lang === 'ar' ? 'الصفحات:' : 'Pages:'}</span>
+                    <span className="font-bold text-foreground truncate block">
+                      {(book as any).pages_count} {lang === 'ar' ? 'صفحة' : 'pages'}
+                    </span>
+                  </div>
+                )}
                 <div className="p-2.5 rounded-xl bg-muted/30 border border-border/60">
                   <span className="text-[10px] text-muted-foreground block font-bold">{lang === 'ar' ? 'الشحن:' : 'Delivery:'}</span>
                   <span className="font-bold text-emerald-600 dark:text-emerald-400 truncate block">
@@ -622,92 +743,134 @@ function StoreBookCardComponent({
                 </div>
               </div>
 
-              {/* Reader Reviews & Goodreads Section */}
-              <div className="space-y-3 pt-3 border-t border-border/60">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <div className="h-7 w-7 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                      <MessageSquare className="h-4 w-4" />
-                    </div>
+              {/* Author Details (About the Author) */}
+              {authorDetails?.bio && (
+                <div className="p-3.5 rounded-2xl bg-muted/20 border border-border/60 space-y-2">
+                  <div className="flex items-center gap-2.5">
+                    {authorDetails.image_url ? (
+                      <div className="relative h-9 w-9 rounded-full overflow-hidden bg-muted border border-primary/20 shrink-0">
+                        <Image src={authorDetails.image_url} alt="" fill unoptimized className="object-cover" />
+                      </div>
+                    ) : (
+                      <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <User className="h-4 w-4" />
+                      </div>
+                    )}
                     <div>
                       <h4 className="text-xs sm:text-sm font-black text-foreground">
-                        {lang === 'ar' ? 'مراجعات وتقييمات القراء' : 'Reader Reviews & Ratings'}
+                        {lang === 'ar' ? `عن الكاتب (${authorDetails.name || author})` : `About the Author (${authorDetails.name || author})`}
                       </h4>
-                      <p className="text-[10px] text-muted-foreground font-semibold">
-                        {lang === 'ar' ? 'تقييمات موثقة من مجتمع القراء على Goodreads' : 'Verified reviews from Goodreads community'}
-                      </p>
+                      {authorDetails.name && authorDetails.name !== author && (
+                        <p className="text-[10px] text-primary font-bold">{authorDetails.name}</p>
+                      )}
                     </div>
                   </div>
-
-                  {/* Goodreads Link Button */}
-                  <a
-                    href={goodreadsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-black text-[#54381e] dark:text-[#f4ebd0] bg-[#54381e]/10 dark:bg-amber-500/10 hover:bg-[#54381e]/20 px-2.5 py-1 rounded-xl transition-all border border-[#54381e]/20 dark:border-amber-500/30 group"
-                  >
-                    <span className="font-serif font-black text-xs">goodreads</span>
-                    <ExternalLink className="h-3 w-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                  </a>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {authorDetails.bio}
+                  </p>
                 </div>
+              )}
 
-                {/* Review Cards */}
-                <div className="space-y-2.5">
-                  {reviewsList.map((review, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3 sm:p-3.5 rounded-2xl bg-muted/20 border border-border/60 space-y-1.5 transition-colors hover:bg-muted/30"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <div className="h-6 w-6 rounded-full bg-primary/20 text-primary font-black text-[11px] flex items-center justify-center shrink-0">
-                            {review.avatar}
-                          </div>
-                          <span className="text-xs font-black text-foreground">{review.name}</span>
-                          {review.verified && (
-                            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded-md">
-                              {lang === 'ar' ? 'قراءة موثقة ✓' : 'Verified Reader ✓'}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <div className="flex items-center gap-0.5">
-                            {Array.from({ length: 5 }).map((_, starIdx) => (
-                              <Star
-                                key={starIdx}
-                                className={cn(
-                                  'h-2.5 w-2.5',
-                                  starIdx < Math.floor(review.rating)
-                                    ? 'fill-amber-400 text-amber-400'
-                                    : 'fill-muted text-muted-foreground/30'
-                                )}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-[10px] text-muted-foreground font-semibold">{review.date}</span>
-                        </div>
+              {/* Reader Reviews & Goodreads Section (hidden if no real reviews or Goodreads link) */}
+              {(hasRealReviews || goodreadsUrl) && (
+                <div className="space-y-3 pt-3 border-t border-border/60">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                        <MessageSquare className="h-4 w-4" />
                       </div>
-
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        "{review.text}"
-                      </p>
+                      <div>
+                        <h4 className="text-xs sm:text-sm font-black text-foreground">
+                          {lang === 'ar' ? 'مراجعات وتقييمات القراء' : 'Reader Reviews & Ratings'}
+                        </h4>
+                        <p className="text-[10px] text-muted-foreground font-semibold">
+                          {hasRealReviews
+                            ? (lang === 'ar' ? 'مراجعات حقيقية موثقة من القراء' : 'Verified reader reviews')
+                            : (lang === 'ar' ? 'تقييمات ومراجعات موثقة من مجتمع القراء على Goodreads' : 'Verified reviews from Goodreads community')}
+                        </p>
+                      </div>
                     </div>
-                  ))}
-                </div>
 
-                {/* Full Goodreads link button */}
-                <a
-                  href={goodreadsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border border-dashed border-border hover:border-primary/50 bg-muted/15 hover:bg-muted/30 text-xs font-bold text-muted-foreground hover:text-foreground transition-all group"
-                >
-                  <span className="font-serif font-black text-xs text-[#54381e] dark:text-[#f4ebd0]">goodreads</span>
-                  <span>{lang === 'ar' ? 'عرض كافة مراجعات وتقييمات القراء على Goodreads' : 'View all community reviews on Goodreads'}</span>
-                  <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                </a>
-              </div>
+                    {/* Goodreads Link Button */}
+                    {goodreadsUrl && (
+                      <a
+                        href={goodreadsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-black text-[#54381e] dark:text-[#f4ebd0] bg-[#54381e]/10 dark:bg-amber-500/10 hover:bg-[#54381e]/20 px-2.5 py-1 rounded-xl transition-all border border-[#54381e]/20 dark:border-amber-500/30 group"
+                      >
+                        <span className="font-serif font-black text-xs">goodreads</span>
+                        <ExternalLink className="h-3 w-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Real Review Cards (only rendered if authentic reviews exist) */}
+                  {hasRealReviews && (
+                    <div className="space-y-2.5">
+                      {realReviews!.map((review, idx) => (
+                        <div
+                          key={idx}
+                          className="p-3 sm:p-3.5 rounded-2xl bg-muted/20 border border-border/60 space-y-1.5 transition-colors hover:bg-muted/30"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <div className="h-6 w-6 rounded-full bg-primary/20 text-primary font-black text-[11px] flex items-center justify-center shrink-0">
+                                {review.avatar || review.name.charAt(0)}
+                              </div>
+                              <span className="text-xs font-black text-foreground">{review.name}</span>
+                              {review.verified && (
+                                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded-md">
+                                  {lang === 'ar' ? 'قراءة موثقة ✓' : 'Verified Reader ✓'}
+                                </span>
+                              )}
+                            </div>
+
+                            {review.rating && (
+                              <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-0.5">
+                                  {Array.from({ length: 5 }).map((_, starIdx) => (
+                                    <Star
+                                      key={starIdx}
+                                      className={cn(
+                                        'h-2.5 w-2.5',
+                                        starIdx < Math.floor(review.rating!)
+                                          ? 'fill-amber-400 text-amber-400'
+                                          : 'fill-muted text-muted-foreground/30'
+                                      )}
+                                    />
+                                  ))}
+                                </div>
+                                {review.date && (
+                                  <span className="text-[10px] text-muted-foreground font-semibold">{review.date}</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            "{review.text}"
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Full Goodreads link button */}
+                  {goodreadsUrl && (
+                    <a
+                      href={goodreadsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-2xl border border-dashed border-border hover:border-primary/50 bg-muted/15 hover:bg-muted/30 text-xs font-bold text-muted-foreground hover:text-foreground transition-all group"
+                    >
+                      <span className="font-serif font-black text-xs text-[#54381e] dark:text-[#f4ebd0]">goodreads</span>
+                      <span>{lang === 'ar' ? 'عرض كافة مراجعات وتقييمات القراء على Goodreads' : 'View all community reviews on Goodreads'}</span>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground group-hover:text-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Modal Bottom Sticky Action Bar: ONE WIDE ADD TO BASKET BUTTON (WhatsApp removed) */}

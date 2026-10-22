@@ -176,7 +176,7 @@ export function tiersFromOffers(offers: StoreOffer[]): StoreBundleTier[] | null 
     const price = (o.offer_price || o.bundle_price)!
     return {
       id: o.id,
-      name_ar: books >= 11 ? `باكدج الـ ${books} كتاب` : `باكدج الـ ${books} كتب`,
+      name_ar: o.title_ar || (books >= 11 ? `باكدج الـ ${books} كتاب` : `باكدج الـ ${books} كتب`),
       required_books: books,
       free_gift_books: gifts,
       free_bookmarks: o.bundle_bookmarks ?? books,

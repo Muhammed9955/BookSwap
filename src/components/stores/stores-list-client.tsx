@@ -26,6 +26,49 @@ import { cn } from '@/lib/utils'
 import { toggleStoreFollow } from '@/lib/stores/store-service'
 import type { Bookstore, StoreType } from '@/types/store'
 
+function StoreCardCover({ src, alt }: { src?: string; alt: string }) {
+  const [error, setError] = useState(false)
+  if (!src || error) {
+    return (
+      <Image
+        src="/images/cover-placeholder.svg"
+        alt={alt}
+        fill
+        className="object-cover group-hover:scale-105 transition-transform duration-500"
+      />
+    )
+  }
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      fill
+      className="object-cover group-hover:scale-105 transition-transform duration-500"
+      onError={() => setError(true)}
+    />
+  )
+}
+
+function StoreCardLogo({ src, name }: { src?: string; name: string }) {
+  const [error, setError] = useState(false)
+  if (!src || error) {
+    return (
+      <div className="h-full w-full flex items-center justify-center font-black text-primary text-xl bg-primary/10">
+        {name.charAt(0)}
+      </div>
+    )
+  }
+  return (
+    <Image
+      src={src}
+      alt=""
+      fill
+      className="object-cover"
+      onError={() => setError(true)}
+    />
+  )
+}
+
 interface StoresListClientProps {
   initialStores: Bookstore[]
   currentUserId?: string | null
@@ -199,27 +242,17 @@ export function StoresListClient({ initialStores, currentUserId }: StoresListCli
                 key={store.id}
                 className="group relative rounded-3xl border-2 border-border/80 bg-card overflow-hidden shadow-xs hover:shadow-xl hover:border-primary/50 transition-all flex flex-col"
               >
-                {/* Cover Image */}
-                <div className="relative h-40 w-full overflow-hidden bg-muted">
-                  {store.cover_url ? (
-                    <Image
-                      src={store.cover_url}
-                      alt={store.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  ) : (
-                    <Image
-                      src="/images/cover-placeholder.svg"
-                      alt={store.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  )}
+                {/* Cover Image - One Click To Store Page */}
+                <Link
+                  href={`/stores/${store.slug}`}
+                  className="block relative h-40 w-full overflow-hidden bg-muted cursor-pointer"
+                  title={lang === 'ar' ? `زيارة صفحة ${store.name_ar || store.name}` : `Visit ${store.name}`}
+                >
+                  <StoreCardCover src={store.cover_url} alt={store.name} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
                   {/* Badges on Cover */}
-                  <div className="absolute top-3 start-3 flex items-center gap-1.5">
+                  <div className="absolute top-3 start-3 flex items-center gap-1.5 z-10 pointer-events-none">
                     <span className="px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider backdrop-blur-md bg-black/60 text-white border border-white/20">
                       {store.store_type === 'OFFLINE'
                         ? lang === 'ar' ? '🏬 فرع فعلي' : 'Physical Store'
@@ -230,36 +263,39 @@ export function StoresListClient({ initialStores, currentUserId }: StoresListCli
                   </div>
 
                   {store.offers_count && store.offers_count > 0 ? (
-                    <div className="absolute top-3 end-3">
+                    <div className="absolute top-3 end-3 z-10 pointer-events-none">
                       <span className="px-2.5 py-1 rounded-xl text-[10px] font-black backdrop-blur-md bg-amber-500/90 text-white border border-amber-400 flex items-center gap-1">
                         <Flame className="h-3 w-3 fill-white" />
                         {lang === 'ar' ? `${store.offers_count} عروض نشطة` : `${store.offers_count} Active Deals`}
                       </span>
                     </div>
                   ) : null}
+                </Link>
 
-                  {/* Logo Avatar pinned at bottom of cover */}
-                  <div className="absolute -bottom-5 start-5 h-14 w-14 rounded-2xl overflow-hidden border-3 border-card bg-card shadow-md">
-                    {store.logo_url ? (
-                      <Image src={store.logo_url} alt="" fill className="object-cover" />
-                    ) : (
-                      <div className="h-full w-full flex items-center justify-center font-black text-primary text-xl">
-                        {store.name.charAt(0)}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                {/* Logo Avatar pinned at bottom of cover - One Click To Store Page */}
+                <Link
+                  href={`/stores/${store.slug}`}
+                  className="absolute top-28 start-5 h-14 w-14 rounded-2xl overflow-hidden border-3 border-card bg-card shadow-md z-20 cursor-pointer hover:scale-105 transition-transform"
+                  title={lang === 'ar' ? `زيارة صفحة ${store.name_ar || store.name}` : `Visit ${store.name}`}
+                >
+                  <StoreCardLogo src={store.logo_url} name={store.name} />
+                </Link>
 
                 {/* Body Content */}
                 <div className="p-5 pt-8 flex-1 flex flex-col justify-between space-y-4">
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-2">
-                      <h3 className="text-lg font-black text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
-                        <span>{lang === 'ar' && store.name_ar ? store.name_ar : store.name}</span>
-                        {store.is_verified && (
-                          <CheckCircle2 className="h-4 w-4 text-primary fill-primary/20 shrink-0" />
-                        )}
-                      </h3>
+                      <Link
+                        href={`/stores/${store.slug}`}
+                        className="hover:text-primary transition-colors flex items-center gap-1.5 group-hover:text-primary cursor-pointer"
+                      >
+                        <h3 className="text-lg font-black text-foreground group-hover:text-primary transition-colors flex items-center gap-1.5">
+                          <span>{lang === 'ar' && store.name_ar ? store.name_ar : store.name}</span>
+                          {store.is_verified && (
+                            <CheckCircle2 className="h-4 w-4 text-primary fill-primary/20 shrink-0" />
+                          )}
+                        </h3>
+                      </Link>
 
                       <div className="flex items-center gap-1 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
                         <Star className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />

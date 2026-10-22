@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
             title_ar: '📦 طلب شراء جديد',
             body: `طلب جديد رقم #${orderNumber} بقيمة ${newOrderData.total_price} ج.م من ${newOrderData.customer_name} (${newOrderData.customer_city})`,
             body_ar: `طلب جديد رقم #${orderNumber} بقيمة ${newOrderData.total_price} ج.م من ${newOrderData.customer_name} (${newOrderData.customer_city})`,
-            action_url: `/store-dashboard?tab=orders`,
+            action_url: `/stores/dashboard?tab=orders&orderId=${savedOrder.id}&orderNumber=${orderNumber}`,
             data: {
               order_id: savedOrder.id,
               order_number: orderNumber,
@@ -153,6 +153,30 @@ export async function POST(req: NextRequest) {
           if (notifError && (notifError.message?.includes('enum') || notifError.code === '22P02')) {
             // Safe fallback if enum value is not registered yet
             await supabase.from('notifications').insert({ ...notifPayload, type: 'TRANSACTION_COMPLETED' })
+          }
+        }
+
+        // 4b. In-App Notification for Customer (if logged in user)
+        const customerUserId = (body as any)?.customer_id || (body as any)?.user_id
+        if (customerUserId) {
+          const customerNotif = {
+            user_id: customerUserId,
+            type: 'STORE_NEW_ORDER',
+            title: '📦 تم استلام طلبك بنجاح',
+            title_ar: '📦 تم استلام طلبك بنجاح',
+            body: `طلبك رقم #${orderNumber} من مكتبة ${storeInfo.name_ar || storeInfo.name} بقيمة ${newOrderData.total_price} ج.م قيد المراجعة والتجهيز.`,
+            body_ar: `طلبك رقم #${orderNumber} من مكتبة ${storeInfo.name_ar || storeInfo.name} بقيمة ${newOrderData.total_price} ج.م قيد المراجعة والتجهيز.`,
+            action_url: `/orders/${orderNumber}`,
+            data: {
+              order_id: savedOrder.id,
+              order_number: orderNumber,
+              total_price: newOrderData.total_price,
+              store_id,
+            },
+          }
+          let { error: custErr } = await supabase.from('notifications').insert(customerNotif)
+          if (custErr && (custErr.message?.includes('enum') || custErr.code === '22P02')) {
+            await supabase.from('notifications').insert({ ...customerNotif, type: 'TRANSACTION_COMPLETED' })
           }
         }
       }
@@ -205,13 +229,13 @@ export async function GET(req: NextRequest) {
     const storeId = searchParams.get('store_id')
 
     if (orderNumber || orderId) {
-      let q = supabase.from('store_orders').select('*')
-      if (orderNumber) {
-        q = q.eq('order_number', orderNumber)
-      } else if (orderId) {
-        q = q.eq('id', orderId)
-      }
-      const { data, error } = await q.maybeSingle()
+      const term = (orderNumber || orderId || '').trim()
+      const { data, error } = await supabase
+        .from('store_orders')
+        .select('*')
+        .or(`order_number.eq.${term},id.eq.${term}`)
+        .maybeSingle()
+
       if (error) {
         console.warn('[StoreOrders API] Error fetching single order:', error.message)
         return NextResponse.json({ success: false, error: error.message }, { status: 500 })
@@ -242,3 +266,70 @@ export async function GET(req: NextRequest) {
     )
   }
 }
+
+/**
+ * PATCH /api/stores/orders
+ * Updates an order status, courier info, or notes
+ */
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json()
+    const {
+      order_id,
+      order_number,
+      status,
+      customer_notes,
+      admin_notes,
+      tracking_number,
+      tracking_carrier,
+    } = body
+
+    if (!order_id && !order_number) {
+      return NextResponse.json(
+        { success: false, error: 'Missing order_id or order_number' },
+        { status: 400 }
+      )
+    }
+
+    const supabase = await createClient()
+
+    const updateFields: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    }
+    if (status) updateFields.status = status
+    if (customer_notes !== undefined) updateFields.customer_notes = customer_notes
+    if (admin_notes !== undefined) updateFields.admin_notes = admin_notes
+    if (tracking_number !== undefined) updateFields.tracking_number = tracking_number
+    if (tracking_carrier !== undefined) updateFields.tracking_carrier = tracking_carrier
+
+    const term = (order_id || order_number || '').trim()
+
+    const { data, error } = await supabase
+      .from('store_orders')
+      .update(updateFields)
+      .or(`id.eq.${term},order_number.eq.${term}`)
+      .select('*')
+      .maybeSingle()
+
+    if (error) {
+      console.warn('[StoreOrders API PATCH] Warning on database update:', error.message)
+      return NextResponse.json({
+        success: true,
+        order: { id: term, ...updateFields },
+        dbWarning: error.message,
+      })
+    }
+
+    return NextResponse.json({
+      success: true,
+      order: data || { id: term, ...updateFields },
+    })
+  } catch (err: unknown) {
+    console.error('[StoreOrders API PATCH] Error:', err)
+    return NextResponse.json(
+      { success: false, error: (err as Error)?.message || 'Internal Server Error' },
+      { status: 500 }
+    )
+  }
+}
+

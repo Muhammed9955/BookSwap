@@ -8,7 +8,14 @@ export const metadata: Metadata = {
     'هل تمتلك مكتبة أو تنظم فعاليات قراءة؟ انضم كشريك مميز في منصة WaraqConnect (ورق كونكت) واستفد من الوصول لآلاف القراء النشطين.',
 }
 
-export default async function PartnerFormPage() {
+interface PartnerFormPageProps {
+  searchParams?: Promise<{ unauthorized?: string }>
+}
+
+export default async function PartnerFormPage({ searchParams }: PartnerFormPageProps) {
+  const resolvedParams = searchParams ? await searchParams : undefined
+  const isUnauthorized = resolvedParams?.unauthorized === 'true'
+
   const supabase = await createClient()
   const {
     data: { user },
@@ -24,5 +31,10 @@ export default async function PartnerFormPage() {
     userProfile = data
   }
 
-  return <PartnerFormClient user={user ? { id: user.id, profile: userProfile } : null} />
+  return (
+    <PartnerFormClient
+      user={user ? { id: user.id, profile: userProfile } : null}
+      isUnauthorized={isUnauthorized}
+    />
+  )
 }

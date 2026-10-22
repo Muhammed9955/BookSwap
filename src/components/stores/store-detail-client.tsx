@@ -49,13 +49,16 @@ import {
   submitStoreOrder,
   rsvpEvent,
   getLocalStoreOffers,
+  getStoreInventory,
+  DEMO_OFFERS,
+  DEMO_EVENTS,
 } from '@/lib/stores/store-service'
 import {
-  STORE_CATALOG_BOOKS,
   STORE_BUNDLE_TIERS,
   GENRE_CATEGORIES,
 } from '@/lib/stores/store-catalog-data'
 import { tiersFromOffers } from '@/lib/stores/offer-templates'
+import { getOrderTrackingUrl, getProductionSiteUrl } from '@/lib/constants/site-url'
 import { StoreBookCard } from '@/components/stores/store-book-card'
 import { StoreOrderForm, type CustomerOrderData } from '@/components/stores/store-order-form'
 import type {
@@ -157,34 +160,25 @@ export function StoreDetailClient({
     setRatingCount(ratingState.rating_count)
   }, [store.id, currentUserId, store.follower_count, store.rating_average, store.rating_count])
 
-  // Combine store-specific inventory with curated catalog
-  const storeCatalogBooks = useMemo<StoreCatalogBook[]>(() => {
-    if (initialInventory && initialInventory.length > 0) {
-      const mappedInventory: StoreCatalogBook[] = initialInventory.map(item => ({
-        id: item.id,
-        title: item.title,
-        title_ar: item.title_ar || item.title,
-        author: item.author,
-        author_ar: item.author,
-        category: 'NOVELS',
-        category_name_ar: item.category_name || 'أدب وروايات',
-        price: item.price,
-        original_price: item.original_price || (item.price + 35),
-        in_stock: item.stock_quantity > 0,
-        stock_quantity: item.stock_quantity,
-        condition: item.condition,
-        isbn: item.isbn,
-        cover_url: item.cover_url,
-        badge: item.condition === 'NEW' ? 'جديد 🏷️' : 'مستعمل بحالة ممتازة ✨',
-      }))
-      const existingTitles = new Set(mappedInventory.map(b => b.title.toLowerCase()))
-      const rest = STORE_CATALOG_BOOKS.filter(b => !existingTitles.has(b.title.toLowerCase()))
-      return [...mappedInventory, ...rest]
-    }
-    return STORE_CATALOG_BOOKS
-  }, [initialInventory])
+  const [coverError, setCoverError] = useState(false)
+  const [logoError, setLogoError] = useState(false)
 
-  // Dynamic Effective Offers (props merged with local published offers)
+  // Live Inventory State with Client-Side Sync
+  const [liveInventory, setLiveInventory] = useState<StoreInventoryItem[]>(initialInventory || [])
+
+  useEffect(() => {
+    let isMounted = true
+    getStoreInventory(store.id).then(items => {
+      if (isMounted && items && items.length > 0) {
+        setLiveInventory(items)
+      }
+    })
+    return () => {
+      isMounted = false
+    }
+  }, [store.id])
+
+  // Dynamic Effective Offers (props merged with demo fallbacks and local published offers)
   const [localOffers, setLocalOffers] = useState<StoreOffer[]>([])
 
   useEffect(() => {
@@ -193,20 +187,193 @@ export function StoreDetailClient({
 
   const effectiveOffers = useMemo(() => {
     const merged = new Map<string, StoreOffer>()
-    for (const o of offers) {
+    const baseOffers = (offers && offers.length > 0)
+      ? offers
+      : DEMO_OFFERS.filter(o => o.store_id === store.id)
+
+    for (const o of baseOffers) {
       merged.set(o.id, o)
     }
     for (const o of localOffers) {
       merged.set(o.id, o)
     }
     return Array.from(merged.values())
-  }, [offers, localOffers])
+  }, [offers, localOffers, store.id])
 
-  // Active dynamic bundle tiers (from store custom offers or fallback preset)
+  // Store-specific inventory: show real inventory items + created 2-5 book packages as orderable products
+  const storeCatalogBooks = useMemo<StoreCatalogBook[]>(() => {
+    const list = liveInventory.length > 0 ? liveInventory : (initialInventory || [])
+    const bookList: StoreCatalogBook[] = []
+
+    // 1. Curated 2-5 Book Packages as orderable catalog products (pinned at top)
+    // Ready offers and series remain strictly in their promotional bundle series tab
+    const curatedPacks = effectiveOffers.filter(
+      o => o.offer_type === 'CURATED_PACK'
+    )
+
+    for (const pack of curatedPacks) {
+      let mappedCat: BookGenreCategory = 'NOVELS'
+      if (pack.genre === 'PSYCHOLOGY') mappedCat = 'PSYCHOLOGY'
+      else if (pack.genre === 'ISLAMIC' || pack.genre === 'RELIGIOUS') mappedCat = 'RELIGIOUS'
+      else if (pack.genre === 'PHILOSOPHY') mappedCat = 'PHILOSOPHY'
+      else if (pack.genre === 'THRILLER') mappedCat = 'THRILLER'
+      else if (pack.genre === 'SELF_HELP') mappedCat = 'SELF_HELP'
+
+      const packPrice = pack.offer_price || pack.bundle_price || 200
+      const packOriginal = pack.original_price && pack.original_price > packPrice ? pack.original_price : undefined
+      const count = pack.book_count || (pack.included_books?.length) || 2
+
+      bookList.push({
+        id: pack.id,
+        title: pack.title_ar || pack.title,
+        title_ar: pack.title_ar || pack.title,
+        author: pack.included_books && pack.included_books.length > 0
+          ? `باكدج ${count} كتب: ${pack.included_books.join(' + ')}`
+          : `باكدج كتب مجهز (${count} كتب)`,
+        author_ar: pack.included_books && pack.included_books.length > 0
+          ? `باكدج ${count} كتب: ${pack.included_books.join(' + ')}`
+          : `باكدج كتب مجهز (${count} كتب)`,
+        category: mappedCat,
+        category_name_ar: pack.genre_ar || 'باكدجات وعروض مجهزة 📦',
+        price: packPrice,
+        original_price: packOriginal,
+        in_stock: true,
+        stock_quantity: 10,
+        condition: 'NEW',
+        isbn: pack.promo_code ? `PROMO-${pack.promo_code}` : `BUNDLE-${pack.id.slice(-6)}`,
+        cover_url: pack.cover_image_url || 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80',
+        description: pack.description || (pack.included_books ? `الكتب المتضمنة: ${pack.included_books.join('، ')}` : ''),
+        description_ar: pack.description_ar || (pack.included_books ? `الكتب المتضمنة: ${pack.included_books.join('، ')}` : ''),
+        badge: pack.badge_text || `باكدج ${count} كتب 🔥`,
+        is_bundle: true,
+        bundle_book_count: count,
+        included_books: pack.included_books,
+        gift_description: pack.gift_description,
+      })
+    }
+
+    // 2. Individual inventory books
+    if (list && list.length > 0) {
+      for (const item of list) {
+        const catName = item.category_name || ''
+        let mappedCat: BookGenreCategory = 'NOVELS'
+        if (catName.includes('دين') || catName.includes('إسلام') || catName.includes('روحاني')) {
+          mappedCat = 'RELIGIOUS'
+        } else if (catName.includes('نفس') || catName.includes('تطوير') || catName.includes('ذات') || catName.includes('مشاعر')) {
+          mappedCat = 'PSYCHOLOGY'
+        } else if (catName.includes('فلسف') || catName.includes('فكر')) {
+          mappedCat = 'PHILOSOPHY'
+        } else if (catName.includes('رعب') || catName.includes('تشويق') || catName.includes('إثارة') || catName.includes('بوليسي')) {
+          mappedCat = 'THRILLER'
+        }
+
+        bookList.push({
+          id: item.id,
+          title: item.title,
+          title_ar: item.title_ar || item.title,
+          author: item.author,
+          author_ar: item.author,
+          category: mappedCat,
+          category_name_ar: item.category_name || 'روايات وأدب',
+          price: item.price,
+          original_price: item.original_price && item.original_price > item.price ? item.original_price : (item.price > 0 ? item.price + 35 : undefined),
+          in_stock: item.stock_quantity > 0,
+          stock_quantity: item.stock_quantity,
+          condition: item.condition,
+          isbn: item.isbn || `978-977-09-${item.id.replace(/\D/g, '').slice(-4) || '4321'}`,
+          cover_url: item.cover_url,
+          description: item.description,
+          description_ar: item.description_ar || item.description,
+          badge: item.condition === 'NEW' ? 'جديد 🏷️' : 'مستعمل بحالة ممتازة ✨',
+          rating: item.rating,
+          rating_count: item.rating_count,
+          publisher: item.publisher,
+          published_year: item.published_year,
+          pages_count: item.pages_count,
+          goodreads_url: item.goodreads_url,
+        })
+      }
+    }
+    return bookList
+  }, [liveInventory, initialInventory, effectiveOffers])
+
+  // Effective Events (props merged with demo fallbacks)
+  const effectiveEvents = useMemo(() => {
+    if (events && events.length > 0) return events
+    return DEMO_EVENTS.filter(e => e.store_id === store.id)
+  }, [events, store.id])
+
+  // Active dynamic bundle tiers (strictly from store custom offers, NO preset fallback)
   const activeBundleTiers: StoreBundleTier[] = useMemo(() => {
     const customTiers = tiersFromOffers(effectiveOffers)
-    return customTiers && customTiers.length > 0 ? customTiers : STORE_BUNDLE_TIERS
+    if (customTiers && customTiers.length > 0) return customTiers
+    return []
   }, [effectiveOffers])
+
+  // Dynamic visible navigation tabs (strictly displays tabs for active features)
+  const visibleNavTabs = useMemo(() => {
+    const tabs: {
+      id: TabType
+      labelAr: string
+      labelEn: string
+      icon: React.ComponentType<{ className?: string }>
+    }[] = [
+      {
+        id: 'books',
+        labelAr: `كتب وأسعار المكتبة (${storeCatalogBooks.length}) 📚`,
+        labelEn: `Books & Prices (${storeCatalogBooks.length}) 📚`,
+        icon: BookOpen,
+      },
+    ]
+
+    // Only show Bundle tab if store actually has active bundle tiers
+    if (activeBundleTiers.length > 0) {
+      tabs.push({
+        id: 'bundle',
+        labelAr: `عروض باقات التوفير والهدايا 🔥`,
+        labelEn: `Bundle Deals & Gifts 🔥`,
+        icon: Flame,
+      })
+    }
+
+    // Only show Offers tab if store actually has active offers
+    if (effectiveOffers.length > 0) {
+      tabs.push({
+        id: 'offers',
+        labelAr: `عروض وكوبونات المتجر (${effectiveOffers.length}) 🎁`,
+        labelEn: `Store Offers (${effectiveOffers.length}) 🎁`,
+        icon: Gift,
+      })
+    }
+
+    // Only show Events tab if store actually has active events
+    if (effectiveEvents.length > 0) {
+      tabs.push({
+        id: 'events',
+        labelAr: `الفعاليات وتوقيع الكتب (${effectiveEvents.length}) 📅`,
+        labelEn: `Events & Signings (${effectiveEvents.length}) 📅`,
+        icon: Calendar,
+      })
+    }
+
+    // Always show About tab
+    tabs.push({
+      id: 'about',
+      labelAr: 'عن المكتبة والموقع والمواعيد ℹ️',
+      labelEn: 'About & Hours ℹ️',
+      icon: Store,
+    })
+
+    return tabs
+  }, [storeCatalogBooks.length, activeBundleTiers.length, effectiveOffers.length, effectiveEvents.length])
+
+  // Automatically reset active tab if current tab is not available for this bookstore
+  useEffect(() => {
+    const isVisible = visibleNavTabs.some(t => t.id === activeTab)
+    if (!isVisible) {
+      setActiveTab('books')
+    }
+  }, [visibleNavTabs, activeTab])
 
   // Filtered offers by selected genre (applies to Curated Packs, leaves open mix-and-match bundles and series visible)
   const filteredOffers = useMemo(() => {
@@ -219,17 +386,22 @@ export function StoreDetailClient({
     })
   }, [effectiveOffers, selectedPackGenre])
 
-  // Filtered books catalog
+  // Filtered books catalog with rich multi-category support
   const filteredBooks = useMemo(() => {
     return storeCatalogBooks.filter(book => {
-      const matchesGenre = selectedGenre === 'ALL' || book.category === selectedGenre
+      const matchesGenre =
+        selectedGenre === 'ALL' ||
+        book.category === selectedGenre ||
+        (book.category_name_ar && book.category_name_ar.toLowerCase().includes(selectedGenre.toLowerCase()))
       const q = searchQuery.trim().toLowerCase()
       if (!q) return matchesGenre
       const matchesQuery =
         book.title.toLowerCase().includes(q) ||
         (book.title_ar && book.title_ar.toLowerCase().includes(q)) ||
         book.author.toLowerCase().includes(q) ||
-        (book.author_ar && book.author_ar.toLowerCase().includes(q))
+        (book.author_ar && book.author_ar.toLowerCase().includes(q)) ||
+        (book.category_name_ar && book.category_name_ar.toLowerCase().includes(q)) ||
+        (book.included_books && book.included_books.some(t => t.toLowerCase().includes(q)))
       return matchesGenre && matchesQuery
     })
   }, [storeCatalogBooks, selectedGenre, searchQuery])
@@ -241,27 +413,45 @@ export function StoreDetailClient({
 
   const selectedCount = selectedBooksList.length
 
+  // Curated pack items vs regular single books in basket
+  const basketCuratedPacks = useMemo(() => {
+    return selectedBooksList.filter(b => b.is_bundle)
+  }, [selectedBooksList])
+
+  const basketRegularBooks = useMemo(() => {
+    return selectedBooksList.filter(b => !b.is_bundle)
+  }, [selectedBooksList])
+
+  const regularBooksCount = basketRegularBooks.length
+
   const currentTier = useMemo(() => {
+    if (regularBooksCount === 0) return null
     const sorted = [...activeBundleTiers].sort((a, b) => b.required_books - a.required_books)
-    return sorted.find(t => selectedCount >= t.required_books) || null
-  }, [activeBundleTiers, selectedCount])
+    return sorted.find(t => regularBooksCount >= t.required_books) || null
+  }, [activeBundleTiers, regularBooksCount])
 
   const nextTier = useMemo(() => {
     const sorted = [...activeBundleTiers].sort((a, b) => a.required_books - b.required_books)
-    return sorted.find(t => selectedCount < t.required_books) || null
-  }, [activeBundleTiers, selectedCount])
+    return sorted.find(t => regularBooksCount < t.required_books) || null
+  }, [activeBundleTiers, regularBooksCount])
 
-  const booksToNextTier = nextTier ? nextTier.required_books - selectedCount : 0
+  const booksToNextTier = nextTier ? nextTier.required_books - regularBooksCount : 0
 
   const basketTotalPrice = useMemo(() => {
-    if (currentTier) return currentTier.price
-    return selectedBooksList.reduce((sum, b) => sum + (b.price || 0), 0)
-  }, [currentTier, selectedBooksList])
+    const packsPrice = basketCuratedPacks.reduce((sum, p) => sum + (p.price || 0), 0)
+    const booksPrice = currentTier
+      ? currentTier.price
+      : basketRegularBooks.reduce((sum, b) => sum + (b.price || 0), 0)
+    return packsPrice + booksPrice
+  }, [basketCuratedPacks, basketRegularBooks, currentTier])
 
   const basketOriginalValue = useMemo(() => {
-    if (currentTier) return currentTier.original_value
-    return selectedBooksList.reduce((sum, b) => sum + (b.original_price || (b.price + 35) || 0), 0)
-  }, [currentTier, selectedBooksList])
+    const packsOriginal = basketCuratedPacks.reduce((sum, p) => sum + (p.original_price || (p.price + 50) || 0), 0)
+    const booksOriginal = currentTier
+      ? currentTier.original_value
+      : basketRegularBooks.reduce((sum, b) => sum + (b.original_price || (b.price + 35) || 0), 0)
+    return packsOriginal + booksOriginal
+  }, [basketCuratedPacks, basketRegularBooks, currentTier])
 
   const basketSavings = basketOriginalValue > basketTotalPrice ? basketOriginalValue - basketTotalPrice : 0
 
@@ -342,8 +532,7 @@ export function StoreDetailClient({
       setLastPlacedOrder(savedOrder)
     }
 
-    const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://waraqconnect.com'
-    const trackingUrl = `${origin}/orders/${orderCode}`
+    const trackingUrl = getOrderTrackingUrl(orderCode)
     const storeName = lang === 'ar' && store.name_ar ? store.name_ar : store.name
 
     const message = [
@@ -385,7 +574,14 @@ export function StoreDetailClient({
     const finalTotal = customer.finalTotal !== undefined ? customer.finalTotal : subtotal + shippingFee
 
     const titlesList = selectedBooksList
-      .map((b, idx) => `${idx + 1}. *${b.title_ar || b.title}* (${b.author_ar || b.author}) - ${b.price} ج.م`)
+      .map((b, idx) => {
+        if (b.is_bundle) {
+          const incBooks = b.included_books && b.included_books.length > 0 ? `\n   - الكتب المتضمنة: ${b.included_books.join(' + ')}` : ''
+          const gift = b.gift_description ? `\n   - هدية العرض: ${b.gift_description}` : ''
+          return `${idx + 1}. 📦 *[باكدج مجهز]* *${b.title_ar || b.title}* - ${b.price} ج.م${incBooks}${gift}`
+        }
+        return `${idx + 1}. 📖 *${b.title_ar || b.title}* (${b.author_ar || b.author}) - ${b.price} ج.م`
+      })
       .join('\n')
 
     // Persist to store orders
@@ -421,8 +617,7 @@ export function StoreDetailClient({
       setLastPlacedOrder(savedOrder)
     }
 
-    const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://waraqconnect.com'
-    const trackingUrl = `${origin}/orders/${orderCode}`
+    const trackingUrl = getOrderTrackingUrl(orderCode)
     const storeName = lang === 'ar' && store.name_ar ? store.name_ar : store.name
 
     let message = ''
@@ -535,8 +730,7 @@ export function StoreDetailClient({
       setLastPlacedOrder(savedOrder)
     }
 
-    const origin = typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://waraqconnect.com'
-    const trackingUrl = `${origin}/orders/${orderCode}`
+    const trackingUrl = getOrderTrackingUrl(orderCode)
     const storeName = lang === 'ar' && store.name_ar ? store.name_ar : store.name
 
     const orderHeader = isSeriesOrder
@@ -627,10 +821,23 @@ export function StoreDetailClient({
       {/* Cover & Hero Section */}
       <div className="relative">
         <div className="relative h-56 sm:h-80 w-full overflow-hidden bg-muted">
-          {store.cover_url ? (
-            <Image src={store.cover_url} alt={store.name} fill className="object-cover" priority />
+          {store.cover_url && !coverError ? (
+            <Image
+              src={store.cover_url}
+              alt={store.name}
+              fill
+              className="object-cover"
+              priority
+              onError={() => setCoverError(true)}
+            />
           ) : (
-            <Image src="/images/cover-placeholder.svg" alt={store.name} fill className="object-cover" priority />
+            <Image
+              src="/images/cover-placeholder.svg"
+              alt={store.name}
+              fill
+              className="object-cover"
+              priority
+            />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
         </div>
@@ -642,8 +849,14 @@ export function StoreDetailClient({
               {/* Logo & Basic Info */}
               <div className="flex items-start gap-4">
                 <div className="relative h-20 w-20 sm:h-24 sm:w-24 rounded-2xl overflow-hidden border-4 border-card bg-card shadow-lg shrink-0">
-                  {store.logo_url ? (
-                    <Image src={store.logo_url} alt="" fill className="object-cover" />
+                  {store.logo_url && !logoError ? (
+                    <Image
+                      src={store.logo_url}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      onError={() => setLogoError(true)}
+                    />
                   ) : (
                     <div className="h-full w-full flex items-center justify-center font-black text-2xl text-primary bg-primary/10">
                       {store.name.charAt(0)}
@@ -733,8 +946,12 @@ export function StoreDetailClient({
                   <a
                     href={`https://wa.me/${store.social_links.whatsapp.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
                       lang === 'ar'
-                        ? `مرحباً، أود الاستفسار عن عروض الكتب من ${storeName} عبر منصة WaraqConnect (ورق كونكت)`
-                        : `Hello, I'd like to ask about book offers from ${storeName} via WaraqConnect`
+                        ? effectiveOffers.length > 0
+                          ? `مرحباً، أود الاستفسار عن عروض الكتب من ${storeName} عبر منصة WaraqConnect (ورق كونكت)`
+                          : `مرحباً، أود الاستفسار عن الكتب المتوفرة لدى ${storeName} عبر منصة WaraqConnect (ورق كونكت)`
+                        : effectiveOffers.length > 0
+                          ? `Hello, I'd like to ask about book offers from ${storeName} via WaraqConnect`
+                          : `Hello, I'd like to ask about books available at ${storeName} via WaraqConnect`
                     )}`}
                     target="_blank"
                     rel="noreferrer"
@@ -751,40 +968,9 @@ export function StoreDetailClient({
               </div>
             </div>
 
-            {/* Navigation Tabs */}
+            {/* Navigation Tabs (Only showing tabs with actual store content) */}
             <div className="flex items-center gap-2 border-t border-border/80 pt-4 overflow-x-auto">
-              {[
-                {
-                  id: 'books',
-                  labelAr: `كتب وأسعار المكتبة (${storeCatalogBooks.length}) 📚`,
-                  labelEn: `Books & Prices (${storeCatalogBooks.length}) 📚`,
-                  icon: BookOpen,
-                },
-                {
-                  id: 'bundle',
-                  labelAr: `عروض باقات التوفير والهدايا 🔥`,
-                  labelEn: `Bundle Deals & Gifts 🔥`,
-                  icon: Flame,
-                },
-                {
-                  id: 'offers',
-                  labelAr: `عروض وكوبونات المتجر (${effectiveOffers.length}) 🎁`,
-                  labelEn: `Store Offers (${effectiveOffers.length}) 🎁`,
-                  icon: Gift,
-                },
-                {
-                  id: 'events',
-                  labelAr: `الفعاليات وتوقيع الكتب (${events.length}) 📅`,
-                  labelEn: `Events & Signings (${events.length}) 📅`,
-                  icon: Calendar,
-                },
-                {
-                  id: 'about',
-                  labelAr: 'عن المكتبة والموقع والمواعيد ℹ️',
-                  labelEn: 'About & Hours ℹ️',
-                  icon: Store,
-                },
-              ].map(tab => (
+              {visibleNavTabs.map(tab => (
                 <button
                   key={tab.id}
                   type="button"
@@ -810,157 +996,330 @@ export function StoreDetailClient({
         {/* TAB 0: BOOKS CATALOG & PRICES */}
         {activeTab === 'books' && (
           <div className="space-y-8 animate-in fade-in">
-            {/* Promo Banner: Viral Bundle Deal */}
-            <div className="relative overflow-hidden rounded-3xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-amber-500/10 to-card p-6 sm:p-8 shadow-lg">
-              <div className="absolute top-0 end-0 -mt-6 -me-6 h-36 w-36 rounded-full bg-primary/10 blur-2xl pointer-events-none" />
-              <div className="space-y-4 relative z-10">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black bg-primary/20 text-primary border border-primary/30">
-                  <Flame className="h-3.5 w-3.5 text-orange-500 fill-orange-500 animate-bounce" />
-                  <span>{lang === 'ar' ? 'عرض المكتبة الناري الأقوى' : 'Bestseller Store Offer'}</span>
-                </div>
+            {/* Promo Banner: Viral Bundle Deal (ONLY when store actually has bundle tiers configured) */}
+            {activeBundleTiers.length > 0 && storeCatalogBooks.length > 0 && (
+              <div className="relative overflow-hidden rounded-3xl border-2 border-primary/30 bg-gradient-to-br from-primary/10 via-amber-500/10 to-card p-6 sm:p-8 shadow-lg">
+                <div className="absolute top-0 end-0 -mt-6 -me-6 h-36 w-36 rounded-full bg-primary/10 blur-2xl pointer-events-none" />
+                <div className="space-y-4 relative z-10">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-black bg-primary/20 text-primary border border-primary/30">
+                    <Flame className="h-3.5 w-3.5 text-orange-500 fill-orange-500 animate-bounce" />
+                    <span>{lang === 'ar' ? 'عرض المكتبة الناري الأقوى' : 'Bestseller Store Offer'}</span>
+                  </div>
 
-                <div className="space-y-1.5">
-                  <h2 className="text-xl sm:text-2xl font-black text-foreground">
-                    {lang === 'ar'
-                      ? '🔥 إنت تختار الكتب… وإحنا نزودلك الهدايا 🎁📚'
-                      : '🔥 You Choose the Books… We Shower You With Gifts 🎁📚'}
-                  </h2>
-                  <p className="text-xs sm:text-sm font-semibold text-muted-foreground max-w-2xl">
-                    {lang === 'ar'
-                      ? 'اختار اللي يعجبك من القائمة، والكتب الهدية من اختيار المكتبة عشوائي 😍 كل ما تزود… تكسب أكتر ❤️🔥'
-                      : 'Pick any books from our catalog, and receive free mystery books chosen by our bookstore team!'}
-                  </p>
-                </div>
+                  <div className="space-y-1.5">
+                    <h2 className="text-xl sm:text-2xl font-black text-foreground">
+                      {lang === 'ar'
+                        ? '🔥 إنت تختار الكتب… وإحنا نزودلك الهدايا 🎁📚'
+                        : '🔥 You Choose the Books… We Shower You With Gifts 🎁📚'}
+                    </h2>
+                    <p className="text-xs sm:text-sm font-semibold text-muted-foreground max-w-2xl">
+                      {lang === 'ar'
+                        ? 'اختار اللي يعجبك من القائمة، والكتب الهدية من اختيار المكتبة عشوائي 😍 كل ما تزود… تكسب أكتر ❤️🔥'
+                        : 'Pick any books from our catalog, and receive free mystery books chosen by our bookstore team!'}
+                    </p>
+                  </div>
 
-                {/* Bundle Tiers Overview Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-                  {activeBundleTiers.map(tier => (
-                    <div
-                      key={tier.id}
-                      onClick={() => setActiveTab('bundle')}
-                      className={cn(
-                        "rounded-2xl border p-4 transition-all cursor-pointer relative bg-card/80 backdrop-blur-sm hover:scale-[1.02] hover:shadow-md",
-                        tier.popular ? "border-amber-500/60 shadow-xs ring-1 ring-amber-500/40" : "border-border"
-                      )}
-                    >
-                      {tier.popular && (
-                        <span className="absolute -top-2.5 start-3 px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500 text-white shadow-xs">
-                          {lang === 'ar' ? 'الأكثر طلباً 🔥' : 'Most Popular'}
-                        </span>
-                      )}
-                      <div className="text-sm font-black text-foreground">{tier.name_ar}</div>
-                      <div className="mt-1 text-lg font-black text-primary">
-                        {tier.price} ج.م
-                        <span className="text-[11px] text-muted-foreground line-through font-semibold ms-1.5">
-                          {tier.original_value} ج.م
-                        </span>
+                  {/* Bundle Tiers Overview Cards (Informational Showcase) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 pt-2">
+                    {activeBundleTiers.map(tier => {
+                      const isReached = regularBooksCount >= tier.required_books
+                      const savings = tier.original_value - tier.price
+
+                      return (
+                        <div
+                          key={tier.id}
+                          className={cn(
+                            "group rounded-2xl border-2 p-3.5 sm:p-4 transition-all relative bg-card/90 backdrop-blur-sm flex flex-col justify-between text-start select-none shadow-xs hover:shadow-md hover:-translate-y-0.5",
+                            isReached
+                              ? "border-emerald-500/70 bg-emerald-500/10 ring-2 ring-emerald-500/30"
+                              : tier.popular
+                              ? "border-amber-500/70 shadow-xs ring-1 ring-amber-500/40 hover:border-amber-500"
+                              : "border-border/80 hover:border-primary/40 hover:bg-muted/30"
+                          )}
+                        >
+                          <div>
+                            {/* Top Badges */}
+                            <div className="flex items-center justify-between gap-1 mb-2">
+                              {tier.popular ? (
+                                <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500 text-white shadow-2xs">
+                                  {lang === 'ar' ? 'الأكثر طلباً 🔥' : 'Most Popular'}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold text-muted-foreground">
+                                  {tier.required_books} {lang === 'ar' ? 'كتب' : 'books'}
+                                </span>
+                              )}
+
+                              {isReached ? (
+                                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-600 text-white shadow-xs">
+                                  <Check className="h-3 w-3 stroke-[3]" />
+                                  <span>{lang === 'ar' ? 'مؤهل ✓' : 'Unlocked'}</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full">
+                                  {lang === 'ar' ? `اختر ${tier.required_books} كتب` : `${tier.required_books} books`}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Title */}
+                            <div className="text-sm font-black text-foreground group-hover:text-primary transition-colors leading-snug">
+                              {tier.name_ar}
+                            </div>
+
+                            {/* Price & Savings */}
+                            <div className="mt-1.5 flex items-baseline gap-1.5 flex-wrap">
+                              <span className="text-lg font-black text-primary">
+                                {tier.price} ج.م
+                              </span>
+                              <span className="text-[11px] text-muted-foreground line-through font-semibold">
+                                {tier.original_value} ج.م
+                              </span>
+                              {savings > 0 && (
+                                <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md">
+                                  وفر {savings} ج.م
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Gift Benefits */}
+                            <div className="mt-2.5 space-y-1 text-[11px] text-muted-foreground font-semibold bg-muted/40 rounded-xl p-2 border border-border/40">
+                              <div className="flex items-center gap-1.5 text-foreground font-bold">
+                                <BookOpen className="h-3 w-3 text-primary shrink-0" />
+                                <span>اختر <strong>{tier.required_books}</strong> كتب</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold">
+                                <Gift className="h-3 w-3 shrink-0" />
+                                <span>+ {tier.free_gift_books} كتاب هدية عشوائي</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+                                <Bookmark className="h-3 w-3 shrink-0" />
+                                <span>+ {tier.free_bookmarks} بوك مارك فواصل</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Card Footer Tag */}
+                          <div className="mt-3 pt-2 border-t border-border/50 flex items-center justify-between text-[10px] text-muted-foreground font-semibold">
+                            <span>
+                              {isReached
+                                ? '🎉 تم تفعيل هذا العرض'
+                                : `توفير ${savings} ج.م`}
+                            </span>
+                            <span className="text-primary font-bold">
+                              {isReached ? 'نشط في السلة ✓' : 'تُطبق تلقائياً'}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* Offers Details & Real-Time Notification Box */}
+                  <div className="rounded-2xl bg-card/95 backdrop-blur-md border border-primary/30 p-4 sm:p-5 shadow-xs space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                          <Gift className="h-5 w-5" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-xs sm:text-sm font-black text-foreground flex items-center gap-1.5">
+                              <span>{lang === 'ar' ? '📢 كيف تعمل عروض وباقات التوفير بالمكتبة؟' : 'How Bookstore Offers Work'}</span>
+                            </h3>
+                            {currentTier && (
+                              <Badge className="bg-emerald-600 text-white font-black text-[10px]">
+                                {lang === 'ar' ? `مفعّل لديك: ${currentTier.name_ar} 🔥` : `Active: ${currentTier.name_ar}`}
+                              </Badge>
+                            )}
+                          </div>
+
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            {currentTier ? (
+                              lang === 'ar' ? (
+                                <>
+                                  🎉 <strong className="text-foreground">تهانينا!</strong> باختيارك {regularBooksCount} كتب، تم تفعيل <strong className="text-primary">{currentTier.name_ar}</strong> تلقائياً بسعر <strong className="text-primary">{currentTier.price} ج.م</strong> مع <strong className="text-amber-600 dark:text-amber-400">+{currentTier.free_gift_books} كتب هدية مجانية</strong> و <strong className="text-emerald-600 dark:text-emerald-400">+{currentTier.free_bookmarks} فواصل بوك مارك</strong>!
+                                  {nextTier && (
+                                    <span className="block mt-1 text-primary font-bold">
+                                      💡 وفر أكثر: أضف {booksToNextTier} كتب إضافية لتفعيل &quot;{nextTier.name_ar}&quot; بسعر {nextTier.price} ج.م والحصول على هدايا أكثر!
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                `Congratulations! Unlocked ${currentTier.name_ar} for ${currentTier.price} EGP plus free mystery books & bookmarks!`
+                              )
+                            ) : regularBooksCount > 0 && nextTier ? (
+                              lang === 'ar' ? (
+                                <>
+                                  اخترت حتى الآن <strong className="text-foreground">{regularBooksCount} كتب</strong>. أضف <strong className="text-primary">{booksToNextTier} كتب إضافية</strong> لتفعيل <strong className="text-primary">&quot;{nextTier.name_ar}&quot;</strong> بسعر {nextTier.price} ج.م بدلاً من {nextTier.original_value} ج.م والحصول على كتاب وفاصل هدية مجاناً!
+                                </>
+                              ) : (
+                                `You have picked ${regularBooksCount} books. Add ${booksToNextTier} more to activate "${nextTier.name_ar}" and get free gifts!`
+                              )
+                            ) : (
+                              lang === 'ar'
+                                ? 'يمكنك طلب أي كتاب منفرداً بسعره المخفض، أو تجميع أي تشكيلة كتب تحبها (3، 5، 6، 10، 15، أو 20 كتاباً)، وسيقوم النظام بتفعيل باكدج التوفير الأعلى وإضافة الكتب الهدية والفواصل المجانية تلقائياً في سلتك!'
+                                : 'Order individual books or mix & match any 3, 5, 6, 10, 15, or 20 books. The highest savings tier and free gifts are automatically applied in your basket!'
+                            )}
+                          </p>
+                        </div>
                       </div>
-                      <div className="mt-2 space-y-1 text-[11px] text-muted-foreground font-semibold">
-                        <div className="flex items-center gap-1.5 text-foreground">
-                          <BookOpen className="h-3 w-3 text-primary shrink-0" />
-                          <span>اختر <strong>{tier.required_books}</strong> كتب</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold">
-                          <Gift className="h-3 w-3 shrink-0" />
-                          <span>+ {tier.free_gift_books} كتاب هدية عشوائي</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
-                          <Bookmark className="h-3 w-3 shrink-0" />
-                          <span>+ {tier.free_bookmarks} بوك مارك فواصل</span>
-                        </div>
+
+                      {/* Right Side Buttons */}
+                      <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                        {currentTier ? (
+                          <Button
+                            size="sm"
+                            onClick={handleOpenBundleOrder}
+                            className="rounded-xl font-black text-xs gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-600/20 px-4 py-2 cursor-pointer"
+                          >
+                            <ShoppingBag className="h-4 w-4" />
+                            <span>{lang === 'ar' ? `اطلب الباكدج الآن (${currentTier.price} ج.م)` : `Order Bundle (${currentTier.price} EGP)`}</span>
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const el = document.getElementById('store-books-catalog')
+                              if (el) el.scrollIntoView({ behavior: 'smooth' })
+                            }}
+                            className="rounded-xl font-bold text-xs gap-1.5 cursor-pointer border-primary/30 text-primary hover:bg-primary/10"
+                          >
+                            <span>{lang === 'ar' ? 'تصفح الكتب بالأسفل ↓' : 'Browse Books Below ↓'}</span>
+                          </Button>
+                        )}
+
+                        <Button
+                          size="sm"
+                          onClick={() => setActiveTab('bundle')}
+                          className="rounded-xl font-black text-xs gap-1.5 bg-primary text-primary-foreground shadow-xs cursor-pointer"
+                        >
+                          <span>{lang === 'ar' ? 'مجمّع باقات التوفير' : 'Bundle Builder'}</span>
+                          <ArrowRight className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </div>
-                  ))}
-                </div>
-
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/60">
-                  <div className="text-xs font-bold text-muted-foreground flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                    <span>
-                      {lang === 'ar'
-                        ? 'يمكنك طلب أي كتاب منفرداً بسعره المخفض، أو تجميع باكدج لتوفير أقصى مبلغ!'
-                        : 'Order individual books or mix & match bundles to maximize savings!'}
-                    </span>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => setActiveTab('bundle')}
-                    className="rounded-xl font-black text-xs gap-1.5 bg-primary text-primary-foreground shadow-sm cursor-pointer"
-                  >
-                    <span>{lang === 'ar' ? 'تجميع باكدج التوفير التفاعلي' : 'Open Bundle Builder'}</span>
-                    <ArrowRight className="h-3.5 w-3.5" />
-                  </Button>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Store Offers Notice: Shown when store has general offers but no mix & match tiers */}
+            {activeBundleTiers.length === 0 && effectiveOffers.length > 0 && storeCatalogBooks.length > 0 && (
+              <div className="relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-r from-primary/10 via-card to-background p-5 sm:p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-2xl bg-primary/20 flex items-center justify-center shrink-0">
+                    <Gift className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-foreground">
+                      {lang === 'ar'
+                        ? `🎁 تتوفر عروض وباقات حصرية لدى ${storeName} (${effectiveOffers.length} عروض نشطة)`
+                        : `🎁 Exclusive offers and deals available from ${storeName} (${effectiveOffers.length} active offers)`}
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {lang === 'ar'
+                        ? 'تصفح باقات الكتب المجهزة والخصومات المتاحة حالياً من تبويب العروض بالأسفل.'
+                        : 'Explore curated packs and special discounts currently offered by this bookstore.'}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => setActiveTab('offers')}
+                  className="rounded-xl font-black text-xs gap-1.5 bg-primary text-primary-foreground shadow-xs cursor-pointer shrink-0 self-start sm:self-auto"
+                >
+                  <Gift className="h-3.5 w-3.5" />
+                  <span>{lang === 'ar' ? 'تصفح عروض المتجر' : 'View Store Offers'}</span>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
 
             {/* Filter & Search Bar */}
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-                {/* Search Bar */}
-                <div className="relative flex-1">
-                  <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    placeholder={lang === 'ar' ? 'ابحث عن أي كتاب أو كاتب من الـ 115+ عنواناً...' : 'Search books or authors...'}
-                    className="w-full rounded-2xl border border-border/80 bg-card ps-10 pe-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-xs"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute end-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground hover:text-foreground cursor-pointer"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  )}
+            {storeCatalogBooks.length > 0 && (
+              <div id="store-books-catalog" className="space-y-4 scroll-mt-20">
+                <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+                  {/* Search Bar */}
+                  <div className="relative flex-1">
+                    <Search className="absolute start-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      placeholder={lang === 'ar' ? 'ابحث عن أي كتاب أو كاتب في هذه المكتبة...' : 'Search books or authors in this store...'}
+                      className="w-full rounded-2xl border border-border/80 bg-card ps-10 pe-10 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 shadow-xs"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="absolute end-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-muted-foreground hover:text-foreground cursor-pointer"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Counter of matching books */}
+                  <div className="text-xs font-black text-muted-foreground shrink-0 self-center">
+                    <span>{filteredBooks.length} {lang === 'ar' ? 'كتاب معروض' : 'books shown'}</span>
+                  </div>
                 </div>
 
-                {/* Counter of matching books */}
-                <div className="text-xs font-black text-muted-foreground shrink-0 self-center">
-                  <span>{filteredBooks.length} {lang === 'ar' ? 'كتاب معروض' : 'books shown'}</span>
+                {/* Genre Pills */}
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+                  {GENRE_CATEGORIES.map(cat => {
+                    const isActive = selectedGenre === cat.id
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setSelectedGenre(cat.id)}
+                        className={cn(
+                          "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 border shrink-0",
+                          isActive
+                            ? "bg-foreground text-background border-foreground shadow-xs"
+                            : "border-border/80 bg-card text-muted-foreground hover:text-foreground hover:border-primary/40"
+                        )}
+                      >
+                        <span>{cat.emoji}</span>
+                        <span>{lang === 'ar' ? cat.nameAr : cat.nameEn}</span>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
-
-              {/* Genre Pills */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-                {GENRE_CATEGORIES.map(cat => {
-                  const isActive = selectedGenre === cat.id
-                  return (
-                    <button
-                      key={cat.id}
-                      type="button"
-                      onClick={() => setSelectedGenre(cat.id)}
-                      className={cn(
-                        "px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 border shrink-0",
-                        isActive
-                          ? "bg-foreground text-background border-foreground shadow-xs"
-                          : "border-border/80 bg-card text-muted-foreground hover:text-foreground hover:border-primary/40"
-                      )}
-                    >
-                      <span>{cat.emoji}</span>
-                      <span>{lang === 'ar' ? cat.nameAr : cat.nameEn}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+            )}
 
             {/* Books Grid: 5 Books a line */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-              {filteredBooks.map(book => (
-                <StoreBookCard
-                  key={book.id}
-                  book={book}
-                  isSelectedInBundle={bundleSelectedBookIds.includes(book.id)}
-                  onToggleBundle={toggleBookInBundle}
-                  onOrderSingle={handleOpenSingleBookOrder}
-                />
-              ))}
-            </div>
+            {storeCatalogBooks.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+                {filteredBooks.map(book => (
+                  <StoreBookCard
+                    key={book.id}
+                    book={book}
+                    isSelectedInBundle={bundleSelectedBookIds.includes(book.id)}
+                    onToggleBundle={toggleBookInBundle}
+                    onOrderSingle={handleOpenSingleBookOrder}
+                  />
+                ))}
+              </div>
+            )}
 
-            {filteredBooks.length === 0 && (
+            {storeCatalogBooks.length === 0 ? (
+              <div className="text-center py-16 px-4 rounded-3xl border-2 border-dashed border-border/80 bg-muted/10 space-y-3">
+                <div className="text-5xl">📖</div>
+                <h3 className="text-lg font-black text-foreground">
+                  {lang === 'ar' ? 'لم تقم المكتبة بإضافة كتب إلى المخزون بعد' : 'No books in this bookstore catalog yet'}
+                </h3>
+                <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                  {lang === 'ar'
+                    ? 'تابع المكتبة لتصلك إشعارات فور توفر كتب جديدة، أو تصفح عروض وفعاليات المكتبة المتاحة.'
+                    : 'Follow this bookstore to receive notifications when new books are listed.'}
+                </p>
+              </div>
+            ) : filteredBooks.length === 0 ? (
               <div className="text-center py-16 px-4 rounded-3xl border-2 border-dashed border-border/80 bg-muted/10 space-y-3">
                 <div className="text-5xl">🔍</div>
                 <h3 className="text-lg font-bold text-foreground">
@@ -980,12 +1339,12 @@ export function StoreDetailClient({
                   {lang === 'ar' ? 'عرض جميع الكتب' : 'Show All Books'}
                 </Button>
               </div>
-            )}
+            ) : null}
           </div>
         )}
 
         {/* TAB 1: MIX & MATCH BUNDLE BUILDER */}
-        {activeTab === 'bundle' && (
+        {activeTab === 'bundle' && activeBundleTiers.length > 0 && (
           <div className="space-y-8 animate-in fade-in">
             {/* Header description */}
             <div className="space-y-2 border-b border-border/80 pb-5">
@@ -1183,30 +1542,42 @@ export function StoreDetailClient({
             <div className="space-y-4 pt-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-black text-foreground">
-                  {lang === 'ar' ? 'قائمة الكتب المتاحة للاختيار (115+ عنواناً)' : 'Available Books Catalog'}
+                  {lang === 'ar'
+                    ? `قائمة الكتب المتاحة للاختيار (${storeCatalogBooks.length} كتاب)`
+                    : `Available Books (${storeCatalogBooks.length})`}
                 </h3>
                 <span className="text-xs text-muted-foreground font-semibold">
-                  اضغط على أي كتاب لإضافته أو حذفه من باكدجك
+                  {lang === 'ar' ? 'اضغط على أي كتاب لإضافته أو حذفه من باكدجك' : 'Click on any book to add or remove'}
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                {STORE_CATALOG_BOOKS.map(b => (
-                  <StoreBookCard
-                    key={b.id}
-                    book={b}
-                    viewMode="bundle-picker"
-                    isSelectedInBundle={bundleSelectedBookIds.includes(b.id)}
-                    onToggleBundle={toggleBookInBundle}
-                  />
-                ))}
-              </div>
+              {storeCatalogBooks.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {storeCatalogBooks.map(b => (
+                    <StoreBookCard
+                      key={b.id}
+                      book={b}
+                      viewMode="bundle-picker"
+                      isSelectedInBundle={bundleSelectedBookIds.includes(b.id)}
+                      onToggleBundle={toggleBookInBundle}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="p-8 rounded-3xl border-2 border-dashed border-border/80 bg-muted/15 text-center space-y-2">
+                  <p className="font-bold text-muted-foreground text-sm">
+                    {lang === 'ar'
+                      ? 'لم تقم المكتبة بإضافة كتب إلى المخزون بعد لتكوين باقات مخصصة.'
+                      : 'This bookstore has not added inventory yet for custom bundles.'}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {/* TAB 2: OFFERS & BUNDLE PACKAGES */}
-        {activeTab === 'offers' && (
+        {activeTab === 'offers' && effectiveOffers.length > 0 && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
@@ -1418,17 +1789,37 @@ export function StoreDetailClient({
                     {/* Order Action Button */}
                     <div className="p-5 pt-0">
                       {isCuratedPack ? (
-                        <Button
-                          onClick={() => handleOpenCuratedPackOrder(offer)}
-                          className="w-full rounded-2xl font-black text-xs py-3 gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-md shadow-emerald-600/20 cursor-pointer"
-                        >
-                          <ShoppingBag className="h-4 w-4" />
-                          <span>
-                            {lang === 'ar'
-                              ? `اطلب هذا الباكدج الآن (${priceToShow} ج.م) 🚀`
-                              : `Order This Pack (${priceToShow} EGP) 🚀`}
-                          </span>
-                        </Button>
+                        <div className="flex flex-col sm:flex-row items-center gap-2">
+                          <Button
+                            onClick={() => toggleBookInBundle(offer.id)}
+                            className={cn(
+                              "w-full rounded-2xl font-black text-xs py-3 gap-2 cursor-pointer transition-all active:scale-[0.98]",
+                              bundleSelectedBookIds.includes(offer.id)
+                                ? "bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-600/25 ring-2 ring-emerald-500/40"
+                                : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md shadow-primary/20"
+                            )}
+                          >
+                            {bundleSelectedBookIds.includes(offer.id) ? (
+                              <>
+                                <Check className="h-4 w-4 stroke-[3]" />
+                                <span>{lang === 'ar' ? 'مضاف في السلة والباكدج ✓ (انقر للإزالة)' : 'Added to Basket ✓ (Click to Remove)'}</span>
+                              </>
+                            ) : (
+                              <>
+                                <ShoppingBag className="h-4 w-4" />
+                                <span>{lang === 'ar' ? `أضف هذا الباكدج للسلة (${priceToShow} ج.م) 🛒` : `Add Pack to Basket (${priceToShow} EGP) 🛒`}</span>
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            onClick={() => handleOpenCuratedPackOrder(offer)}
+                            variant="outline"
+                            className="w-full sm:w-auto shrink-0 rounded-2xl font-bold text-xs py-3 px-3.5 border-emerald-500/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 cursor-pointer"
+                            title={lang === 'ar' ? 'طلب فوري مباشر عبر واتساب' : 'Instant Direct Order via WhatsApp'}
+                          >
+                            <span>{lang === 'ar' ? 'طلب فوري ⚡' : 'Instant ⚡'}</span>
+                          </Button>
+                        </div>
                       ) : offer.offer_type === 'SERIES' ? (
                         <Button
                           onClick={() => handleOpenCuratedPackOrder(offer)}
@@ -1506,8 +1897,8 @@ export function StoreDetailClient({
           </div>
         )}
 
-        {/* TAB 2: STORE EVENTS & SIGNINGS */}
-        {activeTab === 'events' && (
+        {/* TAB 3: STORE EVENTS & SIGNINGS */}
+        {activeTab === 'events' && effectiveEvents.length > 0 && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
@@ -1524,7 +1915,7 @@ export function StoreDetailClient({
             </div>
 
             <div className="space-y-4">
-              {events.map(event => {
+              {effectiveEvents.map(event => {
                 const eventTitle = lang === 'ar' && event.title_ar ? event.title_ar : event.title
                 const eventDesc = lang === 'ar' && event.description_ar ? event.description_ar : event.description
                 const userStatus = rsvps[event.id]
@@ -1556,6 +1947,7 @@ export function StoreDetailClient({
                             <Clock className="h-3.5 w-3.5" />
                             {new Date(event.starts_at).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US', {
                               weekday: 'long',
+                              year: 'numeric',
                               month: 'long',
                               day: 'numeric',
                               hour: 'numeric',
@@ -1643,7 +2035,7 @@ export function StoreDetailClient({
               })}
             </div>
 
-            {events.length === 0 && (
+            {effectiveEvents.length === 0 && (
               <div className="text-center py-16 px-4 rounded-3xl border-2 border-dashed border-border/80 bg-muted/10 space-y-3">
                 <div className="text-5xl">📅</div>
                 <h3 className="text-lg font-bold text-foreground">
@@ -1877,6 +2269,19 @@ export function StoreDetailClient({
                     <span>{lang === 'ar' ? 'متابعة مراحل الشحن والتوصيل خطوة بخطوة 🚚' : 'Track Shipping Progress Step-by-Step 🚚'}</span>
                   </Link>
 
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = getOrderTrackingUrl(lastPlacedOrder.order_number || lastPlacedOrder.id)
+                      navigator.clipboard.writeText(url)
+                      alert(lang === 'ar' ? `تم نسخ رابط تتبع الطلب (رابط الإنتاج):\n${url}` : `Copied tracking URL:\n${url}`)
+                    }}
+                    className="w-full inline-flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-card hover:bg-muted text-foreground font-bold text-xs border border-border transition-all cursor-pointer shadow-2xs"
+                  >
+                    <Copy className="h-3.5 w-3.5 text-primary" />
+                    <span>{lang === 'ar' ? 'نسخ رابط تتبع الطلب المباشر 📋' : 'Copy Direct Order Tracking Link 📋'}</span>
+                  </button>
+
                   {lastWhatsappUrl && (
                     <a
                       href={lastWhatsappUrl}
@@ -2045,6 +2450,19 @@ export function StoreDetailClient({
                     <span>{lang === 'ar' ? 'متابعة مراحل الشحن والتوصيل خطوة بخطوة 🚚' : 'Track Shipping Progress Step-by-Step 🚚'}</span>
                   </Link>
 
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = getOrderTrackingUrl(lastPlacedOrder.order_number || lastPlacedOrder.id)
+                      navigator.clipboard.writeText(url)
+                      alert(lang === 'ar' ? `تم نسخ رابط تتبع الطلب (رابط الإنتاج):\n${url}` : `Copied tracking URL:\n${url}`)
+                    }}
+                    className="w-full inline-flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-card hover:bg-muted text-foreground font-bold text-xs border border-border transition-all cursor-pointer shadow-2xs"
+                  >
+                    <Copy className="h-3.5 w-3.5 text-primary" />
+                    <span>{lang === 'ar' ? 'نسخ رابط تتبع الطلب المباشر 📋' : 'Copy Direct Order Tracking Link 📋'}</span>
+                  </button>
+
                   {lastWhatsappUrl && (
                     <a
                       href={lastWhatsappUrl}
@@ -2079,23 +2497,52 @@ export function StoreDetailClient({
                       ? (lang === 'ar' ? 'الكتاب المختار في السلة:' : 'Selected Book:')
                       : (lang === 'ar' ? `الكتب المختارة (${selectedCount} كتب):` : `Selected Books (${selectedCount}):`)}
                   </span>
-                  <div className="max-h-36 overflow-y-auto space-y-1 rounded-2xl bg-muted/30 p-2.5 border border-border text-xs divide-y divide-border/60">
+                  <div className="max-h-48 overflow-y-auto space-y-1.5 rounded-2xl bg-muted/30 p-2.5 border border-border text-xs divide-y divide-border/60">
                     {selectedBooksList.map((b, idx) => (
-                      <div key={b.id} className="pt-1 first:pt-0 flex items-center justify-between text-muted-foreground">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="font-bold text-foreground truncate max-w-[220px]">
-                            {idx + 1}. {b.title_ar || b.title}
-                          </span>
+                      <div key={b.id} className="pt-2 first:pt-0 flex items-center justify-between text-muted-foreground gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          {b.cover_url && (
+                            <div className="relative h-11 w-8 rounded-lg overflow-hidden shrink-0 border border-border bg-muted">
+                              <Image src={b.cover_url} alt="" fill unoptimized className="object-cover" />
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-foreground truncate max-w-[200px]">
+                                {idx + 1}. {b.title_ar || b.title}
+                              </span>
+                              {b.is_bundle && (
+                                <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-black text-[9px] border border-emerald-500/30 shrink-0">
+                                  {b.badge || `باكدج ${b.bundle_book_count || 2} كتب 📦`}
+                                </span>
+                              )}
+                            </div>
+                            {b.is_bundle && b.included_books && b.included_books.length > 0 && (
+                              <p className="text-[10px] text-muted-foreground truncate max-w-[220px]">
+                                {b.included_books.join(' + ')}
+                              </p>
+                            )}
+                            {b.gift_description && (
+                              <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold truncate max-w-[220px]">
+                                + {b.gift_description}
+                              </p>
+                            )}
+                            {!b.is_bundle && (
+                              <p className="text-[10px] text-muted-foreground truncate max-w-[200px]">
+                                {b.author_ar || b.author}
+                              </p>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="font-black text-primary text-xs">{b.price} ج.م</span>
                           <button
                             type="button"
                             onClick={() => toggleBookInBundle(b.id)}
-                            className="text-muted-foreground hover:text-destructive p-0.5 cursor-pointer"
+                            className="text-muted-foreground hover:text-destructive p-1 rounded-md hover:bg-destructive/10 cursor-pointer transition-colors"
                             title={lang === 'ar' ? 'حذف من السلة' : 'Remove'}
                           >
-                            <X className="h-3 w-3" />
+                            <X className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       </div>

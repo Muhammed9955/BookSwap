@@ -26,6 +26,7 @@ import { MainLayout } from '@/components/layout/main-layout'
 import { Button } from '@/components/ui/button'
 import { useLanguage } from '@/i18n/language-context'
 import { getStoreOrder } from '@/lib/stores/store-service'
+import { cn } from '@/lib/utils'
 import type { StoreOrder } from '@/types/store'
 
 export default function OrderTrackingPage() {
@@ -61,9 +62,11 @@ export default function OrderTrackingPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const isCancelled = order?.status === 'CANCELLED'
+
   // Determine active step based on order status (NEW, CONFIRMED, DISPATCHED, DELIVERED, CANCELLED)
   const currentStepIndex = (() => {
-    if (!order) return 0
+    if (!order || isCancelled) return 0
     switch (order.status) {
       case 'NEW':
         return 0
@@ -77,6 +80,18 @@ export default function OrderTrackingPage() {
         return 0
     }
   })()
+
+  const refreshOrder = async () => {
+    if (!orderNumber) return
+    setLoading(true)
+    try {
+      const found = await getStoreOrder(orderNumber)
+      setOrder(found)
+    } finally {
+      setLoading(false)
+    }
+  }
+
 
   const steps = [
     {
@@ -156,13 +171,24 @@ export default function OrderTrackingPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="px-3 py-1 rounded-full text-xs font-black bg-primary/10 text-primary border border-primary/20">
+                      <span
+                        className={cn(
+                          'px-3 py-1 rounded-full text-xs font-black border',
+                          order.status === 'DELIVERED' && 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+                          order.status === 'DISPATCHED' && 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20',
+                          order.status === 'CONFIRMED' && 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+                          order.status === 'NEW' && 'bg-blue-500/10 text-blue-600 border-blue-500/20',
+                          order.status === 'CANCELLED' && 'bg-red-500/10 text-red-600 border-red-500/20'
+                        )}
+                      >
                         {order.status === 'DELIVERED'
-                          ? lang === 'ar' ? 'تم التسليم ✓' : 'Delivered'
+                          ? lang === 'ar' ? 'تم التسليم بنجاح ✓' : 'Delivered'
                           : order.status === 'DISPATCHED'
-                          ? lang === 'ar' ? 'قيد التوصيل 🚚' : 'Out for Delivery'
+                          ? lang === 'ar' ? 'قيد التوصيل مع المندوب 🚚' : 'Out for Delivery'
                           : order.status === 'CONFIRMED'
-                          ? lang === 'ar' ? 'تم التأكيد وجاري التجهيز 📦' : 'Confirmed'
+                          ? lang === 'ar' ? 'تم التأكيد وجاري التجهيز 📦' : 'Confirmed & Packing'
+                          : order.status === 'CANCELLED'
+                          ? lang === 'ar' ? 'تم إلغاء الطلب ✕' : 'Order Cancelled'
                           : lang === 'ar' ? 'طلب جديد قيد المراجعة ⏳' : 'Order Received'}
                       </span>
                       <span className="text-xs text-muted-foreground font-semibold">
@@ -185,6 +211,14 @@ export default function OrderTrackingPage() {
                     <Button
                       variant="outline"
                       size="sm"
+                      onClick={refreshOrder}
+                      className="rounded-xl font-bold text-xs gap-1.5 cursor-pointer shadow-2xs hover:border-primary"
+                    >
+                      <span>{lang === 'ar' ? 'تحديث الحالة 🔄' : 'Refresh 🔄'}</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={handleCopyOrderNumber}
                       className="rounded-xl font-bold text-xs gap-1.5 cursor-pointer shadow-2xs"
                     >
@@ -193,6 +227,18 @@ export default function OrderTrackingPage() {
                     </Button>
                   </div>
                 </div>
+
+                {isCancelled && (
+                  <div className="p-4 rounded-2xl bg-red-500/10 border-2 border-red-500/30 text-red-700 dark:text-red-400 font-bold text-xs flex items-center gap-2 mt-4">
+                    <AlertCircle className="h-5 w-5 shrink-0" />
+                    <p>
+                      {lang === 'ar'
+                        ? 'تم إلغاء هذا الطلب من قبل المكتبة أو العميل. إذا كنت تعتقد أن هذا خطأ، يرجى التواصل مع المكتبة عبر واتساب مباشرة.'
+                        : 'This order has been cancelled. Please contact the bookstore directly via WhatsApp if you need assistance.'}
+                    </p>
+                  </div>
+                )}
+
 
                 {/* Shipping Stepper */}
                 <div className="pt-6 border-t border-border/80">

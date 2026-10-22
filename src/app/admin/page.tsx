@@ -14,24 +14,22 @@ export default async function AdminPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  let userRole = 'ADMIN'
-  let currentUserId = 'admin-dev'
-
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile || !['ADMIN', 'MODERATOR'].includes(profile.role)) {
-      redirect('/')
-    }
-    userRole = profile.role
-    currentUserId = user.id
-  } else if (process.env.NODE_ENV !== 'development') {
-    redirect('/login')
+  if (!user) {
+    redirect('/login?redirectTo=/admin')
   }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  if (!profile || !['ADMIN', 'MODERATOR'].includes(profile.role)) {
+    redirect('/?access_denied=admin_only')
+  }
+
+  const userRole = profile.role
+  const currentUserId = user.id
 
   // Timestamps for Analytics & Retention Cohorts
   const now = new Date()

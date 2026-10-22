@@ -194,6 +194,30 @@ export interface StoreInventoryItem {
   original_price?: number
   stock_quantity: number
   cover_url?: string
+  description?: string
+  description_ar?: string
+  publisher?: string
+  published_year?: number
+  pages_count?: number
+  rating?: number
+  rating_count?: number
+  review_count?: number
+  goodreads_url?: string
+  has_discount?: boolean
+  first_published?: string
+  genres?: string[]
+  author_details?: {
+    name?: string
+    bio?: string
+    image_url?: string
+  }
+  reviews?: Array<{
+    name: string
+    text: string
+    rating?: number
+    date?: string
+    verified?: boolean
+  }>
   is_active: boolean
   created_at: string
 }
@@ -274,10 +298,21 @@ export interface StoreCatalogBook {
   cover_url?: string
   cover_color?: string
   rating?: number
+  rating_count?: number
+  publisher?: string
+  published_year?: number
+  pages_count?: number
+  goodreads_url?: string
   badge?: string
   condition?: BookCondition | string
   isbn?: string
   stock_quantity?: number
+  description?: string
+  description_ar?: string
+  is_bundle?: boolean
+  bundle_book_count?: number
+  included_books?: string[]
+  gift_description?: string
 }
 
 export interface StoreBundleTier {
@@ -319,6 +354,11 @@ export interface StoreOrder {
   customer_notes?: string
   items: StoreOrderItem[]
   status: 'NEW' | 'CONFIRMED' | 'DISPATCHED' | 'DELIVERED' | 'CANCELLED'
+  tracking_number?: string
+  tracking_carrier?: string
+  admin_notes?: string
+  updated_at?: string
   created_at: string
 }
+
 

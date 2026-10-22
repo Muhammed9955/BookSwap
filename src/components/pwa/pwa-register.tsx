@@ -33,9 +33,19 @@ export function PwaRegister() {
   const [showNotifBanner, setShowNotifBanner] = useState(false)
   const [notifActivatedSuccess, setNotifActivatedSuccess] = useState(false)
 
-  // 1. Register Service Worker & Install Prompt
+  // 1. Register Service Worker & Install Prompt (Skip in development / localhost to prevent HMR reload loops)
   useEffect(() => {
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      if (process.env.NODE_ENV !== 'production' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        // Clean up any previously installed service worker during development
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const reg of registrations) {
+            reg.unregister()
+          }
+        }).catch(() => {})
+        return
+      }
+
       window.addEventListener('load', () => {
         navigator.serviceWorker
           .register('/sw.js')

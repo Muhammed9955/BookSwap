@@ -16,6 +16,7 @@ export type NotificationType =
   | 'TRANSACTION_COMPLETED' | 'FOLLOW'
   | 'COMMUNITY_INTAKE_REQUEST' | 'COMMUNITY_HANDOVER_REQUEST'
   | 'COMMUNITY_BOOK_APPROVED' | 'COMMUNITY_BOOK_REJECTED'
+  | 'STORE_NEW_ORDER'
 export type DeliveryMethod = 'IN_PERSON' | 'COURIER'
 export type PaymentMethod = 'CASH' | 'ONLINE' | 'WALLET'
 export type PaymentStatus = 'UNPAID' | 'PENDING' | 'PAID' | 'REFUNDED' | 'FAILED'

@@ -625,6 +625,9 @@ export const STORE_CATALOG_BOOKS: StoreCatalogBook[] = [
     original_price: 90,
     in_stock: true,
     rating: 4.8,
+    cover_url: 'https://www.noor-book.com/publice/covers_cache_jpg/3/2/4/3/1f2c7166a1243113dded026767dbda3e.jpg.jpg',
+    isbn: '9789770937396',
+    description_ar: 'النسخة المنقحة والمحدثة من الكتاب النفسي الأكثر مبيعاً الصادرة عن دار الشروق، تضم فصولاً وتحليلات جديدة أعمق لاكتشاف الذات والتعافي النفسي.',
     cover_color: 'from-indigo-600 to-slate-950',
   },
   {
