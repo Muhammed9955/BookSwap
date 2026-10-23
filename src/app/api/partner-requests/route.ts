@@ -44,6 +44,8 @@ export async function POST(req: NextRequest) {
       business_name,
       store_name_ar,
       phone,
+      email,
+      applicant_id,
       city,
       partner_type = 'BOOKSTORE',
       details,
@@ -59,15 +61,34 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    let parsedDetailsObj: any = {}
+    if (typeof details === 'string') {
+      try {
+        parsedDetailsObj = JSON.parse(details)
+      } catch {
+        parsedDetailsObj = { raw: details }
+      }
+    } else if (details && typeof details === 'object') {
+      parsedDetailsObj = { ...details }
+    } else {
+      parsedDetailsObj = { ...body }
+    }
+
+    // Ensure applicant_id and email are stored inside details
+    if (email && !parsedDetailsObj.email) parsedDetailsObj.email = email
+    if ((user?.id || applicant_id) && !parsedDetailsObj.applicant_id) {
+      parsedDetailsObj.applicant_id = user?.id || applicant_id
+    }
+
     const payload = {
       name: applicant,
       business_name: bName,
       phone,
       city: city || 'القاهرة (Cairo)',
       partner_type: partner_type === 'EVENT_ORGANIZER' ? 'EVENT_ORGANIZER' : 'BOOKSTORE',
-      details: typeof details === 'string' ? details : JSON.stringify(body),
+      details: JSON.stringify(parsedDetailsObj),
       status: 'PENDING',
-      submitted_by: user?.id || null,
+      submitted_by: user?.id || applicant_id || null,
     }
 
     const { data, error } = await supabase

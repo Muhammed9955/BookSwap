@@ -42,7 +42,9 @@ const NOTIFICATION_ICONS: Record<string, string> = {
   COMMUNITY_BOOK_APPROVED: '📚✅',
   COMMUNITY_BOOK_REJECTED: 'ℹ️',
   STORE_NEW_ORDER: '📦',
+  STORE_APPROVED: '🏪🎉',
 }
+
 
 interface NotificationsClientProps {
   userId: string
@@ -375,6 +377,23 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
                       </div>
                     )
                   })()}
+
+                  {/* STORE_APPROVED Quick Action Button */}
+                  {notif.type === 'STORE_APPROVED' && (
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <Link
+                        href="/stores/dashboard"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (!notif.is_read) markRead(notif.id)
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-black hover:bg-emerald-500/25 transition-all shadow-xs"
+                      >
+                        <span>🏪</span>
+                        <span>{lang === 'ar' ? 'الدخول للوحة المتجر وإضافة الكتب 📚' : 'Open Store Dashboard & Add Books 📚'}</span>
+                      </Link>
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-between gap-2 mt-2 pt-1 border-t border-border/30">
                     <div className="flex items-center gap-2">

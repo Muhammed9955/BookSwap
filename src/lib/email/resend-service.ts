@@ -23,7 +23,8 @@ export async function sendStoreApprovedEmail({
     ? window.location.origin 
     : (process.env.NEXT_PUBLIC_SITE_URL || 'https://waraqconnect.com')
 
-  const effectiveDashboardUrl = dashboardUrl || `${origin}/store-dashboard`
+  const effectiveDashboardUrl = dashboardUrl || `${origin}/stores/dashboard`
+
   const storefrontUrl = `${origin}/stores/${storeSlug}`
   const apiKey = process.env.RESEND_API_KEY
 

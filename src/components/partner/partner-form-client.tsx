@@ -37,7 +37,8 @@ import {
   FileCheck,
   FileText,
   AlertCircle,
-  BookOpen
+  BookOpen,
+  Mail
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { compressImageFile } from '@/lib/image-utils'
@@ -69,7 +70,7 @@ import {
 } from '@/lib/constants/locations'
 
 interface PartnerFormClientProps {
-  user: { id: string; profile?: Record<string, unknown> | null } | null
+  user: { id: string; email?: string; profile?: Record<string, unknown> | null } | null
   isUnauthorized?: boolean
 }
 
@@ -117,6 +118,7 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
   const [shippingScope, setShippingScope] = useState('شحن لجميع المحافظات (All Egypt)')
   const [phone, setPhone] = useState('')
   const [whatsapp, setWhatsapp] = useState('')
+  const [email, setEmail] = useState<string>((user?.profile as any)?.email || user?.email || '')
   const [facebookPage, setFacebookPage] = useState('')
   const [instagramHandle, setInstagramHandle] = useState('')
   const [tiktokHandle, setTiktokHandle] = useState('')
@@ -327,6 +329,15 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
       return
     }
 
+    if (!email || !email.includes('@')) {
+      alert(
+        lang === 'ar'
+          ? 'يرجى إدخال بريد إلكتروني صحيح لاستلام إشعار تفعيل المتجر ورابط لوحة التحكم.'
+          : 'Please enter a valid email to receive activation notifications and dashboard access.'
+      )
+      return
+    }
+
     setSending(true)
 
     const formatLabel =
@@ -375,7 +386,7 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
         business_name: storeNameAr,
         store_name: storeNameEn || storeNameAr,
         store_name_ar: storeNameAr,
-        email: (user?.profile as { email?: string } | undefined)?.email,
+        email: email.trim() || user?.email || (user?.profile as { email?: string } | undefined)?.email,
         slogan,
         phone,
         city,
@@ -1391,6 +1402,33 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
                         dir="ltr"
                       />
                     </div>
+                  </div>
+
+                  {/* Notification & Verification Email */}
+                  <div className="space-y-1.5 p-3.5 sm:p-4 rounded-2xl bg-primary/5 border border-primary/25">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black text-foreground flex items-center gap-1.5">
+                        <Mail className="h-4 w-4 text-primary" />
+                        <span>{lang === 'ar' ? 'البريد الإلكتروني المعتمد لإشعارات المتجر وتوثيقه *' : 'Official Store Notification & Approval Email *'}</span>
+                      </label>
+                      <span className="text-[10px] text-primary font-bold">
+                        {lang === 'ar' ? 'ضروري لإرسال رابط التفعيل' : 'For Dashboard & Approval Email'}
+                      </span>
+                    </div>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder={lang === 'ar' ? 'store@example.com (ستصلك عليه رسالة الاعتماد الرسمية فور المراجعة)' : 'store@example.com'}
+                      className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono"
+                      dir="ltr"
+                    />
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      {lang === 'ar'
+                        ? '✉️ فور اعتماد ومراجعة متجرك، ستصلك رسالة رسمية على هذا البريد برابط لوحة تحكم المتجر لإضافة الكتب، عروض التوفير، وباقات الكتب.'
+                        : '✉️ Once verified, you will receive an official approval email here with direct access to your bookstore dashboard.'}
+                    </p>
                   </div>
 
                   {/* Social Media Links for Anti-Spam Check & Existence Proof */}

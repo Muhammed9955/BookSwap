@@ -1339,12 +1339,14 @@ export async function getStoreApplications(): Promise<StoreApplication[]> {
             }
             return {
               id: row.id,
+              applicant_id: row.submitted_by || parsedDetails.applicant_id,
               applicant_name: row.name,
               owner_name: parsedDetails.owner_name || row.name,
               business_name: row.business_name,
               store_name: parsedDetails.store_name || row.business_name,
               store_name_ar: parsedDetails.store_name_ar || row.business_name,
               phone: row.phone,
+              email: parsedDetails.email || row.email,
               city: row.city,
               district: parsedDetails.district,
               address: parsedDetails.address,
@@ -1407,11 +1409,13 @@ export async function submitStoreApplication(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          applicant_id: newApp.applicant_id,
           applicant_name: newApp.applicant_name,
           owner_name: newApp.owner_name,
           business_name: newApp.business_name,
           store_name_ar: newApp.store_name_ar,
           phone: newApp.phone,
+          email: newApp.email,
           city: newApp.city,
           partner_type: newApp.partner_type,
           details: JSON.stringify(newApp),
@@ -1487,10 +1491,37 @@ export async function approveStoreApplication(
       ? 'ONLINE'
       : (target.store_type || (target.partner_type === 'BOTH' ? 'BOTH' : 'OFFLINE'))
 
+  const supabase = createClient()
+
+  // 1. Resolve applicant / owner ID for store ownership & permissions
+  let resolvedOwnerId = target.applicant_id
+  if (!resolvedOwnerId && target.email) {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', target.email)
+        .maybeSingle()
+      if (profile?.id) resolvedOwnerId = profile.id
+    } catch {}
+  }
+  if (!resolvedOwnerId && target.phone) {
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('phone', target.phone)
+        .maybeSingle()
+      if (profile?.id) resolvedOwnerId = profile.id
+    } catch {}
+  }
+
+  const finalOwnerId = resolvedOwnerId || `user-${Date.now()}`
+
   // Create new active verified Bookstore
   const newStore: Bookstore = {
     id: `store-${Date.now()}`,
-    owner_id: `user-${Date.now()}`,
+    owner_id: finalOwnerId,
     name: target.store_name || target.business_name,
     name_ar: target.store_name_ar || target.business_name,
     slug: cleanSlug,
@@ -1525,7 +1556,7 @@ export async function approveStoreApplication(
     created_at: new Date().toISOString(),
   }
 
-  // Persist directly to Supabase DB bookstores table
+  // 2. Persist directly to Supabase DB bookstores table
   try {
     const dbRes = await saveStoreToDatabase(newStore)
     if (dbRes.store) {
@@ -1535,29 +1566,74 @@ export async function approveStoreApplication(
     console.warn('Failed to save approved store to DB:', e)
   }
 
+  // 3. Elevate user profile role to PARTNER so they have full dashboard permissions
+  if (resolvedOwnerId) {
+    try {
+      await supabase
+        .from('profiles')
+        .update({ role: 'PARTNER' })
+        .eq('id', resolvedOwnerId)
+    } catch (e) {
+      console.warn('Failed to elevate profile role to PARTNER:', e)
+    }
+  }
+
+  // 4. Update status in DB partner_requests table
+  try {
+    await supabase
+      .from('partner_requests')
+      .update({ status: 'APPROVED' })
+      .eq('id', applicationId)
+  } catch (e) {
+    console.warn('Failed to update partner_requests in DB:', e)
+  }
+
   target.status = 'APPROVED'
   target.reviewed_at = new Date().toISOString()
   target.approved_store_id = newStore.id
 
-  // Send in-app notification to the store applicant
-  if (target.applicant_id) {
+  // 5. Send in-app notification to the store applicant with direct link to /stores/dashboard
+  if (resolvedOwnerId) {
     try {
-      const supabase = createClient()
-      await supabase.from('notifications').insert({
-        user_id: target.applicant_id,
+      const notifPayload = {
+        user_id: resolvedOwnerId,
         type: 'STORE_APPROVED',
         title: '🎉 تم توثيق واعتماد متجرك رسمياً!',
         title_ar: '🎉 تم توثيق واعتماد متجرك رسمياً!',
         body: `مبروك! تم تفعيل متجر (${newStore.name_ar || newStore.name}). يمكنك الآن الدخول إلى لوحة التحكم لإضافة الكتب وباقات العروض المجمعة (Bundle Packages).`,
         body_ar: `مبروك! تم تفعيل متجر (${newStore.name_ar || newStore.name}). يمكنك الآن الدخول إلى لوحة التحكم لإضافة الكتب وباقات العروض المجمعة (Bundle Packages).`,
-        action_url: `/store-dashboard`,
+        action_url: `/stores/dashboard`,
         data: { store_id: newStore.id, store_slug: newStore.slug },
-      } as any)
+      }
+      const { error: notifErr } = await supabase.from('notifications').insert(notifPayload as any)
+      if (notifErr) {
+        // Fallback for enum safety
+        await supabase.from('notifications').insert({ ...notifPayload, type: 'TRANSACTION_COMPLETED' } as any)
+      }
     } catch (e) {
       console.warn('In-app notification insert error:', e)
     }
   }
 
+  // 6. Trigger transactional approval email via Resend API
+  if (target.email) {
+    try {
+      fetch('/api/stores/notify-approved', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: target.email,
+          ownerName: target.owner_name || target.applicant_name,
+          storeName: newStore.name_ar || newStore.name,
+          storeSlug: newStore.slug,
+        }),
+      }).catch(console.warn)
+    } catch (e) {
+      console.warn('Failed to send approval email:', e)
+    }
+  }
+
+  // 7. Update browser local storage cache
   if (typeof window !== 'undefined') {
     try {
       localStorage.setItem(APPLICATIONS_STORAGE_KEY, JSON.stringify(apps))
@@ -1584,6 +1660,30 @@ export async function rejectStoreApplication(
   target.status = 'REJECTED'
   target.reviewed_at = new Date().toISOString()
   target.rejection_reason = reason || 'لا يستوفي شروط التوثيق حالياً'
+
+  // Update in DB partner_requests table
+  try {
+    const supabase = createClient()
+    await supabase
+      .from('partner_requests')
+      .update({ status: 'REJECTED' })
+      .eq('id', applicationId)
+
+    if (target.applicant_id) {
+      const notifPayload = {
+        user_id: target.applicant_id,
+        type: 'TRANSACTION_COMPLETED',
+        title: 'تحديث بخصوص طلب توثيق المتجر',
+        title_ar: 'تحديث بخصوص طلب توثيق المتجر',
+        body: `تمت مراجعة طلب انضمام متجر (${target.store_name_ar || target.business_name}). السبب: ${target.rejection_reason}`,
+        body_ar: `تمت مراجعة طلب انضمام متجر (${target.store_name_ar || target.business_name}). السبب: ${target.rejection_reason}`,
+        action_url: `/partner-form`,
+      }
+      await supabase.from('notifications').insert(notifPayload as any)
+    }
+  } catch (e) {
+    console.warn('Failed to update rejection in DB:', e)
+  }
 
   if (typeof window !== 'undefined') {
     try {

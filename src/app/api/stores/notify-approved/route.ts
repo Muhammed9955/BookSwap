@@ -12,7 +12,8 @@ export async function POST(req: Request) {
 
     const host = req.headers.get('host') || 'localhost:3000'
     const protocol = host.includes('localhost') ? 'http' : 'https'
-    const dashboardUrl = `${protocol}://${host}/store-dashboard`
+    const dashboardUrl = `${protocol}://${host}/stores/dashboard`
+
 
     const res = await sendStoreApprovedEmail({
       to,

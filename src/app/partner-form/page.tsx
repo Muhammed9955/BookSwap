@@ -98,7 +98,7 @@ export default async function PartnerFormPage({ searchParams }: PartnerFormPageP
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <PartnerFormClient
-        user={user ? { id: user.id, profile: userProfile } : null}
+        user={user ? { id: user.id, email: user.email, profile: userProfile } : null}
         isUnauthorized={isUnauthorized}
       />
     </>
