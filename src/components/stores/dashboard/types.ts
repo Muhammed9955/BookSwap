@@ -3,8 +3,9 @@ import type { Bookstore, StoreOffer, StoreEvent, StoreInventoryItem, StoreOrder 
 export type DashboardTab = 'profile' | 'inventory' | 'offers' | 'orders' | 'events'
 
 export interface StoreDashboardClientProps {
-  initialStore: Bookstore
+  initialStore?: Bookstore | null
   allStores: Bookstore[]
+
   initialOffers: StoreOffer[]
   initialEvents: StoreEvent[]
   currentUserId?: string | null

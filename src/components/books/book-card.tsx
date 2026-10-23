@@ -98,13 +98,13 @@ export function BookCard({
   return (
     <Link href={`/books/${bookSlug}`} prefetch={true} className={cn('book-card group flex flex-col h-full justify-between', className)}>
       {/* Cover Image */}
-      <div className="relative aspect-[2/3] w-full overflow-hidden bg-muted shrink-0">
+      <div className="relative aspect-[2/3] max-h-[380px] sm:max-h-none w-full overflow-hidden bg-muted shrink-0">
         <Image
           src={displayCover}
           alt={book?.title ?? 'Book cover'}
           fill
           className="object-cover transition-transform duration-300 group-hover:scale-105"
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 25vw"
           onError={() => setImageError(true)}
           unoptimized={displayCover.endsWith('.svg')}
         />

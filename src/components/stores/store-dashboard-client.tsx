@@ -3,11 +3,17 @@
 import React, { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { MainLayout } from '@/components/layout/main-layout'
+
 import { useLanguage } from '@/i18n/language-context'
-import type { Bookstore, StoreOffer, StoreEvent } from '@/types/store'
+
+import type { Bookstore } from '@/types/store'
+
 import { getStoreInventory, getStoreOrders, getLocalStoreOffers, STORE_ID_ALIASES } from '@/lib/stores/store-service'
+import { Button } from '@/components/ui/button'
 
 import type { DashboardTab, StoreDashboardClientProps } from './dashboard/types'
+
+
 export type { DashboardTab, StoreDashboardClientProps } from './dashboard/types'
 export { formatRealDateTime } from './dashboard/types'
 
@@ -61,9 +67,9 @@ export function StoreDashboardClient({
 
   // Active Store Selection State
   const [storesList, setStoresList] = useState<Bookstore[]>(allStores)
-  const [activeStoreId, setActiveStoreId] = useState<string>(initialStore.id)
+  const [activeStoreId, setActiveStoreId] = useState<string>(initialStore?.id || allStores[0]?.id || '')
   const currentStore = React.useMemo(
-    () => storesList.find(s => s.id === activeStoreId) || initialStore,
+    () => storesList.find(s => s.id === activeStoreId) || initialStore || storesList[0] || null,
     [storesList, activeStoreId, initialStore]
   )
 
@@ -76,11 +82,13 @@ export function StoreDashboardClient({
   const [ordersCount, setOrdersCount] = useState<number>(0)
   const [newOrdersCount, setNewOrdersCount] = useState<number>(0)
   const [offersCount, setOffersCount] = useState<number>(() => {
+    if (!currentStore) return 0
     const matched = initialOffers.filter(o => o.store_id === currentStore.id)
     return matched.length
   })
 
   useEffect(() => {
+    if (!activeStoreId) return
     let isMounted = true
     const resolvedId = STORE_ID_ALIASES[activeStoreId] || activeStoreId
     getStoreInventory(activeStoreId).then(items => {
@@ -116,9 +124,39 @@ export function StoreDashboardClient({
     return () => {
       isMounted = false
     }
-  }, [activeStoreId, currentStore.id, initialOffers])
+  }, [activeStoreId, currentStore?.id, initialOffers])
 
-  const eventsCount = initialEvents.filter(e => e.store_id === currentStore.id).length
+  const eventsCount = currentStore ? initialEvents.filter(e => e.store_id === currentStore.id).length : 0
+
+  if (!currentStore) {
+    return (
+      <MainLayout>
+        <div className="container max-w-2xl mx-auto px-4 py-20 text-center space-y-6">
+          <div className="w-20 h-20 mx-auto rounded-3xl bg-primary/10 flex items-center justify-center text-4xl shadow-inner border border-primary/20">
+            🏬
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-black text-foreground">
+              {lang === 'ar' ? 'لا توجد مكتبات مسجلة بعد' : 'No Stores Registered Yet'}
+            </h1>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-md mx-auto">
+              {lang === 'ar'
+                ? 'تم مسح كافة البيانات التجريبية للمكتبات بنجاح. يمكنك الآن تسجيل مكتبتك الحقيقية كشريك لإدارتها وإضافة كتب المخزون والعروض.'
+                : 'All fake bookstore demo data has been purged. Register your real bookstore to manage inventory, bundle offers, and incoming orders.'}
+            </p>
+          </div>
+          <div className="pt-2">
+            <a href="/partner-form">
+              <Button size="lg" className="rounded-2xl font-black text-sm gap-2 shadow-lg shadow-primary/20 cursor-pointer">
+                <span>{lang === 'ar' ? 'تسجيل مكتبة جديدة كشريك ✍️' : 'Register a New Partner Store ✍️'}</span>
+              </Button>
+            </a>
+          </div>
+        </div>
+      </MainLayout>
+    )
+  }
+
 
   return (
     <MainLayout>

@@ -118,11 +118,9 @@ export default async function HomePage() {
     const comms = await getCommunities({ _client: supabase, currentUserId: user?.id ?? null })
     if (comms && comms.length > 0) {
       communities = comms.slice(0, 4)
-    } else {
-      communities = DEMO_COMMUNITIES.slice(0, 4)
     }
   } catch {
-    communities = DEMO_COMMUNITIES.slice(0, 4)
+    communities = []
   }
 
   return (

@@ -1,6 +1,5 @@
 import { MetadataRoute } from 'next'
 import { createClient } from '@/lib/supabase/server'
-import { DEMO_STORES } from '@/lib/stores/store-service'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://waraqconnect.vercel.app'
@@ -19,14 +18,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${baseUrl}/privacy`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
   ]
 
-  // Add demo bookstores to sitemap
-  const storeRoutes: MetadataRoute.Sitemap = DEMO_STORES.map(s => ({
-    url: `${baseUrl}/stores/${s.slug}`,
-    lastModified: new Date(),
-    changeFrequency: 'weekly',
-    priority: 0.8,
-  }))
-
   try {
     const supabase = await createClient()
 
@@ -44,7 +35,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }))
 
-    // Dynamic bookstore routes from database (if any)
+    // Dynamic bookstore routes from database
     const { data: dbStores } = await supabase
       .from('bookstores')
       .select('slug, updated_at')
@@ -72,8 +63,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     }))
 
-    return [...staticRoutes, ...storeRoutes, ...dbStoreRoutes, ...communityRoutes, ...listingRoutes]
+    return [...staticRoutes, ...dbStoreRoutes, ...communityRoutes, ...listingRoutes]
   } catch {
-    return [...staticRoutes, ...storeRoutes]
+    return [...staticRoutes]
   }
 }

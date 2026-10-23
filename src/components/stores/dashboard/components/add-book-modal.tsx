@@ -118,9 +118,9 @@ export function AddBookModal({
         {/* Smart Online Search & Auto-Enrich Box (Only shown in Add mode) */}
         {!editingBookId && (
           <div className="rounded-2xl border-2 border-primary/25 bg-gradient-to-br from-primary/5 via-card to-background p-3.5 space-y-2.5">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
               <label className="text-xs font-black text-foreground flex items-center gap-1.5">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
                 <span>{lang === 'ar' ? 'بحث وجلب بيانات الكتاب أونلاين تلقائياً 🪄' : 'Search & Auto-Fill Book Data'}</span>
               </label>
               <span className="text-[10px] text-muted-foreground font-semibold">
@@ -129,7 +129,7 @@ export function AddBookModal({
             </div>
 
             <div className="flex gap-2 items-center">
-              <div className="relative flex-1">
+              <div className="relative flex-1 min-w-0">
                 <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <input
                   type="text"
@@ -141,14 +141,14 @@ export function AddBookModal({
                       onSearchOnlineBooks(onlineBookSearchQuery, true)
                     }
                   }}
-                  placeholder={lang === 'ar' ? 'ابحث باسم الكتاب، المؤلف، رقم الـ ISBN، أو الصق رابط صفحة Goodreads مباشرة...' : 'Search title, author, ISBN, or paste Goodreads URL...'}
-                  className="w-full bg-card border border-border rounded-xl ps-9 pe-9 py-2 text-xs font-bold text-foreground focus:outline-none focus:border-primary shadow-xs"
+                  placeholder={lang === 'ar' ? 'ابحث باسم الكتاب، المؤلف، رقم الـ ISBN، أو الصق رابط Goodreads...' : 'Search title, author, ISBN, or paste Goodreads URL...'}
+                  className="w-full bg-card border border-border rounded-xl ps-9 pe-8 py-2.5 text-xs font-bold text-foreground focus:outline-none focus:border-primary shadow-xs"
                 />
                 {onlineBookSearchQuery && (
                   <button
                     type="button"
                     onClick={onClearOnlineSearch}
-                    className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs cursor-pointer"
+                    className="absolute end-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs cursor-pointer p-0.5"
                   >
                     ✕
                   </button>
@@ -159,17 +159,18 @@ export function AddBookModal({
                 size="sm"
                 onClick={() => onSearchOnlineBooks(onlineBookSearchQuery, true)}
                 disabled={isOnlineSearching || !onlineBookSearchQuery.trim()}
-                className="rounded-xl px-3 h-9 text-xs font-black gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 shrink-0 cursor-pointer shadow-xs"
+                title={lang === 'ar' ? 'بحث وجلب بيانات وغلاف الكتاب' : 'Search & Fetch Book Cover'}
+                className="rounded-xl px-3 h-10 text-xs font-black gap-1 bg-primary text-primary-foreground hover:bg-primary/90 shrink-0 cursor-pointer shadow-xs min-w-[70px] justify-center"
               >
                 {isOnlineSearching ? (
                   <>
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    <span>{lang === 'ar' ? 'جاري البحث...' : 'Searching...'}</span>
+                    <span className="text-[11px]">{lang === 'ar' ? 'جاري...' : '...'}</span>
                   </>
                 ) : (
                   <>
                     <Sparkles className="h-3.5 w-3.5" />
-                    <span>{lang === 'ar' ? 'بحث وجلب الغلاف' : 'Search & Fetch'}</span>
+                    <span>{lang === 'ar' ? 'بحث' : 'Search'}</span>
                   </>
                 )}
               </Button>

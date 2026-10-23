@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import {
   MapPin, Star, Shield, BookOpen, ArrowRightLeft, Gift, MessageCircle,
   UserPlus, UserMinus, Settings, Clock, CheckCircle2, XCircle, ShoppingBag,
@@ -24,6 +24,7 @@ import { MeetupQrModal } from '@/components/transactions/meetup-qr-modal'
 import { DetailedDealCard } from '@/components/transactions/detailed-deal-card'
 import { EditProfileModal } from '@/components/profile/edit-profile-modal'
 import { getAvatarUrl } from '@/lib/utils'
+import { FastAuthModal, type AuthActionType } from '@/components/auth/fast-auth-modal'
 import type { BookListing, Profile, Rating } from '@/types'
 
 interface ProfileClientProps {
@@ -59,6 +60,7 @@ export function ProfileClient({
 }: ProfileClientProps) {
   const { lang } = useLanguage()
   const router = useRouter()
+  const pathname = usePathname()
   const supabase = createClient()
   const [activeTab, setActiveTab] = useState<string>('books')
   const [following, setFollowing] = useState(initialFollowing)
@@ -72,19 +74,36 @@ export function ProfileClient({
     setAvatarError(false)
   }, [profile])
 
+  const [activeUserId, setActiveUserId] = useState<string | undefined>(currentUserId)
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [authActionType, setAuthActionType] = useState<AuthActionType>('follow')
+  const [pendingAction, setPendingAction] = useState<((u?: any) => void) | null>(null)
+
   const handleFollow = async () => {
-    if (!currentUserId) return
+    const effectiveUserId = activeUserId || currentUserId
+    if (!effectiveUserId) {
+      setAuthActionType('follow')
+      setPendingAction(() => (u: any) => {
+        if (u?.id) executeFollow(u.id)
+      })
+      setAuthModalOpen(true)
+      return
+    }
+    executeFollow(effectiveUserId)
+  }
+
+  const executeFollow = async (userId: string) => {
     const wasFollowing = following
     setFollowing(!wasFollowing)
     setFollCount(c => c + (wasFollowing ? -1 : 1))
 
     if (wasFollowing) {
       await supabase.from('follows').delete()
-        .eq('follower_id', currentUserId)
+        .eq('follower_id', userId)
         .eq('following_id', profile.id)
     } else {
       await supabase.from('follows').insert({
-        follower_id: currentUserId,
+        follower_id: userId,
         following_id: profile.id,
       })
     }
@@ -165,12 +184,19 @@ export function ProfileClient({
 
   // Open direct conversation with counterparty
   const handleChatWithUser = async (otherUserId?: string | null, listingId?: string, key?: string) => {
-    if (!otherUserId || !currentUserId) return
+    if (!otherUserId) return
+    const effectiveUserId = activeUserId || currentUserId
+    if (!effectiveUserId) {
+      setAuthActionType('chat')
+      setPendingAction(() => (u: any) => handleChatWithUser(otherUserId, listingId, key))
+      setAuthModalOpen(true)
+      return
+    }
     if (key) setChatLoadingKey(key)
 
     try {
-      const p1 = currentUserId < otherUserId ? currentUserId : otherUserId
-      const p2 = currentUserId < otherUserId ? otherUserId : currentUserId
+      const p1 = effectiveUserId < otherUserId ? effectiveUserId : otherUserId
+      const p2 = effectiveUserId < otherUserId ? otherUserId : effectiveUserId
 
       const { data: existing } = await supabase
         .from('conversations')
@@ -1725,6 +1751,26 @@ export function ProfileClient({
             }}
           />
         )}
+
+        {/* Fast Auth Modal for In-Place Login / Register */}
+        <FastAuthModal
+          isOpen={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          actionType={authActionType}
+          targetTitle={profile.full_name_ar || profile.full_name || 'الملف الشخصي'}
+          onSuccess={(authenticatedUser) => {
+            if (authenticatedUser?.id) {
+              setActiveUserId(authenticatedUser.id)
+            }
+            if (pendingAction) {
+              const action = pendingAction
+              setPendingAction(null)
+              setTimeout(() => {
+                action(authenticatedUser)
+              }, 60)
+            }
+          }}
+        />
       </div>
     </MainLayout>
   )

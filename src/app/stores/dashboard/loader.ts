@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { getBookstores, getAllOffers, getAllEvents, DEMO_STORES } from '@/lib/stores/store-service'
+import { getBookstores, getAllOffers, getAllEvents } from '@/lib/stores/store-service'
 
 export async function loadStoreDashboardData() {
   const supabase = await createClient()
@@ -32,11 +32,11 @@ export async function loadStoreDashboardData() {
   const offers = await getAllOffers({ _client: supabase })
   const events = await getAllEvents(supabase)
 
-  const defaultStore = userStore || stores[0] || DEMO_STORES[0]
+  const defaultStore = userStore || stores[0] || null
 
   return {
     user,
-    stores: stores.length > 0 ? stores : DEMO_STORES,
+    stores,
     defaultStore,
     offers,
     events,

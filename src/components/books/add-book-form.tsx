@@ -672,16 +672,16 @@ export function AddBookForm({
 
       {/* Header */}
       <div>
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-black tracking-tight">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
             {lang === 'ar' ? '📚 أضف كتابك الجديد' : '📚 Add a New Book'}
           </h1>
-          <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20 gap-1 font-bold">
-            <Sparkles className="h-3 w-3" />
+          <Badge variant="outline" className="text-xs sm:text-sm bg-primary/10 text-primary border-primary/20 gap-1 font-bold py-1 px-2.5">
+            <Sparkles className="h-3.5 w-3.5" />
             {lang === 'ar' ? 'مدعوم بالذكاء الاصطناعي' : 'AI Powered'}
           </Badge>
         </div>
-        <p className="text-muted-foreground text-sm mt-1">
+        <p className="text-muted-foreground text-sm sm:text-base mt-1.5 leading-relaxed">
           {lang === 'ar' 
             ? 'التقط أو ارفع صورة لغلاف الكتاب وسيقوم الذكاء الاصطناعي بملء كافة البيانات تلقائياً!' 
             : 'Snap or upload a photo of the book cover, and AI will auto-fill title, author, and pricing!'}
@@ -689,8 +689,8 @@ export function AddBookForm({
       </div>
 
       {error && (
-        <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive flex items-center gap-2">
-          <AlertCircle className="h-4 w-4 shrink-0" />
+        <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm sm:text-base text-destructive flex items-center gap-2">
+          <AlertCircle className="h-5 w-5 shrink-0" />
           <span>{error}</span>
         </div>
       )}
@@ -698,20 +698,20 @@ export function AddBookForm({
       {/* ======================================================== */}
       {/* STEP 1: AI PHOTO COVER SCANNER (TOP POSITION) */}
       {/* ======================================================== */}
-      <div className="rounded-2xl border-2 border-primary/30 bg-gradient-to-b from-primary/[0.04] to-card p-5 space-y-4 shadow-sm relative overflow-hidden">
+      <div className="rounded-2xl border-2 border-primary/30 bg-gradient-to-b from-primary/[0.04] to-card p-4 sm:p-6 space-y-4 shadow-sm relative overflow-hidden">
         {/* Glow decoration */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-              <Camera className="h-4 w-4" />
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+              <Camera className="h-5 w-5" />
             </div>
             <div>
-              <h3 className="font-bold text-sm">
+              <h3 className="font-black text-sm sm:text-base text-foreground">
                 {lang === 'ar' ? 'الخطوة 1: فحص الغلاف بالذكاء الاصطناعي' : 'Step 1: AI Book Cover Scanner'}
               </h3>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs sm:text-sm text-muted-foreground">
                 {lang === 'ar' ? 'ارفع صورة الغلاف ليتم التعرف على كل التفاصيل فوراً' : 'Upload book cover image to auto-detect details'}
               </p>
             </div>
@@ -721,18 +721,18 @@ export function AddBookForm({
               type="button"
               onClick={() => setShowKeyModal(v => !v)}
               className={cn(
-                "text-xs px-2.5 py-1.5 rounded-xl border flex items-center gap-1.5 font-bold transition-all shadow-sm",
+                "text-xs sm:text-sm px-3 py-1.5 rounded-xl border flex items-center gap-1.5 font-bold transition-all shadow-sm cursor-pointer",
                 savedGeminiKey 
                   ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30" 
                   : "bg-primary/10 text-primary border-primary/20 hover:bg-primary/20"
               )}
               title={lang === 'ar' ? 'إعداد مفتاح الذكاء الاصطناعي' : 'Configure AI API Key'}
             >
-              <KeyRound className="h-3.5 w-3.5" />
+              <KeyRound className="h-4 w-4" />
               <span>{savedGeminiKey ? (lang === 'ar' ? 'مفتاح AI مفعل ✓' : 'AI Key Active ✓') : (lang === 'ar' ? 'مفتاح AI 🔑' : 'AI Key 🔑')}</span>
             </button>
             {images.length > 0 && (
-              <span className="text-xs font-bold text-muted-foreground">
+              <span className="text-xs sm:text-sm font-bold text-muted-foreground">
                 {images.length}/5 {lang === 'ar' ? 'صور' : 'photos'}
               </span>
             )}
@@ -745,33 +745,33 @@ export function AddBookForm({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <KeyRound className="h-5 w-5 text-primary" />
-                <h4 className="font-black text-sm text-foreground">
+                <h4 className="font-black text-sm sm:text-base text-foreground">
                   {lang === 'ar' ? '🔑 إعداد مفتاح الذكاء الاصطناعي (Gemini Vision API)' : '🔑 Configure Gemini Vision API Key'}
                 </h4>
               </div>
               <button
                 type="button"
                 onClick={() => setShowKeyModal(false)}
-                className="text-xs text-muted-foreground hover:text-foreground p-1"
+                className="text-xs text-muted-foreground hover:text-foreground p-1 cursor-pointer"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <p className="text-xs text-muted-foreground leading-relaxed">
+            <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
               {lang === 'ar' 
                 ? 'لقراءة صور أغلفة الكتب والتعرف على العناوين والأسعار تلقائياً بدون باركود، يرجى إدخال مفتاح Google Gemini المجاني. المفتاح مجاني 100% ويستغرق استخراجه دقيقة واحدة من Google AI Studio بدون بطاقة ائتمان.'
                 : 'To read book covers and extract titles and pricing automatically, enter your free Google Gemini API Key (100% free with no credit card required).'}
             </p>
 
             <div className="space-y-2">
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Input
                   type="password"
                   placeholder="AIzaSy..."
                   value={geminiKeyInput}
                   onChange={e => setGeminiKeyInput(e.target.value.trim())}
-                  className="text-xs font-mono"
+                  className="w-full text-base sm:text-sm h-12 font-mono rounded-xl"
                 />
                 <Button
                   type="button"
@@ -786,14 +786,14 @@ export function AddBookForm({
                       }
                     }
                   }}
-                  className="shrink-0 text-xs font-black gap-1"
+                  className="w-full sm:w-auto h-12 shrink-0 text-sm sm:text-base font-black gap-1.5 rounded-xl cursor-pointer"
                 >
-                  <Check className="h-3.5 w-3.5" />
+                  <Check className="h-4 w-4" />
                   {lang === 'ar' ? 'حفظ ومسح الغلاف' : 'Save & Scan'}
                 </Button>
               </div>
 
-              <div className="flex items-center justify-between text-[11px] pt-1">
+              <div className="flex items-center justify-between text-xs pt-1 flex-wrap gap-2">
                 <a
                   href="https://aistudio.google.com/app/apikey"
                   target="_blank"
@@ -813,20 +813,20 @@ export function AddBookForm({
 
         {/* Existing images preview */}
         {images.length > 0 && (
-          <div className="grid grid-cols-4 sm:grid-cols-5 gap-2.5">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
             {images.map((img, i) => (
               <div key={i} className="relative group aspect-[3/4] rounded-xl overflow-hidden bg-muted border border-border shadow-sm">
                 <Image src={img.preview} alt={`Book image ${i + 1}`} fill className="object-cover" />
                 <button
                   type="button"
                   onClick={() => removeImage(i)}
-                  className="absolute top-1 end-1 h-6 w-6 flex items-center justify-center rounded-full bg-black/70 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-1 end-1 h-7 w-7 flex items-center justify-center rounded-full bg-black/70 text-white transition-opacity cursor-pointer"
                   aria-label="Remove image"
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-4 w-4" />
                 </button>
                 {i === 0 && (
-                  <span className="absolute bottom-1 start-1 text-[10px] bg-primary text-primary-foreground font-black px-1.5 py-0.5 rounded shadow">
+                  <span className="absolute bottom-1.5 start-1.5 text-xs bg-primary text-primary-foreground font-black px-2 py-0.5 rounded-md shadow">
                     {lang === 'ar' ? 'الغلاف' : 'Cover'}
                   </span>
                 )}
@@ -840,7 +840,7 @@ export function AddBookForm({
           <div
             {...getRootProps()}
             className={cn(
-              'relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-all',
+              'relative flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed p-6 sm:p-8 text-center cursor-pointer transition-all w-full',
               isDragActive ? 'border-primary bg-primary/10 scale-[0.99]' : 'border-primary/40 bg-card/60 hover:border-primary hover:bg-primary/[0.03]',
               isAiScanning && 'pointer-events-none opacity-80'
             )}
@@ -853,28 +853,28 @@ export function AddBookForm({
                   <div className="h-12 w-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
                   <Sparkles className="h-5 w-5 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse" />
                 </div>
-                <p className="font-bold text-sm text-primary animate-pulse mt-1">
+                <p className="font-bold text-base text-primary animate-pulse mt-1">
                   {aiScanStatus || (lang === 'ar' ? 'الذكاء الاصطناعي يقرأ الغلاف...' : 'AI scanning cover...')}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   {lang === 'ar' ? 'جاري التعرف على العنوان، المؤلف، السعر، والتأمين' : 'Extracting title, author, price, and terms'}
                 </p>
               </div>
             ) : (
               <>
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                  <Upload className="h-6 w-6" />
+                <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                  <Upload className="h-7 w-7" />
                 </div>
-                <div>
-                  <p className="font-bold text-sm text-foreground">
+                <div className="space-y-1">
+                  <p className="font-black text-base sm:text-lg text-foreground">
                     {lang === 'ar' ? 'اضغط لاختيار صورة الغلاف أو اسحبها هنا 📷' : 'Click or drop book cover photo here 📷'}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     {lang === 'ar' ? 'يدعم صور الغلاف أو الباركود (JPG, PNG, WebP)' : 'Supports cover photos or barcodes (JPG, PNG, WebP)'}
                   </p>
                 </div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">
-                  <Sparkles className="h-3.5 w-3.5" />
+                <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs sm:text-sm font-black">
+                  <Sparkles className="h-4 w-4" />
                   <span>{lang === 'ar' ? 'مسح فوري بالذكاء الاصطناعي' : 'Instant AI Auto-Fill'}</span>
                 </div>
               </>
@@ -884,24 +884,24 @@ export function AddBookForm({
 
         {/* AI Scan Success Banner */}
         {aiExtractedInfo && (
-          <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex items-start justify-between gap-3 animate-fade-in">
-            <div className="flex items-start gap-2.5">
-              <div className="h-7 w-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+          <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex items-start justify-between gap-3 animate-fade-in">
+            <div className="flex items-start gap-3">
+              <div className="h-8 w-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5">
                 <Sparkles className="h-4 w-4" />
               </div>
-              <div className="text-xs space-y-1">
+              <div className="text-xs sm:text-sm space-y-1">
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <span className="font-black text-emerald-900 dark:text-emerald-300">
                     {lang === 'ar' ? '✨ تم التعرف على الكتاب بنجاح!' : '✨ Book Identified by AI!'}
                   </span>
-                  <Badge variant="secondary" className="text-[10px] py-0 px-1.5 bg-emerald-500/20 text-emerald-800 dark:text-emerald-200">
+                  <Badge variant="secondary" className="text-xs py-0 px-2 bg-emerald-500/20 text-emerald-800 dark:text-emerald-200">
                     {aiExtractedInfo.source === 'gemini_vision' ? 'Gemini AI Vision' : (aiExtractedInfo.source || 'AI')}
                   </Badge>
                 </div>
-                <p className="text-muted-foreground font-medium">
+                <p className="text-foreground font-semibold">
                   <strong>{aiExtractedInfo.title}</strong> {aiExtractedInfo.author && `— ${aiExtractedInfo.author}`}
                 </p>
-                <div className="flex items-center gap-2 pt-0.5 text-[11px] text-emerald-800 dark:text-emerald-300 font-bold flex-wrap">
+                <div className="flex items-center gap-2 pt-0.5 text-xs text-emerald-800 dark:text-emerald-300 font-bold flex-wrap">
                   <span>{lang === 'ar' ? `السعر المقترح: ${aiExtractedInfo.estimated_price} ج.م` : `Est. Price: ${aiExtractedInfo.estimated_price} EGP`}</span>
                   <span>•</span>
                   <span>{lang === 'ar' ? `التأمين المقترح: ${aiExtractedInfo.suggested_deposit} ج.م` : `Deposit: ${aiExtractedInfo.suggested_deposit} EGP`}</span>
@@ -922,28 +922,28 @@ export function AddBookForm({
                 if (images[0]) triggerAiCoverScan(images[0].file)
               }}
               title={lang === 'ar' ? 'إعادة الفحص' : 'Re-scan'}
-              className="p-1.5 rounded-lg hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 transition-colors"
+              className="p-2 rounded-lg hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 transition-colors cursor-pointer"
             >
-              <RefreshCw className="h-3.5 w-3.5" />
+              <RefreshCw className="h-4 w-4" />
             </button>
           </div>
         )}
       </div>
 
       {/* Alternative ISBN Search */}
-      <div className="p-3.5 rounded-xl border bg-muted/30 flex items-center justify-between gap-3">
-        <div className="flex-1">
+      <div className="p-3.5 sm:p-4 rounded-xl border bg-muted/30 flex items-center justify-between gap-3">
+        <div className="flex-1 w-full">
           <div className="relative">
             <Input
               placeholder={lang === 'ar' ? '🔍 أو ابحث مباشرة برقم ISBN (مثال: 978977...)' : '🔍 Or search directly by ISBN...'}
-              className={cn('text-xs h-9', isRTL ? 'pr-3 pl-16' : 'pl-3 pr-16')}
+              className={cn('w-full text-base sm:text-sm h-12 rounded-xl', isRTL ? 'pr-4 pl-14' : 'pl-4 pr-14')}
               onChange={e => {
                 const v = e.target.value.trim()
                 if (v.length >= 10) lookupISBN(v)
               }}
             />
-            <div className={cn('absolute top-1/2 -translate-y-1/2', isRTL ? 'left-2.5' : 'right-2.5')}>
-              {isbnLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : <Search className="h-3.5 w-3.5 text-muted-foreground" />}
+            <div className={cn('absolute top-1/2 -translate-y-1/2 pointer-events-none', isRTL ? 'left-3.5' : 'right-3.5')}>
+              {isbnLoading ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : <Search className="h-4 w-4 text-muted-foreground" />}
             </div>
           </div>
         </div>
@@ -953,52 +953,55 @@ export function AddBookForm({
       {/* STEP 2: BOOK DETAILS (PRE-FILLED OR MANUAL) */}
       {/* ======================================================== */}
       <div className="space-y-4 pt-2">
-        <div className="flex items-center justify-between">
-          <h3 className="font-bold text-base flex items-center gap-2">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <h3 className="font-black text-base sm:text-lg flex items-center gap-2 text-foreground">
             <span>{lang === 'ar' ? 'الخطوة 2: مراجعة تفاصيل الكتاب' : 'Step 2: Review Book Details'}</span>
           </h3>
-          <span className="text-xs text-muted-foreground font-medium">
+          <span className="text-xs sm:text-sm text-muted-foreground font-semibold">
             {lang === 'ar' ? 'تم الملء تلقائياً — يمكنك التعديل' : 'Auto-filled — you can adjust'}
           </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2 space-y-1.5">
-            <Label htmlFor="title" className="text-xs font-bold">{lang === 'ar' ? 'عنوان الكتاب *' : 'Book Title *'}</Label>
-            <Input id="title" placeholder={lang === 'ar' ? 'مثال: في قلبي أنثى عبرية' : 'e.g. Atomic Habits'} {...register('title')} />
-            {errors.title && <p className="text-xs text-destructive">{errors.title.message}</p>}
+            <Label htmlFor="title" className="text-sm sm:text-base font-bold text-foreground">{lang === 'ar' ? 'عنوان الكتاب *' : 'Book Title *'}</Label>
+            <Input id="title" className="w-full text-base sm:text-sm h-12 rounded-xl" placeholder={lang === 'ar' ? 'مثال: في قلبي أنثى عبرية' : 'e.g. Atomic Habits'} {...register('title')} />
+            {errors.title && <p className="text-xs sm:text-sm text-destructive">{errors.title.message}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="author" className="text-xs font-bold">{lang === 'ar' ? 'المؤلف *' : 'Author *'}</Label>
-            <Input id="author" placeholder={lang === 'ar' ? 'اسم المؤلف' : 'Author name'} {...register('author')} />
-            {errors.author && <p className="text-xs text-destructive">{errors.author.message}</p>}
+            <Label htmlFor="author" className="text-sm sm:text-base font-bold text-foreground">{lang === 'ar' ? 'المؤلف *' : 'Author *'}</Label>
+            <Input id="author" className="w-full text-base sm:text-sm h-12 rounded-xl" placeholder={lang === 'ar' ? 'اسم المؤلف' : 'Author name'} {...register('author')} />
+            {errors.author && <p className="text-xs sm:text-sm text-destructive">{errors.author.message}</p>}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="publisher" className="text-xs font-bold">{lang === 'ar' ? 'دار النشر' : 'Publisher'}</Label>
-            <Input id="publisher" placeholder={lang === 'ar' ? 'دار الشروق، عصير الكتب...' : 'Publisher (optional)'} {...register('publisher')} />
+            <Label htmlFor="publisher" className="text-sm sm:text-base font-bold text-foreground">{lang === 'ar' ? 'دار النشر' : 'Publisher'}</Label>
+            <Input id="publisher" className="w-full text-base sm:text-sm h-12 rounded-xl" placeholder={lang === 'ar' ? 'دار الشروق، عصير الكتب...' : 'Publisher (optional)'} {...register('publisher')} />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="isbn" className="text-xs font-bold">{lang === 'ar' ? 'رقم ISBN' : 'ISBN'}</Label>
-            <Input id="isbn" placeholder="9780143127741" {...register('isbn')} />
+            <Label htmlFor="isbn" className="text-sm sm:text-base font-bold text-foreground">{lang === 'ar' ? 'رقم ISBN' : 'ISBN'}</Label>
+            <Input id="isbn" className="w-full text-base sm:text-sm h-12 rounded-xl" placeholder="9780143127741" {...register('isbn')} />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="edition" className="text-xs font-bold">{lang === 'ar' ? 'الطبعة' : 'Edition'}</Label>
-            <Input id="edition" placeholder={lang === 'ar' ? 'مثال: الأولى، طبعة 2024' : 'e.g. 2nd Edition'} {...register('edition')} />
+            <Label htmlFor="edition" className="text-sm sm:text-base font-bold text-foreground">{lang === 'ar' ? 'الطبعة' : 'Edition'}</Label>
+            <Input id="edition" className="w-full text-base sm:text-sm h-12 rounded-xl" placeholder={lang === 'ar' ? 'مثال: الأولى، طبعة 2024' : 'e.g. 2nd Edition'} {...register('edition')} />
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold">{lang === 'ar' ? 'اللغة' : 'Language'}</Label>
-            <div className="flex flex-wrap gap-1.5">
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label className="text-sm sm:text-base font-bold text-foreground">{lang === 'ar' ? 'اللغة' : 'Language'}</Label>
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
               {LANGUAGES.map(l => (
                 <button
                   key={l.value}
                   type="button"
                   onClick={() => setValue('language', l.value as AddBookData['language'])}
-                  className={cn('px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors', language === l.value ? 'bg-primary text-primary-foreground border-primary' : 'bg-card hover:bg-accent')}
+                  className={cn(
+                    'w-full sm:w-auto py-2.5 px-4 rounded-xl text-sm sm:text-base font-bold border transition-colors cursor-pointer',
+                    language === l.value ? 'bg-primary text-primary-foreground border-primary shadow-xs' : 'bg-card hover:bg-accent'
+                  )}
                 >
                   {lang === 'ar' ? l.labelAr : l.labelEn}
                 </button>
@@ -1007,35 +1010,35 @@ export function AddBookForm({
           </div>
 
           {/* Custom Category Dropdown */}
-          <div className="space-y-1.5 relative" ref={categoryDropdownRef}>
-            <Label htmlFor="category_id_btn" className="text-xs font-bold">{lang === 'ar' ? 'التصنيف *' : 'Category *'}</Label>
+          <div className="sm:col-span-2 space-y-1.5 relative" ref={categoryDropdownRef}>
+            <Label htmlFor="category_id_btn" className="text-sm sm:text-base font-bold text-foreground">{lang === 'ar' ? 'التصنيف *' : 'Category *'}</Label>
             <input type="hidden" {...register('category_id')} value={selectedCategoryId || watch('category_id') || ''} />
             <button
               id="category_id_btn"
               type="button"
               onClick={() => setCategoryDropdownOpen(v => !v)}
-              className="flex h-11 w-full items-center justify-between rounded-xl border border-input bg-card/90 px-3.5 py-2 text-xs font-semibold shadow-sm hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+              className="flex h-12 w-full items-center justify-between rounded-xl border border-input bg-card/90 px-4 py-2.5 text-sm sm:text-base font-bold shadow-sm hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring transition-all cursor-pointer"
             >
-              <div className="flex items-center gap-2 truncate">
+              <div className="flex items-center gap-2.5 truncate">
                 {selectedCategoryObj ? (
                   <>
-                    <span className="text-base">{selectedCategoryObj.icon}</span>
-                    <span className="text-foreground font-bold">
+                    <span className="text-lg">{selectedCategoryObj.icon}</span>
+                    <span className="text-foreground font-black">
                       {lang === 'ar' ? selectedCategoryObj.name_ar : selectedCategoryObj.name_en}
                     </span>
                   </>
                 ) : (
-                  <span className="text-muted-foreground">
+                  <span className="text-muted-foreground font-medium">
                     {lang === 'ar' ? 'اختار تصنيف الكتاب...' : 'Select category...'}
                   </span>
                 )}
               </div>
-              <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0", categoryDropdownOpen && "rotate-180")} />
+              <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200 shrink-0", categoryDropdownOpen && "rotate-180")} />
             </button>
 
             {/* Custom Popover Options with high contrast dark/light styling */}
             {categoryDropdownOpen && (
-              <div className="absolute top-full start-0 z-50 mt-1.5 w-full rounded-2xl border border-border bg-card/98 dark:bg-slate-900/98 p-1.5 shadow-2xl backdrop-blur-md max-h-64 overflow-y-auto space-y-0.5">
+              <div className="absolute top-full start-0 z-50 mt-1.5 w-full rounded-2xl border border-border bg-card/98 dark:bg-slate-900/98 p-2 shadow-2xl backdrop-blur-md max-h-64 overflow-y-auto space-y-1">
                 {categories.map(cat => {
                   const isSelected = (selectedCategoryId || watch('category_id')) === cat.id
                   return (
@@ -1048,17 +1051,17 @@ export function AddBookForm({
                         setCategoryDropdownOpen(false)
                       }}
                       className={cn(
-                        "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all text-start cursor-pointer",
+                        "w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition-all text-start cursor-pointer",
                         isSelected 
                           ? "bg-primary text-primary-foreground font-black shadow-sm" 
                           : "text-foreground hover:bg-primary/10 hover:text-primary dark:text-slate-100 dark:hover:bg-slate-800"
                       )}
                     >
                       <div className="flex items-center gap-2.5 truncate">
-                        <span className="text-base">{cat.icon}</span>
+                        <span className="text-lg">{cat.icon}</span>
                         <span className="truncate">{lang === 'ar' ? cat.name_ar : cat.name_en}</span>
                       </div>
-                      {isSelected && <Check className="h-3.5 w-3.5 shrink-0 stroke-[3]" />}
+                      {isSelected && <Check className="h-4 w-4 shrink-0 stroke-[3]" />}
                     </button>
                   )
                 })}
@@ -1067,12 +1070,13 @@ export function AddBookForm({
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="description" className="text-xs font-bold">{lang === 'ar' ? 'نبذة عن الكتاب' : 'Book Description'}</Label>
+        <div className="space-y-1.5 pt-1">
+          <Label htmlFor="description" className="text-sm sm:text-base font-bold text-foreground">{lang === 'ar' ? 'نبذة عن الكتاب' : 'Book Description'}</Label>
           <Textarea
             id="description"
             placeholder={lang === 'ar' ? 'وصف مختصر أو حالة الكتاب...' : 'Brief summary or notes on book condition...'}
             rows={3}
+            className="w-full text-base sm:text-sm rounded-xl p-3.5 min-h-[96px]"
             {...register('description')}
           />
         </div>
@@ -1082,38 +1086,38 @@ export function AddBookForm({
       {/* STEP 3: LISTING TYPE & DYNAMIC LENDING PRICING */}
       {/* ======================================================== */}
       <div className="space-y-4 pt-2">
-        <h3 className="font-bold text-base">{lang === 'ar' ? 'الخطوة 3: نوع الإعلان والتسعير' : 'Step 3: Listing & Pricing'}</h3>
+        <h3 className="font-black text-base sm:text-lg text-foreground">{lang === 'ar' ? 'الخطوة 3: نوع الإعلان والتسعير' : 'Step 3: Listing & Pricing'}</h3>
         
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {LISTING_TYPES.map(t => (
             <button
               key={t.value}
               type="button"
               onClick={() => setValue('listing_type', t.value as AddBookData['listing_type'])}
               className={cn(
-                'p-3 rounded-xl border-2 text-start transition-all',
+                'w-full p-4 rounded-xl border-2 text-start transition-all cursor-pointer',
                 listingType === t.value
                   ? 'border-primary bg-primary/5 shadow-sm'
                   : 'border-border hover:border-primary/50'
               )}
             >
-              <span className="font-bold text-sm block">{lang === 'ar' ? t.labelAr : t.labelEn}</span>
-              <span className="text-xs text-muted-foreground">{lang === 'ar' ? t.descAr : t.descEn}</span>
+              <span className="font-black text-base sm:text-lg block text-foreground">{lang === 'ar' ? t.labelAr : t.labelEn}</span>
+              <span className="text-xs sm:text-sm text-muted-foreground mt-0.5 block">{lang === 'ar' ? t.descAr : t.descEn}</span>
             </button>
           ))}
         </div>
 
         {/* Book Price (For Selling or Deposit calculation) */}
         {listingType !== 'GIVEAWAY' && (
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="price" className="text-xs font-bold">
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <Label htmlFor="price" className="text-sm sm:text-base font-bold text-foreground">
                 {listingType === 'SWAP' 
                   ? (lang === 'ar' ? 'القيمة التقديرية للكتاب (ج.م)' : 'Estimated Book Value (EGP)')
                   : (lang === 'ar' ? 'سعر البيع (ج.م) *' : 'Selling Price (EGP) *')}
               </Label>
               {bookPrice > 0 && (
-                <span className={cn('text-xs font-black px-2 py-0.5 rounded-full', isExpensiveBook ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'bg-blue-500/10 text-blue-700 dark:text-blue-300')}>
+                <span className={cn('text-xs sm:text-sm font-black px-2.5 py-0.5 rounded-full', isExpensiveBook ? 'bg-amber-500/10 text-amber-700 dark:text-amber-300' : 'bg-blue-500/10 text-blue-700 dark:text-blue-300')}>
                   {isExpensiveBook 
                     ? (lang === 'ar' ? '💎 كتاب قيّم / نادر' : '💎 High-Value Book') 
                     : (lang === 'ar' ? '📗 كتاب عادي' : '📗 Standard Book')}
@@ -1124,6 +1128,7 @@ export function AddBookForm({
               id="price"
               type="number"
               min="0"
+              className="w-full text-base sm:text-sm h-12 rounded-xl font-bold"
               placeholder={lang === 'ar' ? 'مثال: 120' : 'e.g. 120'}
               {...register('price')}
             />
@@ -1132,15 +1137,15 @@ export function AddBookForm({
 
         {/* DYNAMIC LENDING & BORROWING SECTION */}
         {listingType !== 'GIVEAWAY' && (
-          <div className="p-4 rounded-2xl border-2 border-emerald-500/30 bg-emerald-500/[0.04] space-y-3.5">
+          <div className="p-4 sm:p-5 rounded-2xl border-2 border-emerald-500/30 bg-emerald-500/[0.04] space-y-4">
             <label className="flex items-start justify-between cursor-pointer select-none gap-3">
-              <div className="flex items-start gap-2.5">
+              <div className="flex items-start gap-3">
                 <span className="text-2xl mt-0.5">⏳</span>
                 <div>
-                  <span className="text-sm font-black text-foreground block">
+                  <span className="text-base sm:text-lg font-black text-foreground block">
                     {lang === 'ar' ? 'السماح باستعارة الكتاب بتأمين مسترد؟' : 'Allow peer-to-peer lending with refundable deposit?'}
                   </span>
-                  <span className="text-xs text-muted-foreground block mt-0.5">
+                  <span className="text-xs sm:text-sm text-muted-foreground block mt-1 leading-relaxed">
                     {lang === 'ar'
                       ? 'أعِر كتابك للقراء بضمان كامل 100% لتأمين قيمته، واكسب رسوم استعارة رمزية دون أن تفقد ملكية الكتاب.'
                       : 'Lend your book with 100% refundable security deposit to protect value while earning weekly lending fees.'}
@@ -1151,28 +1156,28 @@ export function AddBookForm({
                 type="checkbox"
                 checked={availableForLending}
                 onChange={e => setAvailableForLending(e.target.checked)}
-                className="h-5 w-5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer mt-1"
+                className="h-6 w-6 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer mt-1 shrink-0"
               />
             </label>
 
             {availableForLending && (
-              <div className="pt-2 border-t border-emerald-500/20 space-y-3">
+              <div className="pt-3 border-t border-emerald-500/20 space-y-3.5">
                 {/* Book Value Tier Explanation */}
                 <div className={cn(
-                  'p-3 rounded-xl border text-xs space-y-1',
+                  'p-3.5 rounded-xl border text-xs sm:text-sm space-y-1',
                   isExpensiveBook 
                     ? 'bg-amber-500/10 border-amber-500/30 text-amber-900 dark:text-amber-200' 
                     : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-900 dark:text-emerald-200'
                 )}>
-                  <div className="flex items-center gap-1.5 font-black">
-                    <ShieldCheck className="h-4 w-4 shrink-0" />
+                  <div className="flex items-center gap-2 font-black">
+                    <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 shrink-0" />
                     <span>
                       {isExpensiveBook
                         ? (lang === 'ar' ? '💎 تسعير استعارة المراجع القيّمة (High-Value Tier):' : '💎 High-Value Book Lending Policy:')
                         : (lang === 'ar' ? '📗 تسعير استعارة الكتب العادية (Standard Tier):' : '📗 Standard Book Lending Policy:')}
                     </span>
                   </div>
-                  <p className="text-[11px] leading-relaxed">
+                  <p className="text-xs leading-relaxed">
                     {isExpensiveBook
                       ? (lang === 'ar'
                           ? `نظراً لأن قيمة الكتاب مرتفعة (${bookPrice} ج.م)، تم تحديد التأمين ليغطي 100% من سعر الكتاب لحمايتك من التلف أو الفقدان، مع رسم استعارة أسبوعي عادل.`
@@ -1184,9 +1189,9 @@ export function AddBookForm({
                 </div>
 
                 {/* Seller Controls for Deposit & Weekly Fee */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-bold text-foreground">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm sm:text-base font-bold text-foreground">
                       {lang === 'ar' ? 'مبلغ التأمين المسترد بالكامل (ج.م):' : 'Refundable Deposit (EGP):'}
                     </Label>
                     <div className="relative">
@@ -1195,19 +1200,19 @@ export function AddBookForm({
                         min="20"
                         value={customDeposit}
                         onChange={e => setCustomDeposit(Number(e.target.value))}
-                        className="text-xs font-black"
+                        className="w-full text-base sm:text-sm h-12 rounded-xl font-black"
                       />
-                      <span className={cn('absolute top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground', isRTL ? 'left-3' : 'right-3')}>
+                      <span className={cn('absolute top-1/2 -translate-y-1/2 text-xs sm:text-sm font-bold text-muted-foreground pointer-events-none', isRTL ? 'left-3' : 'right-3')}>
                         {lang === 'ar' ? 'ج.م' : 'EGP'}
                       </span>
                     </div>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground block">
                       {lang === 'ar' ? 'يُرد للمستعير 100% فور استرجاع الكتاب سليم' : '100% refunded when book is returned safely'}
                     </span>
                   </div>
 
-                  <div className="space-y-1">
-                    <Label className="text-xs font-bold text-foreground">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm sm:text-base font-bold text-foreground">
                       {lang === 'ar' ? 'رسم الاستعارة الأسبوعي للمالك (ج.م):' : 'Weekly Lending Fee for Owner (EGP):'}
                     </Label>
                     <div className="relative">
@@ -1216,13 +1221,13 @@ export function AddBookForm({
                         min="5"
                         value={customFeeWeekly}
                         onChange={e => setCustomFeeWeekly(Number(e.target.value))}
-                        className="text-xs font-black"
+                        className="w-full text-base sm:text-sm h-12 rounded-xl font-black"
                       />
-                      <span className={cn('absolute top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground', isRTL ? 'left-3' : 'right-3')}>
+                      <span className={cn('absolute top-1/2 -translate-y-1/2 text-xs sm:text-sm font-bold text-muted-foreground pointer-events-none', isRTL ? 'left-3' : 'right-3')}>
                         {lang === 'ar' ? 'ج.م/أسبوع' : 'EGP/wk'}
                       </span>
                     </div>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground block">
                       {lang === 'ar' ? 'أرباحك الصافية نظير كل أسبوع إعارة' : 'Your earnings for each week loaned'}
                     </span>
                   </div>
@@ -1237,49 +1242,49 @@ export function AddBookForm({
       {/* STEP 4: CONDITION & LOCATION */}
       {/* ======================================================== */}
       <div className="space-y-4 pt-2">
-        <h3 className="font-bold text-base">{lang === 'ar' ? 'الخطوة 4: حالة الكتاب والموقع' : 'Step 4: Condition & Location'}</h3>
+        <h3 className="font-black text-base sm:text-lg text-foreground">{lang === 'ar' ? 'الخطوة 4: حالة الكتاب والموقع' : 'Step 4: Condition & Location'}</h3>
 
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {CONDITIONS.map(c => (
             <button
               key={c.value}
               type="button"
               onClick={() => setValue('condition', c.value as AddBookData['condition'])}
               className={cn(
-                'w-full flex items-center justify-between p-3 rounded-xl border-2 transition-all text-start',
+                'w-full flex items-center justify-between p-4 rounded-xl border-2 transition-all text-start cursor-pointer',
                 condition === c.value
                   ? 'border-primary bg-primary/5 shadow-sm'
                   : 'border-border hover:border-primary/30'
               )}
             >
               <div>
-                <span className="font-bold text-sm">{lang === 'ar' ? c.labelAr : c.labelEn}</span>
-                <span className="text-xs text-muted-foreground block">{c.desc}</span>
+                <span className="font-black text-base sm:text-lg text-foreground block">{lang === 'ar' ? c.labelAr : c.labelEn}</span>
+                <span className="text-xs sm:text-sm text-muted-foreground block mt-0.5">{c.desc}</span>
               </div>
-              {condition === c.value && <Check className="h-4 w-4 text-primary flex-shrink-0" />}
+              {condition === c.value && <Check className="h-5 w-5 text-primary flex-shrink-0 stroke-[3]" />}
             </button>
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-3 pt-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2">
           {/* Custom City Dropdown */}
           <div className="space-y-1.5 relative" ref={cityDropdownRef}>
-            <Label htmlFor="city_id_btn" className="text-xs font-bold">{lang === 'ar' ? 'المدينة' : 'City'}</Label>
+            <Label htmlFor="city_id_btn" className="text-sm sm:text-base font-bold text-foreground">{lang === 'ar' ? 'المدينة *' : 'City *'}</Label>
             <input type="hidden" {...register('city_id')} value={selectedCityId} />
             <button
               id="city_id_btn"
               type="button"
               onClick={() => setCityDropdownOpen(v => !v)}
-              className="flex h-11 w-full items-center justify-between rounded-xl border border-input bg-card/90 px-3.5 py-2 text-xs font-semibold shadow-sm hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+              className="flex h-12 w-full items-center justify-between rounded-xl border border-input bg-card/90 px-4 py-2.5 text-sm sm:text-base font-bold shadow-sm hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring transition-all cursor-pointer"
             >
-              <span className={cn("truncate", selectedCityObj ? "text-foreground font-bold" : "text-muted-foreground")}>
+              <span className={cn("truncate", selectedCityObj ? "text-foreground font-black" : "text-muted-foreground font-medium")}>
                 {selectedCityObj ? (lang === 'ar' ? selectedCityObj.name_ar : selectedCityObj.name_en) : (lang === 'ar' ? 'اختار مدينة...' : 'Select city...')}
               </span>
-              <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0", cityDropdownOpen && "rotate-180")} />
+              <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200 shrink-0", cityDropdownOpen && "rotate-180")} />
             </button>
 
             {cityDropdownOpen && (
-              <div className="absolute bottom-full mb-1.5 start-0 z-50 w-full rounded-2xl border border-border bg-card/98 dark:bg-slate-900/98 p-1.5 shadow-2xl backdrop-blur-md max-h-60 overflow-y-auto space-y-0.5">
+              <div className="absolute bottom-full mb-1.5 start-0 z-50 w-full rounded-2xl border border-border bg-card/98 dark:bg-slate-900/98 p-2 shadow-2xl backdrop-blur-md max-h-60 overflow-y-auto space-y-1">
                 {cities.map(city => {
                   const isSelected = selectedCityId === city.id
                   return (
@@ -1294,14 +1299,14 @@ export function AddBookForm({
                         setCityDropdownOpen(false)
                       }}
                       className={cn(
-                        "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all text-start cursor-pointer",
+                        "w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition-all text-start cursor-pointer",
                         isSelected 
                           ? "bg-primary text-primary-foreground font-black shadow-sm" 
                           : "text-foreground hover:bg-primary/10 hover:text-primary dark:text-slate-100 dark:hover:bg-slate-800"
                       )}
                     >
                       <span className="truncate">{lang === 'ar' ? city.name_ar : city.name_en}</span>
-                      {isSelected && <Check className="h-3.5 w-3.5 shrink-0 stroke-[3]" />}
+                      {isSelected && <Check className="h-4 w-4 shrink-0 stroke-[3]" />}
                     </button>
                   )
                 })}
@@ -1311,23 +1316,23 @@ export function AddBookForm({
 
           {/* Custom Area Dropdown */}
           <div className="space-y-1.5 relative" ref={areaDropdownRef}>
-            <Label htmlFor="area_id_btn" className="text-xs font-bold">{lang === 'ar' ? 'المنطقة' : 'Area'}</Label>
+            <Label htmlFor="area_id_btn" className="text-sm sm:text-base font-bold text-foreground">{lang === 'ar' ? 'المنطقة' : 'Area'}</Label>
             <input type="hidden" {...register('area_id')} value={selectedAreaId} />
             <button
               id="area_id_btn"
               type="button"
               disabled={!selectedCityId || areas.length === 0}
               onClick={() => setAreaDropdownOpen(v => !v)}
-              className="flex h-11 w-full items-center justify-between rounded-xl border border-input bg-card/90 px-3.5 py-2 text-xs font-semibold shadow-sm hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring transition-all disabled:opacity-50"
+              className="flex h-12 w-full items-center justify-between rounded-xl border border-input bg-card/90 px-4 py-2.5 text-sm sm:text-base font-bold shadow-sm hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-ring transition-all disabled:opacity-50 cursor-pointer"
             >
-              <span className={cn("truncate", selectedAreaObj ? "text-foreground font-bold" : "text-muted-foreground")}>
+              <span className={cn("truncate", selectedAreaObj ? "text-foreground font-black" : "text-muted-foreground font-medium")}>
                 {selectedAreaObj ? (lang === 'ar' ? selectedAreaObj.name_ar : selectedAreaObj.name_en) : (lang === 'ar' ? 'اختار منطقة...' : 'Select area...')}
               </span>
-              <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform duration-200 shrink-0", areaDropdownOpen && "rotate-180")} />
+              <ChevronDown className={cn("h-5 w-5 text-muted-foreground transition-transform duration-200 shrink-0", areaDropdownOpen && "rotate-180")} />
             </button>
 
             {areaDropdownOpen && areas.length > 0 && (
-              <div className="absolute bottom-full mb-1.5 start-0 z-50 w-full rounded-2xl border border-border bg-card/98 dark:bg-slate-900/98 p-1.5 shadow-2xl backdrop-blur-md max-h-60 overflow-y-auto space-y-0.5">
+              <div className="absolute bottom-full mb-1.5 start-0 z-50 w-full rounded-2xl border border-border bg-card/98 dark:bg-slate-900/98 p-2 shadow-2xl backdrop-blur-md max-h-60 overflow-y-auto space-y-1">
                 {areas.map((area: { id: string; name_ar: string; name_en: string }) => {
                   const isSelected = selectedAreaId === area.id
                   return (
@@ -1340,14 +1345,14 @@ export function AddBookForm({
                         setAreaDropdownOpen(false)
                       }}
                       className={cn(
-                        "w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition-all text-start cursor-pointer",
+                        "w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition-all text-start cursor-pointer",
                         isSelected 
                           ? "bg-primary text-primary-foreground font-black shadow-sm" 
                           : "text-foreground hover:bg-primary/10 hover:text-primary dark:text-slate-100 dark:hover:bg-slate-800"
                       )}
                     >
                       <span className="truncate">{lang === 'ar' ? area.name_ar : area.name_en}</span>
-                      {isSelected && <Check className="h-3.5 w-3.5 shrink-0 stroke-[3]" />}
+                      {isSelected && <Check className="h-4 w-4 shrink-0 stroke-[3]" />}
                     </button>
                   )
                 })}
@@ -1362,7 +1367,7 @@ export function AddBookForm({
         id="add-book-submit-btn"
         type="submit"
         size="lg"
-        className="w-full text-base font-black py-6 rounded-2xl shadow-lg shadow-primary/20 hover:shadow-xl transition-all"
+        className="w-full text-base sm:text-xl font-black py-4 sm:py-6 h-14 sm:h-16 rounded-xl sm:rounded-2xl shadow-xl shadow-primary/25 hover:shadow-2xl active:scale-[0.98] transition-all cursor-pointer"
         loading={uploading}
       >
         {uploading

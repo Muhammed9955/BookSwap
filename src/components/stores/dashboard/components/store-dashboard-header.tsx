@@ -130,6 +130,18 @@ export function StoreDashboardHeader({
             ))}
           </select>
 
+          {/* Marketplace Link */}
+          <Link href="/stores">
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl font-bold text-xs gap-1.5 border-border hover:border-emerald-500 hover:text-emerald-600 cursor-pointer shadow-xs"
+            >
+              <Store className="h-4 w-4 text-emerald-600" />
+              <span>{lang === 'ar' ? 'دليل المكتبات الشريكة' : 'Bookstore Directory'}</span>
+            </Button>
+          </Link>
+
           {/* Public Page Preview */}
           <Link href={`/stores/${currentStore.slug}`} target="_blank">
             <Button

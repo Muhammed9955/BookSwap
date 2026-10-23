@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter, usePathname } from 'next/navigation'
 import {
   Store,
   MapPin,
@@ -24,6 +25,7 @@ import { Badge } from '@/components/ui/badge'
 import { useLanguage } from '@/i18n/language-context'
 import { cn } from '@/lib/utils'
 import { toggleStoreFollow } from '@/lib/stores/store-service'
+import { FastAuthModal } from '@/components/auth/fast-auth-modal'
 import type { Bookstore, StoreType } from '@/types/store'
 
 function StoreCardCover({ src, alt }: { src?: string; alt: string }) {
@@ -76,6 +78,11 @@ interface StoresListClientProps {
 
 export function StoresListClient({ initialStores, currentUserId }: StoresListClientProps) {
   const { lang, isRTL } = useLanguage()
+  const router = useRouter()
+  const pathname = usePathname()
+  const [activeUserId, setActiveUserId] = useState<string | null>(currentUserId || null)
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [pendingStore, setPendingStore] = useState<{ id: string; name: string } | null>(null)
   const [stores, setStores] = useState<Bookstore[]>(initialStores)
   const [selectedType, setSelectedType] = useState<StoreType | 'ALL'>('ALL')
   const [searchQuery, setSearchQuery] = useState('')
@@ -101,23 +108,30 @@ export function StoresListClient({ initialStores, currentUserId }: StoresListCli
     return true
   })
 
-  const handleFollowToggle = async (e: React.MouseEvent, storeId: string) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (!currentUserId) {
-      alert(lang === 'ar' ? 'يرجى تسجيل الدخول لمتابعة المتجر' : 'Please log in to follow this bookstore')
-      return
-    }
-
+  const executeFollow = async (storeId: string, userId: string) => {
     const currentlyFollowing = Boolean(followingMap[storeId])
     setFollowingMap(prev => ({ ...prev, [storeId]: !currentlyFollowing }))
 
     try {
-      await toggleStoreFollow(storeId, currentUserId)
+      await toggleStoreFollow(storeId, userId)
     } catch {
-      // Revert on error
       setFollowingMap(prev => ({ ...prev, [storeId]: currentlyFollowing }))
     }
+  }
+
+  const handleFollowToggle = async (e: React.MouseEvent, storeId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const foundStore = stores.find(s => s.id === storeId)
+    const storeDisplayName = (lang === 'ar' && foundStore?.name_ar) ? foundStore.name_ar : (foundStore?.name || 'المكتبة')
+
+    if (!activeUserId) {
+      setPendingStore({ id: storeId, name: storeDisplayName })
+      setAuthModalOpen(true)
+      return
+    }
+
+    executeFollow(storeId, activeUserId)
   }
 
   return (
@@ -361,27 +375,41 @@ export function StoresListClient({ initialStores, currentUserId }: StoresListCli
 
         {/* Empty state */}
         {filteredStores.length === 0 && (
-          <div className="text-center py-16 px-4 rounded-3xl border-2 border-dashed border-border/80 bg-muted/10 space-y-3">
+          <div className="text-center py-16 px-4 rounded-3xl border-2 border-dashed border-border/80 bg-muted/10 space-y-4">
             <div className="text-5xl">🏬</div>
             <h3 className="text-lg font-bold text-foreground">
-              {lang === 'ar' ? 'لم يتم العثور على مكتبات مطابقة لبحثك' : 'No bookstores match your search'}
+              {stores.length === 0
+                ? lang === 'ar' ? 'لا توجد مكتبات مسجلة بعد' : 'No bookstores registered yet'
+                : lang === 'ar' ? 'لم يتم العثور على مكتبات مطابقة لبحثك' : 'No bookstores match your search'}
             </h3>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              {lang === 'ar'
-                ? 'جرب البحث بكلمات مختلفة أو إزالة الفلاتر لعرض كافة المكتبات المتاحة.'
-                : 'Try adjusting your filters or search keywords to see all bookstores.'}
+              {stores.length === 0
+                ? lang === 'ar'
+                  ? 'تم مسح كافة البيانات الوهمية. كن أول شريك ينضم لمنصة ورق كونكت وابدأ بعرض كتبك ومخزونك للقراء.'
+                  : 'All fake store data has been cleared. Be the first partner bookstore to join and showcase your inventory.'
+                : lang === 'ar'
+                  ? 'جرب البحث بكلمات مختلفة أو إزالة الفلاتر لعرض كافة المكتبات المتاحة.'
+                  : 'Try adjusting your filters or search keywords to see all bookstores.'}
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSelectedType('ALL')
-                setSearchQuery('')
-              }}
-              className="rounded-xl font-bold text-xs"
-            >
-              {lang === 'ar' ? 'إعادة ضبط الفلاتر' : 'Reset Filters'}
-            </Button>
+            {stores.length === 0 ? (
+              <Link href="/partner-form">
+                <Button size="sm" className="rounded-xl font-bold text-xs gap-1.5 cursor-pointer">
+                  <span>{lang === 'ar' ? 'سجّل مكتبتك الآن كشريك ✍️' : 'Register Your Bookstore Now ✍️'}</span>
+                </Button>
+              </Link>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSelectedType('ALL')
+                  setSearchQuery('')
+                }}
+                className="rounded-xl font-bold text-xs"
+              >
+                {lang === 'ar' ? 'إعادة ضبط الفلاتر' : 'Reset Filters'}
+              </Button>
+            )}
           </div>
         )}
 
@@ -401,21 +429,46 @@ export function StoresListClient({ initialStores, currentUserId }: StoresListCli
                 ? 'انضم إلى شبكة WaraqConnect واعرض عروض الحزم (10، 20، 25 كتاب مع هدايا)، وفعاليات توقيع الكتب أمام أكثر من 50,000 قارئ نشط في كافة المحافظات مع شارة توثيق رسمية.'
                 : 'Join WaraqConnect to promote your bundle packages, in-store signings, and literary sales directly to thousands of active book lovers nationwide.'}
             </p>
-            <div className="pt-2">
+            <div className="pt-2 flex flex-wrap gap-3">
+              <Link href="/partner-form">
+                <Button className="rounded-2xl font-black text-xs gap-2 shadow-md shadow-primary/25 cursor-pointer">
+                  <span>{lang === 'ar' ? 'سجّل مكتبتك كشريك الآن ✍️' : 'Register Store as Partner ✍️'}</span>
+                </Button>
+              </Link>
               <a
                 href="https://wa.me/201556252658?text=مرحباً، أود تسجيل مكتبتي على منصة WaraqConnect"
                 target="_blank"
                 rel="noreferrer"
               >
-                <Button className="rounded-2xl font-black text-xs gap-2 shadow-md shadow-primary/25 cursor-pointer">
-                  <span>{lang === 'ar' ? 'سجّل مكتبتك وتواصل معنا عبر واتساب' : 'Register Your Store on WhatsApp'}</span>
+                <Button variant="outline" className="rounded-2xl font-black text-xs gap-2 cursor-pointer bg-background/50">
+                  <span>{lang === 'ar' ? 'تواصل معنا عبر واتساب' : 'Contact on WhatsApp'}</span>
                   <ExternalLink className="h-3.5 w-3.5" />
                 </Button>
               </a>
             </div>
           </div>
         </div>
+
       </div>
+
+      {/* Fast In-Place Auth Popup Modal */}
+      <FastAuthModal
+        isOpen={authModalOpen}
+        onClose={() => {
+          setAuthModalOpen(false)
+          setPendingStore(null)
+        }}
+        actionType="follow"
+        targetName={pendingStore?.name}
+        onSuccess={(newUser) => {
+          setActiveUserId(newUser.id)
+          setAuthModalOpen(false)
+          if (pendingStore) {
+            executeFollow(pendingStore.id, newUser.id)
+            setPendingStore(null)
+          }
+        }}
+      />
     </MainLayout>
   )
 }

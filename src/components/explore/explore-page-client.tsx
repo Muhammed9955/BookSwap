@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { SlidersHorizontal, Search, Grid3X3, List, X } from 'lucide-react'
+import { SlidersHorizontal, Search, Grid3X3, List, X, RectangleVertical, Columns2 } from 'lucide-react'
 import { BookListing, Category, City } from '@/types'
 import { BookCard, BookCardSkeleton } from '@/components/books/book-card'
 import { MainLayout } from '@/components/layout/main-layout'
@@ -69,6 +69,24 @@ export function ExplorePageClient({
   const [searchInput, setSearchInput] = useState(currentFilters.q ?? '')
   const [showFilters, setShowFilters] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [mobileColumns, setMobileColumns] = useState<'1' | '2'>('2')
+
+  // Sync mobile columns preference from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('waraq_mobile_books_layout')
+      if (saved === '1' || saved === '2') {
+        setMobileColumns(saved)
+      }
+    } catch {}
+  }, [])
+
+  const handleMobileColsChange = (cols: '1' | '2') => {
+    setMobileColumns(cols)
+    try {
+      localStorage.setItem('waraq_mobile_books_layout', cols)
+    } catch {}
+  }
 
   const totalPages = Math.ceil(totalCount / pageSize)
 
@@ -94,7 +112,7 @@ export function ExplorePageClient({
     <MainLayout>
       <div className="page-container py-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold">
               {lang === 'ar' ? 'استكشف الكتب' : 'Explore Books'}
@@ -107,6 +125,41 @@ export function ExplorePageClient({
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Mobile Column Layout Switcher (1 col vs 2 cols) */}
+            {viewMode === 'grid' && (
+              <div className="flex sm:hidden items-center p-0.5 rounded-lg border bg-card text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => handleMobileColsChange('1')}
+                  className={cn(
+                    'px-2 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer',
+                    mobileColumns === '1'
+                      ? 'bg-primary text-primary-foreground font-black shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                  title={lang === 'ar' ? 'عرض عمود واحد' : '1 Column'}
+                  aria-label="1 Column Layout"
+                >
+                  <RectangleVertical className="h-3.5 w-3.5" />
+                  <span>1</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleMobileColsChange('2')}
+                  className={cn(
+                    'px-2 py-1 rounded-md transition-all flex items-center gap-1 cursor-pointer',
+                    mobileColumns === '2'
+                      ? 'bg-primary text-primary-foreground font-black shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                  title={lang === 'ar' ? 'عرض عمودين' : '2 Columns'}
+                  aria-label="2 Columns Layout"
+                >
+                  <Columns2 className="h-3.5 w-3.5" />
+                  <span>2</span>
+                </button>
+              </div>
+            )}
             <button
               onClick={() => setViewMode(v => v === 'grid' ? 'list' : 'grid')}
               className="h-9 w-9 flex items-center justify-center rounded-lg border bg-card hover:bg-accent transition-colors"
@@ -281,7 +334,10 @@ export function ExplorePageClient({
           <>
             <div className={cn(
               viewMode === 'grid'
-                ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3'
+                ? cn(
+                    mobileColumns === '1' ? 'grid-cols-1' : 'grid-cols-2',
+                    'grid sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-4'
+                  )
                 : 'flex flex-col gap-3'
             )}>
               {listings.map(listing => (

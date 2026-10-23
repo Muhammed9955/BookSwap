@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter, usePathname } from 'next/navigation'
 import {
   Store,
   MapPin,
@@ -35,6 +36,8 @@ import {
   Truck,
   Filter,
   ShieldCheck,
+  RectangleVertical,
+  Columns2,
 } from 'lucide-react'
 import { MainLayout } from '@/components/layout/main-layout'
 import { Button } from '@/components/ui/button'
@@ -61,6 +64,7 @@ import { tiersFromOffers } from '@/lib/stores/offer-templates'
 import { getOrderTrackingUrl, getProductionSiteUrl } from '@/lib/constants/site-url'
 import { StoreBookCard } from '@/components/stores/store-book-card'
 import { StoreOrderForm, type CustomerOrderData } from '@/components/stores/store-order-form'
+import { FastAuthModal, type AuthActionType } from '@/components/auth/fast-auth-modal'
 import type {
   Bookstore,
   StoreOffer,
@@ -115,11 +119,35 @@ export function StoreDetailClient({
   currentUserId,
 }: StoreDetailClientProps) {
   const { lang, isRTL } = useLanguage()
+  const router = useRouter()
+  const pathname = usePathname()
+  const [activeUserId, setActiveUserId] = useState<string | null>(currentUserId || null)
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [authActionType, setAuthActionType] = useState<AuthActionType>('general')
+  const [pendingAction, setPendingAction] = useState<((userId?: string) => void) | null>(null)
   const [activeTab, setActiveTab] = useState<TabType>('books')
   const [isFollowing, setIsFollowing] = useState(false)
   const [followerCount, setFollowerCount] = useState(store.follower_count)
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const [rsvps, setRsvps] = useState<Record<string, RSVPStatus>>({})
+  const [mobileCols, setMobileCols] = useState<'1' | '2'>('2')
+
+  // Sync mobile columns layout from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('waraq_mobile_books_layout')
+      if (saved === '1' || saved === '2') {
+        setMobileCols(saved)
+      }
+    } catch {}
+  }, [])
+
+  const handleMobileColsChange = (cols: '1' | '2') => {
+    setMobileCols(cols)
+    try {
+      localStorage.setItem('waraq_mobile_books_layout', cols)
+    } catch {}
+  }
 
   // Real Rating States
   const [ratingAvg, setRatingAvg] = useState(store.rating_average || 4.9)
@@ -462,11 +490,29 @@ export function StoreDetailClient({
   }
 
   const handleOpenSingleBookOrder = (book: StoreCatalogBook) => {
+    if (!activeUserId) {
+      setAuthActionType('order')
+      setPendingAction(() => () => {
+        setOrderingBook(book)
+        setOrderSentSuccess(false)
+      })
+      setAuthModalOpen(true)
+      return
+    }
     setOrderingBook(book)
     setOrderSentSuccess(false)
   }
 
   const handleOpenBundleOrder = () => {
+    if (!activeUserId) {
+      setAuthActionType('bundle')
+      setPendingAction(() => () => {
+        setBundleModalOpen(true)
+        setOrderSentSuccess(false)
+      })
+      setAuthModalOpen(true)
+      return
+    }
     if (selectedCount === 0) {
       alert(lang === 'ar' ? 'يرجى اختيار كتاب واحد على الأقل لإتمام الطلب!' : 'Please pick at least one book to order!')
       return
@@ -476,6 +522,16 @@ export function StoreDetailClient({
   }
 
   const handleOpenCuratedPackOrder = (pack: StoreOffer) => {
+    if (!activeUserId) {
+      setAuthActionType(pack.offer_type === 'SERIES' ? 'order' : 'pack')
+      setPendingAction(() => () => {
+        setSelectedCuratedPack(pack)
+        setPackModalOpen(true)
+        setOrderSentSuccess(false)
+      })
+      setAuthModalOpen(true)
+      return
+    }
     setSelectedCuratedPack(pack)
     setPackModalOpen(true)
     setOrderSentSuccess(false)
@@ -769,33 +825,52 @@ export function StoreDetailClient({
     setOrderSentSuccess(true)
   }
 
-  const handleFollowToggle = async () => {
-    if (!currentUserId) {
-      alert(lang === 'ar' ? 'يرجى تسجيل الدخول أولاً لمتابعة المتجر' : 'Please log in to follow this store')
-      return
-    }
-
+  const executeFollowToggle = async (userId: string) => {
     const nextState = !isFollowing
     setIsFollowing(nextState)
     setFollowerCount(prev => (nextState ? prev + 1 : Math.max(0, prev - 1)))
 
     try {
-      await toggleStoreFollow(store.id, currentUserId)
+      await toggleStoreFollow(store.id, userId)
     } catch {
       setIsFollowing(!nextState)
       setFollowerCount(prev => (nextState ? Math.max(0, prev - 1) : prev + 1))
     }
   }
 
-  const handleRatingClick = async (star: number) => {
+  const handleFollowToggle = async () => {
+    if (!activeUserId) {
+      setAuthActionType('follow')
+      setPendingAction(() => (newUserId?: string) => {
+        executeFollowToggle(newUserId || activeUserId || '')
+      })
+      setAuthModalOpen(true)
+      return
+    }
+    executeFollowToggle(activeUserId)
+  }
+
+  const executeRatingClick = async (star: number, userId?: string) => {
     setUserRating(star)
     try {
-      const res = await submitStoreRating(store.id, star, currentUserId)
+      const res = await submitStoreRating(store.id, star, userId || activeUserId || undefined)
       setRatingAvg(res.rating_average)
       setRatingCount(res.rating_count)
       setRatingSuccess(true)
       setTimeout(() => setRatingSuccess(false), 3000)
     } catch {}
+  }
+
+  const handleRatingClick = async (star: number) => {
+    if (!activeUserId) {
+      setAuthActionType('rate')
+      setPendingAction(() => (newUserId?: string) => {
+        executeRatingClick(star, newUserId || activeUserId || undefined)
+      })
+      setAuthModalOpen(true)
+      return
+    }
+    executeRatingClick(star, activeUserId)
   }
 
   const handleCopyPromo = (code: string) => {
@@ -804,13 +879,21 @@ export function StoreDetailClient({
     setTimeout(() => setCopiedCode(null), 2500)
   }
 
+  const executeRsvp = async (eventId: string, status: RSVPStatus, userId?: string) => {
+    setRsvps(prev => ({ ...prev, [eventId]: status }))
+    await rsvpEvent(eventId, userId || activeUserId || '', status)
+  }
+
   const handleRsvp = async (eventId: string, status: RSVPStatus) => {
-    if (!currentUserId) {
-      alert(lang === 'ar' ? 'يرجى تسجيل الدخول لتسجيل الحضور' : 'Please log in to RSVP')
+    if (!activeUserId) {
+      setAuthActionType('general')
+      setPendingAction(() => (newUserId?: string) => {
+        executeRsvp(eventId, status, newUserId || activeUserId || '')
+      })
+      setAuthModalOpen(true)
       return
     }
-    setRsvps(prev => ({ ...prev, [eventId]: status }))
-    await rsvpEvent(eventId, currentUserId, status)
+    executeRsvp(eventId, status, activeUserId)
   }
 
   const storeName = lang === 'ar' && store.name_ar ? store.name_ar : store.name
@@ -1261,9 +1344,45 @@ export function StoreDetailClient({
                     )}
                   </div>
 
-                  {/* Counter of matching books */}
-                  <div className="text-xs font-black text-muted-foreground shrink-0 self-center">
-                    <span>{filteredBooks.length} {lang === 'ar' ? 'كتاب معروض' : 'books shown'}</span>
+                  {/* Counter of matching books & Mobile Column Switcher */}
+                  <div className="flex items-center gap-2.5 shrink-0 self-center">
+                    <span className="text-xs font-black text-muted-foreground">
+                      {filteredBooks.length} {lang === 'ar' ? 'كتاب معروض' : 'books shown'}
+                    </span>
+
+                    {/* Mobile Column Layout Switcher (1 col vs 2 cols) */}
+                    <div className="flex sm:hidden items-center p-0.5 rounded-xl border border-border/80 bg-muted/80 text-xs font-bold">
+                      <button
+                        type="button"
+                        onClick={() => handleMobileColsChange('1')}
+                        className={cn(
+                          'px-2 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer',
+                          mobileCols === '1'
+                            ? 'bg-primary text-primary-foreground font-black shadow-xs'
+                            : 'text-muted-foreground hover:text-foreground'
+                        )}
+                        title={lang === 'ar' ? 'عرض عمود واحد' : '1 Column Layout'}
+                        aria-label="1 Column Mobile Layout"
+                      >
+                        <RectangleVertical className="h-3.5 w-3.5" />
+                        <span>1</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMobileColsChange('2')}
+                        className={cn(
+                          'px-2 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer',
+                          mobileCols === '2'
+                            ? 'bg-primary text-primary-foreground font-black shadow-xs'
+                            : 'text-muted-foreground hover:text-foreground'
+                        )}
+                        title={lang === 'ar' ? 'عرض عمودين' : '2 Columns Layout'}
+                        aria-label="2 Columns Mobile Layout"
+                      >
+                        <Columns2 className="h-3.5 w-3.5" />
+                        <span>2</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -1292,9 +1411,12 @@ export function StoreDetailClient({
               </div>
             )}
 
-            {/* Books Grid: 5 Books a line */}
+            {/* Books Grid: 1 or 2 columns on mobile, 3-5 columns on desktop */}
             {storeCatalogBooks.length > 0 && (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+              <div className={cn(
+                "grid gap-3 sm:gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5",
+                mobileCols === '1' ? 'grid-cols-1' : 'grid-cols-2'
+              )}>
                 {filteredBooks.map(book => (
                   <StoreBookCard
                     key={book.id}
@@ -2730,6 +2852,25 @@ export function StoreDetailClient({
           </div>
         </div>
       )}
+
+      {/* Fast In-Place Auth Popup Modal */}
+      <FastAuthModal
+        isOpen={authModalOpen}
+        onClose={() => {
+          setAuthModalOpen(false)
+          setPendingAction(null)
+        }}
+        actionType={authActionType}
+        targetName={store.name_ar || store.name}
+        onSuccess={(newUser) => {
+          setActiveUserId(newUser.id)
+          setAuthModalOpen(false)
+          if (pendingAction) {
+            pendingAction(newUser.id)
+            setPendingAction(null)
+          }
+        }}
+      />
     </MainLayout>
   )
 }

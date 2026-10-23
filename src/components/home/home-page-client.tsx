@@ -30,6 +30,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Compass,
+  RectangleVertical,
+  Columns2,
 } from 'lucide-react'
 import { BookListing, Category, Book, Community } from '@/types'
 import { BookCard } from '@/components/books/book-card'
@@ -70,62 +72,25 @@ export function HomePageClient({
     new Set(userWishlistBookIds)
   )
   const [activeTab, setActiveTab] = useState<'ALL' | 'SWAP' | 'SELL' | 'GIVEAWAY'>('ALL')
-  const [activityIndex, setActivityIndex] = useState(0)
-  const [isActivityPaused, setIsActivityPaused] = useState(false)
+  const [mobileCols, setMobileCols] = useState<'1' | '2'>('2')
   const supabase = createClient()
 
-  // Competitor-inspired Live Activity Stream (PangoBooks / Depop style)
-  const liveActivities = [
-    {
-      id: 'act-1',
-      icon: '🔄',
-      user: lang === 'ar' ? 'عمر الشريف' : 'Omar El-Sherif',
-      location: lang === 'ar' ? 'المعادي، القاهرة' : 'Maadi, Cairo',
-      action: lang === 'ar' ? 'استبدل رواية «ثلاثية غرناطة» بـ «عزازيل»' : 'swapped "Granada Trilogy" for "Azazeel"',
-      time: lang === 'ar' ? 'منذ 4 دقائق' : '4m ago',
-    },
-    {
-      id: 'act-2',
-      icon: '⚡',
-      user: lang === 'ar' ? 'أحمد كمال' : 'Ahmed Kamal',
-      location: lang === 'ar' ? 'محرم بيه، الإسكندرية' : 'Moharam Bek, Alex',
-      action: lang === 'ar' ? 'أضاف 3 كتب جديدة لرف «نادي عقول المستقبل»' : 'added 3 books to Future Minds Club shelf',
-      time: lang === 'ar' ? 'منذ 11 دقيقة' : '11m ago',
-    },
-    {
-      id: 'act-3',
-      icon: '🎁',
-      user: lang === 'ar' ? 'ياسمين ممدوح' : 'Yasmine Mamdouh',
-      location: lang === 'ar' ? 'مدينة نصر، القاهرة' : 'Nasr City, Cairo',
-      action: lang === 'ar' ? 'أهدت كتاب «العادات الذرية» مجاناً لقارئ جديد' : 'gifted "Atomic Habits" for free to a new reader',
-      time: lang === 'ar' ? 'منذ 18 دقيقة' : '18m ago',
-    },
-    {
-      id: 'act-4',
-      icon: '☕',
-      user: lang === 'ar' ? 'كريم نبيل' : 'Karim Nabil',
-      location: lang === 'ar' ? 'الشيخ زايد، الجيزة' : 'Sheikh Zayed, Giza',
-      action: lang === 'ar' ? 'استعار «فن اللامبالاة» من نقطة سيلانترو دجلة' : 'borrowed "Subtle Art" at Cilantro Safe Hub',
-      time: lang === 'ar' ? 'منذ 25 دقيقة' : '25m ago',
-    },
-    {
-      id: 'act-5',
-      icon: '💎',
-      user: lang === 'ar' ? 'سارة منصور' : 'Sara Mansour',
-      location: lang === 'ar' ? 'سموحة، الإسكندرية' : 'Smouha, Alex',
-      action: lang === 'ar' ? 'طلبت مبادلة كتاب «يوتوبيا» لأحمد خالد توفيق' : 'requested swap for "Utopia"',
-      time: lang === 'ar' ? 'منذ 34 دقيقة' : '34m ago',
-    },
-  ]
-
-  // Auto cycle live activity
+  // Sync mobile columns preference from localStorage
   useEffect(() => {
-    if (isActivityPaused) return
-    const timer = setInterval(() => {
-      setActivityIndex(prev => (prev + 1) % liveActivities.length)
-    }, 4500)
-    return () => clearInterval(timer)
-  }, [isActivityPaused, liveActivities.length])
+    try {
+      const saved = localStorage.getItem('waraq_mobile_books_layout')
+      if (saved === '1' || saved === '2') {
+        setMobileCols(saved)
+      }
+    } catch {}
+  }, [])
+
+  const handleMobileColsChange = (cols: '1' | '2') => {
+    setMobileCols(cols)
+    try {
+      localStorage.setItem('waraq_mobile_books_layout', cols)
+    } catch {}
+  }
 
   // StoryGraph & PangoBooks Inspired: Curated Reading Moods & Vibes
   const readingVibes = [
@@ -252,16 +217,14 @@ export function HomePageClient({
   // Filter listings based on interactive tab
   const getFilteredListings = () => {
     if (activeTab === 'SWAP') {
-      const swaps = recentListings.filter(
+      return recentListings.filter(
         l => l.listing_type === 'SWAP' || l.listing_type === 'SELL_OR_SWAP'
       )
-      return swaps.length > 0 ? swaps : recentListings
     }
     if (activeTab === 'SELL') {
-      const sales = recentListings.filter(
+      return recentListings.filter(
         l => l.listing_type === 'SELL' || l.listing_type === 'SELL_OR_SWAP'
       )
-      return sales.length > 0 ? sales : recentListings
     }
     if (activeTab === 'GIVEAWAY') {
       return giveawayListings.length > 0
@@ -313,8 +276,6 @@ export function HomePageClient({
       )}
     </div>
   )
-
-  const currentActivity = liveActivities[activityIndex]
 
   return (
     <MainLayout user={user ?? null}>
@@ -578,50 +539,6 @@ export function HomePageClient({
         </div>
       </section>
 
-      {/* ======== LIVE ACTIVITY PULSE TICKER (PANGOBOOKS / DEPOP STYLE) ======== */}
-      <section
-        onMouseEnter={() => setIsActivityPaused(true)}
-        onMouseLeave={() => setIsActivityPaused(false)}
-        className="bg-card/95 border-y border-border/80 py-3 shadow-xs transition-colors"
-      >
-        <div className="page-container max-w-7xl mx-auto px-4 sm:px-8 lg:px-12 flex flex-col sm:flex-row items-center justify-between gap-3">
-          {/* Live Indicator */}
-          <div className="flex items-center gap-2 shrink-0">
-            <span className="flex h-2.5 w-2.5 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-            </span>
-            <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-              <span>{lang === 'ar' ? 'نبض المجتمع المباشر:' : 'Live Reader Pulse:'}</span>
-            </span>
-          </div>
-
-          {/* Rotating Activity Item */}
-          <div className="flex-1 flex items-center justify-center sm:justify-start gap-2.5 min-w-0 overflow-hidden text-center sm:text-start">
-            <span className="text-lg">{currentActivity.icon}</span>
-            <div className="text-xs sm:text-sm font-bold text-foreground truncate">
-              <span className="text-primary font-black">{currentActivity.user}</span>{' '}
-              <span className="text-muted-foreground font-medium">({currentActivity.location})</span>{' '}
-              <span>{currentActivity.action}</span>
-            </div>
-            <span className="text-xs text-muted-foreground/80 font-semibold shrink-0 hidden md:inline">
-              • {currentActivity.time}
-            </span>
-          </div>
-
-          {/* Quick Action Link */}
-          <div className="shrink-0 flex items-center gap-2">
-            <Link
-              href="/books/add"
-              className="text-xs sm:text-sm font-black text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
-            >
-              <span>{lang === 'ar' ? 'أضف كتابك وانضم للنبض' : 'List a book & join pulse'}</span>
-              <ArrowRight className={cn('h-3.5 w-3.5', isRTL && 'rotate-180')} />
-            </Link>
-          </div>
-        </div>
-      </section>
-
       <div className="page-container max-w-7xl mx-auto px-3.5 sm:px-8 lg:px-12 py-6 sm:py-10 pb-28 sm:pb-16 space-y-10 sm:space-y-16">
         {/* ======== DYNAMIC BOOKSHELF WITH INTERACTIVE FILTER TABS (PROMINENT AT TOP) ======== */}
         <section id="explore-books-section" className="space-y-6">
@@ -637,50 +554,91 @@ export function HomePageClient({
               </p>
             </div>
 
-            {/* Filter Tabs — Smooth horizontal scroll on mobile */}
-            <div className="flex items-center gap-1.5 bg-muted/80 p-1 rounded-xl border border-border/80 overflow-x-auto scrollbar-none max-w-full pb-0.5">
-              {[
-                { id: 'ALL', labelAr: 'الكل', labelEn: 'All', count: recentListings.length },
-                {
-                  id: 'SWAP',
-                  labelAr: '🔄 تبادل',
-                  labelEn: '🔄 Swap',
-                  count: recentListings.filter(l => l.listing_type === 'SWAP' || l.listing_type === 'SELL_OR_SWAP').length,
-                },
-                {
-                  id: 'SELL',
-                  labelAr: '💸 شراء',
-                  labelEn: '💸 Buy',
-                  count: recentListings.filter(l => l.listing_type === 'SELL' || l.listing_type === 'SELL_OR_SWAP').length,
-                },
-                {
-                  id: 'GIVEAWAY',
-                  labelAr: '🎁 مجاني',
-                  labelEn: '🎁 Free',
-                  count: giveawayListings.length,
-                },
-              ].map(tab => (
+            {/* Controls: Filter Tabs & Mobile Layout Switcher */}
+            <div className="flex items-center justify-between sm:justify-end gap-2 flex-wrap w-full sm:w-auto">
+              {/* Filter Tabs — Smooth horizontal scroll on mobile */}
+              <div className="flex items-center gap-1.5 bg-muted/80 p-1 rounded-xl border border-border/80 overflow-x-auto scrollbar-none max-w-full pb-0.5">
+                {[
+                  { id: 'ALL', labelAr: 'الكل', labelEn: 'All', count: recentListings.length },
+                  {
+                    id: 'SWAP',
+                    labelAr: '🔄 تبادل',
+                    labelEn: '🔄 Swap',
+                    count: recentListings.filter(l => l.listing_type === 'SWAP' || l.listing_type === 'SELL_OR_SWAP').length,
+                  },
+                  {
+                    id: 'SELL',
+                    labelAr: '💸 شراء',
+                    labelEn: '💸 Buy',
+                    count: recentListings.filter(l => l.listing_type === 'SELL' || l.listing_type === 'SELL_OR_SWAP').length,
+                  },
+                  {
+                    id: 'GIVEAWAY',
+                    labelAr: '🎁 مجاني',
+                    labelEn: '🎁 Free',
+                    count: giveawayListings.length,
+                  },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-black transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center',
+                      activeTab === tab.id
+                        ? 'bg-background text-foreground shadow-xs'
+                        : 'text-muted-foreground hover:text-foreground'
+                    )}
+                  >
+                    <span>{lang === 'ar' ? tab.labelAr : tab.labelEn}</span>
+                    <span className="ms-1.5 text-xs opacity-75">({tab.count})</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Mobile Column Layout Switcher (1 col vs 2 cols) */}
+              <div className="flex sm:hidden items-center p-0.5 rounded-xl border border-border/80 bg-muted/80 text-xs font-bold shrink-0">
                 <button
-                  key={tab.id}
                   type="button"
-                  onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                  onClick={() => handleMobileColsChange('1')}
                   className={cn(
-                    'px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-black transition-all cursor-pointer whitespace-nowrap shrink-0 flex items-center',
-                    activeTab === tab.id
-                      ? 'bg-background text-foreground shadow-xs'
+                    'px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer',
+                    mobileCols === '1'
+                      ? 'bg-primary text-primary-foreground font-black shadow-xs'
                       : 'text-muted-foreground hover:text-foreground'
                   )}
+                  title={lang === 'ar' ? 'عرض عمود واحد' : '1 Column'}
+                  aria-label="1 Column Mobile Layout"
                 >
-                  <span>{lang === 'ar' ? tab.labelAr : tab.labelEn}</span>
-                  <span className="ms-1.5 text-xs opacity-75">({tab.count})</span>
+                  <RectangleVertical className="h-3.5 w-3.5" />
+                  <span>{lang === 'ar' ? 'عمود ١' : '1 Col'}</span>
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => handleMobileColsChange('2')}
+                  className={cn(
+                    'px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer',
+                    mobileCols === '2'
+                      ? 'bg-primary text-primary-foreground font-black shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                  title={lang === 'ar' ? 'عرض عمودين' : '2 Columns'}
+                  aria-label="2 Columns Mobile Layout"
+                >
+                  <Columns2 className="h-3.5 w-3.5" />
+                  <span>{lang === 'ar' ? 'عمودين ٢' : '2 Cols'}</span>
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Listings Grid */}
           {displayedListings.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4">
+            <div className={cn(
+              mobileCols === '1'
+                ? 'grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3.5 sm:gap-4'
+                : 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4'
+            )}>
               {displayedListings.map(listing => (
                 <BookCard
                   key={listing.id}

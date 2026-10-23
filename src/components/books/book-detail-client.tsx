@@ -3,13 +3,13 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import {
   Heart, Share2, Flag, MapPin, Star, Shield, ArrowRightLeft,
   ShoppingBag, MessageCircle, Check, ChevronLeft, Clock, Eye, Users,
   ShieldCheck, Calendar, AlertCircle, Edit3, Tag, Sparkles, CheckCircle2,
   Lock, PlusCircle, ExternalLink, Copy, AlertTriangle, ArrowRight, BookOpen, RefreshCw, Search,
-  Trash2, Loader2, Phone
+  Trash2, Loader2, Phone, UserPlus, UserMinus
 } from 'lucide-react'
 import { deleteBookListing } from '@/lib/books/listing-actions'
 import { BookListing, Profile } from '@/types'
@@ -24,6 +24,7 @@ import { submitBuyRequest, submitBorrowRequest, submitSwapRequest, createTestInc
 import type { MeetupProposal } from '@/lib/transactions/lifecycle'
 import { MeetupPicker } from '@/components/ui/meetup-picker'
 import { BookQuickViewModal } from '@/components/books/book-quick-view-modal'
+import { FastAuthModal, type AuthActionType } from '@/components/auth/fast-auth-modal'
 
 export interface ExistingRequestInfo {
   id: string
@@ -65,9 +66,65 @@ export function BookDetailClient({
 }: BookDetailClientProps) {
   const { lang, isRTL } = useLanguage()
   const router = useRouter()
+  const pathname = usePathname()
   const supabase = createClient()
   const book = listing.book!
   const seller = listing.seller as unknown as Profile
+
+  const [activeUser, setActiveUser] = useState(user)
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [authActionType, setAuthActionType] = useState<AuthActionType>('general')
+  const [pendingAction, setPendingAction] = useState<((u?: any) => void) | null>(null)
+  const [isFollowingSeller, setIsFollowingSeller] = useState(false)
+  const [followSellerLoading, setFollowSellerLoading] = useState(false)
+
+  const requireAuth = (action: AuthActionType, callback?: (loggedUser?: any) => void) => {
+    const current = activeUser || user
+    if (current) {
+      if (callback) callback(current)
+      return true
+    }
+    setAuthActionType(action)
+    if (callback) {
+      setPendingAction(() => (u: any) => callback(u))
+    } else {
+      setPendingAction(null)
+    }
+    setAuthModalOpen(true)
+    return false
+  }
+
+  const redirectToLogin = () => {
+    requireAuth('general')
+  }
+
+  const handleFollowSeller = async () => {
+    const current = activeUser || user
+    if (!current) {
+      requireAuth('follow', (u) => executeFollowSeller(u))
+      return
+    }
+    executeFollowSeller(current)
+  }
+
+  const executeFollowSeller = async (u?: any) => {
+    const effectiveUser = u || activeUser || user
+    if (!effectiveUser) return
+    setFollowSellerLoading(true)
+    try {
+      const willFollow = !isFollowingSeller
+      setIsFollowingSeller(willFollow)
+      if (willFollow) {
+        await supabase.from('follows').insert({ follower_id: effectiveUser.id, following_id: seller.id })
+      } else {
+        await supabase.from('follows').delete().eq('follower_id', effectiveUser.id).eq('following_id', seller.id)
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setFollowSellerLoading(false)
+    }
+  }
 
   const [wishlisted, setWishlisted] = useState(initialWishlisted)
   const [activeImage, setActiveImage] = useState(0)
@@ -142,7 +199,8 @@ export function BookDetailClient({
   const [deleteError, setDeleteError] = useState<string | null>(null)
 
   // Shared meetup proposal — same picker for Buy, Borrow, and Swap
-  const savedUserPhone = (user?.profile as any)?.whatsapp_number || (typeof window !== 'undefined' ? localStorage.getItem('waraq_user_phone') || '' : '')
+  const currentUser = activeUser || user
+  const savedUserPhone = (currentUser?.profile as any)?.whatsapp_number || (typeof window !== 'undefined' ? localStorage.getItem('waraq_user_phone') || '' : '')
   const defaultMeetup: MeetupProposal = {
     preferred_delivery: 'MEETUP',
     contact_phone: savedUserPhone || undefined,
@@ -154,12 +212,12 @@ export function BookDetailClient({
   const images = listing.images ?? []
   const primaryImage = images.find(img => img.is_primary)?.url ?? images[0]?.url ?? book.cover_image_url
 
-  const userRole = (user?.profile as any)?.role
-  const userCityId = (user?.profile as any)?.city_id
+  const userRole = (currentUser?.profile as any)?.role
+  const userCityId = (currentUser?.profile as any)?.city_id
   const isOwner = Boolean(
-    user?.id && (
-      user.id === listing.seller_id ||
-      user.id === (seller as any)?.id
+    currentUser?.id && (
+      currentUser.id === listing.seller_id ||
+      currentUser.id === (seller as any)?.id
     )
   )
   const isSeller = isOwner
@@ -210,22 +268,36 @@ export function BookDetailClient({
   }
 
   const handleWishlist = async () => {
-    if (!user) { setShowAuthModal(true); return }
+    const curr = activeUser || user
+    if (!curr) {
+      requireAuth('general', (u) => executeWishlist(u))
+      return
+    }
+    executeWishlist(curr)
+  }
+
+  const executeWishlist = async (u?: any) => {
+    const effectiveUser = u || activeUser || user
+    if (!effectiveUser) return
     setWishlisted(v => !v)
     if (wishlisted) {
-      await supabase.from('wishlist_items').delete().eq('user_id', user.id).eq('book_id', listing.book_id!)
+      await supabase.from('wishlist_items').delete().eq('user_id', effectiveUser.id).eq('book_id', listing.book_id!)
     } else {
-      await supabase.from('wishlist_items').insert({ user_id: user.id, book_id: listing.book_id })
+      await supabase.from('wishlist_items').insert({ user_id: effectiveUser.id, book_id: listing.book_id })
     }
   }
 
-  const handleContact = async () => {
-    if (!user) { setShowAuthModal(true); return }
+  const handleContact = async (overrideUser?: any) => {
+    const curr = overrideUser || activeUser || user
+    if (!curr) {
+      requireAuth('chat', (u) => handleContact(u))
+      return
+    }
     setActionLoading('contact')
 
     // Create or get conversation
-    const p1 = user.id < seller.id ? user.id : seller.id
-    const p2 = user.id < seller.id ? seller.id : user.id
+    const p1 = curr.id < seller.id ? curr.id : seller.id
+    const p2 = curr.id < seller.id ? seller.id : curr.id
 
     const { data: existing } = await supabase
       .from('conversations')
@@ -249,8 +321,9 @@ export function BookDetailClient({
     if (convId) router.push(`/messages/${convId}`)
   }
 
-  const handleSwapRequest = async () => {
-    if (!user) { router.push('/login'); return }
+  const handleSwapRequest = async (overrideUser?: any) => {
+    const curr = overrideUser || activeUser || user
+    if (!curr) { requireAuth('swap', (u) => handleSwapRequest(u)); return }
     if (isOwner && process.env.NODE_ENV === 'production') {
       setModalValidationError(lang === 'ar' ? 'لا يمكنك إرسال طلب مبادلة لكتابك الخاص.' : 'You cannot swap with your own book.')
       return
@@ -312,7 +385,7 @@ export function BookDetailClient({
     try {
       const offeredBook = userListings.find(l => l.id === selectedUserListing)?.book?.title
       const res = await submitSwapRequest({
-        requesterId: user.id,
+        requesterId: curr.id,
         ownerId: seller.id,
         listingId: listing.id,
         offeredListingId: selectedUserListing,
@@ -343,8 +416,9 @@ export function BookDetailClient({
     }
   }
 
-  const handleBuyRequest = async () => {
-    if (!user) { router.push('/login'); return }
+  const handleBuyRequest = async (overrideUser?: any) => {
+    const curr = overrideUser || activeUser || user
+    if (!curr) { requireAuth('buy', (u) => handleBuyRequest(u)); return }
     if (isOwner && process.env.NODE_ENV === 'production') {
       setModalValidationError(lang === 'ar' ? 'لا يمكنك إرسال طلب شراء لكتابك الخاص.' : 'You cannot buy your own book.')
       return
@@ -397,7 +471,7 @@ export function BookDetailClient({
 
     try {
       const res = await submitBuyRequest({
-        buyerId: user.id,
+        buyerId: curr.id,
         sellerId: seller.id,
         listingId: listing.id,
         price: listing.price ?? null,
@@ -426,8 +500,9 @@ export function BookDetailClient({
     }
   }
 
-  const handleBorrowRequest = async () => {
-    if (!user) { router.push('/login'); return }
+  const handleBorrowRequest = async (overrideUser?: any) => {
+    const curr = overrideUser || activeUser || user
+    if (!curr) { requireAuth('borrow', (u) => handleBorrowRequest(u)); return }
     if (isOwner && process.env.NODE_ENV === 'production') {
       setModalValidationError(lang === 'ar' ? 'لا يمكنك استعارة كتابك الخاص.' : 'You cannot borrow your own book.')
       return
@@ -490,7 +565,7 @@ export function BookDetailClient({
 
     try {
       const res = await submitBorrowRequest({
-        borrowerId: user.id,
+        borrowerId: curr.id,
         lenderId: seller.id,
         listingId: listing.id,
         loanDays,
@@ -564,14 +639,15 @@ export function BookDetailClient({
     }
   }
 
-  const handleSendOffer = async () => {
-    if (!user) { setShowAuthModal(true); return }
+  const handleSendOffer = async (overrideUser?: any) => {
+    const curr = overrideUser || activeUser || user
+    if (!curr) { requireAuth('buy', (u) => handleSendOffer(u)); return }
     const numOffer = Number(offerAmount)
     if (!numOffer || numOffer <= 0) return
     setActionLoading('offer')
 
-    const p1 = user.id < seller.id ? user.id : seller.id
-    const p2 = user.id < seller.id ? seller.id : user.id
+    const p1 = curr.id < seller.id ? curr.id : seller.id
+    const p2 = curr.id < seller.id ? seller.id : curr.id
 
     const { data: existing } = await supabase
       .from('conversations')
@@ -598,7 +674,7 @@ export function BookDetailClient({
 
       await supabase.from('messages').insert({
         conversation_id: convId,
-        sender_id: user.id,
+        sender_id: curr.id,
         content: offerText,
       })
 
@@ -1181,7 +1257,14 @@ export function BookDetailClient({
                       size="lg"
                       className="w-full text-sm font-black py-6 rounded-2xl shadow-lg shadow-primary/25 cursor-pointer gap-2 bg-gradient-to-r from-primary to-indigo-600 hover:from-primary/90 hover:to-indigo-600/90 text-primary-foreground hover:scale-[1.01] active:scale-[0.99] transition-all"
                       onClick={() => {
-                        if (!user) { setShowAuthModal(true); return }
+                        const curr = activeUser || user
+                        if (!curr) {
+                          requireAuth('buy', () => {
+                            setModalValidationError(null)
+                            setShowBuyModal(true)
+                          })
+                          return
+                        }
                         setModalValidationError(null)
                         setShowBuyModal(true)
                       }}
@@ -1207,7 +1290,13 @@ export function BookDetailClient({
                         variant="outline"
                         className="w-full border-dashed border-2 border-primary/40 hover:bg-primary/5 text-primary font-bold gap-2 rounded-2xl py-5 cursor-pointer text-xs"
                         onClick={() => {
-                          if (!user) { setShowAuthModal(true); return }
+                          const curr = activeUser || user
+                          if (!curr) {
+                            requireAuth('buy', () => {
+                              setShowOfferModal(true)
+                            })
+                            return
+                          }
                           setShowOfferModal(true)
                         }}
                         disabled={Boolean(actionSuccess || currentExistingRequest)}
@@ -1227,7 +1316,17 @@ export function BookDetailClient({
                     variant="swap"
                     className="w-full font-black py-6 rounded-2xl shadow-md shadow-purple-500/20 cursor-pointer gap-2 text-sm hover:scale-[1.01] active:scale-[0.99] transition-all"
                     onClick={() => {
-                      if (!user) { setShowAuthModal(true); return }
+                      const curr = activeUser || user
+                      if (!curr) {
+                        requireAuth('swap', () => {
+                          setModalValidationError(null)
+                          if (userListings.length === 1 && !selectedUserListing) {
+                            setSelectedUserListing(userListings[0].id)
+                          }
+                          setShowSwapModal(true)
+                        })
+                        return
+                      }
                       setModalValidationError(null)
                       if (userListings.length === 1 && !selectedUserListing) {
                         setSelectedUserListing(userListings[0].id)
@@ -1253,7 +1352,14 @@ export function BookDetailClient({
                       size="lg"
                       className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-6 rounded-2xl shadow-md shadow-emerald-600/25 cursor-pointer gap-2 text-sm hover:scale-[1.01] active:scale-[0.99] transition-all"
                       onClick={() => {
-                        if (!user) { setShowAuthModal(true); return }
+                        const curr = activeUser || user
+                        if (!curr) {
+                          requireAuth('borrow', () => {
+                            setModalValidationError(null)
+                            setShowBorrowModal(true)
+                          })
+                          return
+                        }
                         setModalValidationError(null)
                         setShowBorrowModal(true)
                       }}
@@ -1287,7 +1393,11 @@ export function BookDetailClient({
                     variant="giveaway"
                     className="w-full text-base font-black py-6 rounded-2xl shadow-xl shadow-green-500/25 cursor-pointer gap-2 hover:scale-[1.01] active:scale-[0.99] transition-all"
                     onClick={() => {
-                      if (!user) { setShowAuthModal(true); return }
+                      const curr = activeUser || user
+                      if (!curr) {
+                        requireAuth('buy', (u) => handleBuyRequest(u))
+                        return
+                      }
                       handleBuyRequest()
                     }}
                     loading={actionLoading === 'buy'}
@@ -1304,7 +1414,14 @@ export function BookDetailClient({
                   size="lg"
                   variant="outline"
                   className="w-full border-border hover:bg-muted font-bold py-5 rounded-2xl cursor-pointer gap-2 text-xs"
-                  onClick={handleContact}
+                  onClick={() => {
+                    const curr = activeUser || user
+                    if (!curr) {
+                      requireAuth('chat', (u) => handleContact(u))
+                      return
+                    }
+                    handleContact()
+                  }}
                   loading={actionLoading === 'contact'}
                 >
                   <MessageCircle className="h-4 w-4 text-primary" />
@@ -1377,11 +1494,30 @@ export function BookDetailClient({
                     )}
                   </div>
                 </div>
-                <Link href={`/profile/${seller.username ?? seller.id}`}>
-                  <Button variant="outline" size="sm" className="font-bold text-xs rounded-xl border-slate-300 dark:border-slate-700 cursor-pointer">
-                    {lang === 'ar' ? 'الملف الشخصي' : 'Profile'}
-                  </Button>
-                </Link>
+                <div className="flex items-center gap-2">
+                  {!isOwner && (
+                    <Button
+                      variant={isFollowingSeller ? "default" : "outline"}
+                      size="sm"
+                      onClick={handleFollowSeller}
+                      loading={followSellerLoading}
+                      className={cn(
+                        "font-bold text-xs rounded-xl cursor-pointer gap-1",
+                        isFollowingSeller
+                          ? "bg-primary text-primary-foreground"
+                          : "border-primary/40 text-primary hover:bg-primary/5"
+                      )}
+                    >
+                      {isFollowingSeller ? <UserMinus className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
+                      <span>{isFollowingSeller ? (lang === 'ar' ? 'تتابعه' : 'Following') : (lang === 'ar' ? 'متابعة' : 'Follow')}</span>
+                    </Button>
+                  )}
+                  <Link href={`/profile/${seller.username ?? seller.id}`}>
+                    <Button variant="outline" size="sm" className="font-bold text-xs rounded-xl border-slate-300 dark:border-slate-700 cursor-pointer">
+                      {lang === 'ar' ? 'الملف الشخصي' : 'Profile'}
+                    </Button>
+                  </Link>
+                </div>
               </div>
 
               {/* Quick Communication with Seller: Call & WhatsApp */}
@@ -2228,43 +2364,23 @@ export function BookDetailClient({
           </div>
         )}
 
-        {/* Guest Auth Prompt Modal */}
-        {showAuthModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-            <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-2xl text-center text-foreground">
-              <div className="mx-auto h-12 w-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center text-2xl">
-                📚
-              </div>
-              <h3 className="text-lg font-black text-foreground">
-                {lang === 'ar' ? 'سجل الدخول للمتابعة' : 'Sign In to Continue'}
-              </h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {lang === 'ar'
-                  ? `لإرسال طلبك ومراسلة صاحب كتاب "${book.title}"، سجل دخولك أو أنشئ حساباً مجانياً في ثوانٍ.`
-                  : `To send a request and contact the owner of "${book.title}", please sign in or create a free account.`}
-              </p>
-              <div className="space-y-2 pt-2">
-                <Link href={`/login?redirectTo=/books/${listing.id}`} className="block">
-                  <Button className="w-full font-black rounded-xl py-5 cursor-pointer shadow-md shadow-primary/20">
-                    {lang === 'ar' ? 'تسجيل الدخول' : 'Sign In'}
-                  </Button>
-                </Link>
-                <Link href={`/register?redirectTo=/books/${listing.id}`} className="block">
-                  <Button variant="outline" className="w-full font-bold rounded-xl py-5 cursor-pointer border-slate-300 dark:border-slate-700">
-                    {lang === 'ar' ? 'إنشاء حساب جديد مجاناً' : 'Create Free Account'}
-                  </Button>
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => setShowAuthModal(false)}
-                  className="text-xs text-muted-foreground hover:text-foreground font-semibold pt-1 cursor-pointer"
-                >
-                  {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Fast Auth Modal for In-Place Login / Register */}
+        <FastAuthModal
+          isOpen={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          actionType={authActionType}
+          targetTitle={book.title}
+          onSuccess={(authenticatedUser) => {
+            setActiveUser(authenticatedUser)
+            if (pendingAction) {
+              const action = pendingAction
+              setPendingAction(null)
+              setTimeout(() => {
+                action(authenticatedUser)
+              }, 60)
+            }
+          }}
+        />
 
         {/* Delete Confirmation Modal */}
         {showDeleteModal && (

@@ -3,6 +3,7 @@
 import React, { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter, usePathname } from 'next/navigation'
 import {
   Calendar,
   Clock,
@@ -31,6 +32,8 @@ interface EventsHubClientProps {
 
 export function EventsHubClient({ initialEvents, currentUserId }: EventsHubClientProps) {
   const { lang, isRTL } = useLanguage()
+  const router = useRouter()
+  const pathname = usePathname()
   const [events] = useState<StoreEvent[]>(initialEvents)
   const [selectedType, setSelectedType] = useState<StoreEventType | 'ALL'>('ALL')
   const [searchQuery, setSearchQuery] = useState('')
@@ -53,7 +56,7 @@ export function EventsHubClient({ initialEvents, currentUserId }: EventsHubClien
 
   const handleRsvp = async (eventId: string, status: RSVPStatus) => {
     if (!currentUserId) {
-      alert(lang === 'ar' ? 'يرجى تسجيل الدخول أولاً لتسجيل الحضور' : 'Please log in to RSVP')
+      router.push(`/login?redirectTo=${encodeURIComponent(pathname)}`)
       return
     }
     setRsvps(prev => ({ ...prev, [eventId]: status }))

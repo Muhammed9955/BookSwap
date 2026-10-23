@@ -39,7 +39,7 @@ export default async function AddBookPage({ searchParams }: AddBookPageProps) {
 
   return (
     <MainLayout user={{ id: user.id }}>
-      <div className="page-container py-8 max-w-2xl">
+      <div className="page-container py-4 sm:py-8 max-w-2xl px-3.5 sm:px-6">
         <Suspense fallback={<div className="h-40 flex items-center justify-center text-muted-foreground">جاري التحميل...</div>}>
           <AddBookForm
             userId={user.id}

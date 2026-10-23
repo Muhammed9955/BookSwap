@@ -9,598 +9,19 @@ type SupabaseClient = any
 // CURATED EGYPTIAN BOOKSTORE DEMO DATA (Fallback & Seeding)
 // ─────────────────────────────────────────────────────────────
 
-export const DEMO_STORES: Bookstore[] = [
-  {
-    id: 'store-diwan-zamalek',
-    owner_id: 'user-diwan-admin',
-    name: 'Diwan Bookstore',
-    name_ar: 'مكتبة ديوان',
-    slug: 'diwan-bookstore',
-    description: 'Premier boutique bookstore offering curated Arabic and English literature, art books, stationery, and cultural events.',
-    description_ar: 'المكتبة الثقافية الرائدة في مصر. تشكيلة مختارة بعناية من أحدث الروايات العربية والإنجليزية، كتب الفكر والفن، وفعاليات توقيع الكتب الأسبوعية.',
-    store_type: 'BOTH',
-    address: '159 26th of July St, Zamalek, Cairo',
-    latitude: 30.0612,
-    longitude: 31.2185,
-    opening_hours: {
-      'السبت - الخميس': '9:00 ص - 11:00 م',
-      'الجمعة': '1:00 م - 11:00 م',
-    },
-    website_url: 'https://diwanegypt.com',
-    social_links: {
-      facebook: 'https://facebook.com/diwanegypt',
-      instagram: 'https://instagram.com/diwanstores',
-      whatsapp: '+201001234567',
-    },
-    logo_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=250&q=80',
-    cover_url: 'https://images.unsplash.com/photo-1507842229451-7f01be7ac102?auto=format&fit=crop&w=1200&q=80',
-    is_verified: true,
-    total_listings: 1420,
-    total_sales: 580,
-    total_events: 18,
-    rating_average: 4.9,
-    rating_count: 240,
-    follower_count: 1840,
-    is_active: true,
-    created_at: '2025-01-10T10:00:00Z',
-    offers_count: 9,
-  },
-  {
-    id: 'store-shorouk-downtown',
-    owner_id: 'user-shorouk-admin',
-    name: 'Dar El Shorouk',
-    name_ar: 'دار الشروق',
-    slug: 'dar-el-shorouk',
-    description: 'Iconic Egyptian publishing house and bookstore home to Naguib Mahfouz, Radwa Ashour, and timeless Arabic literature.',
-    description_ar: 'دار النشر العريقة ومكتبة الأدب العربي الكلاسيكي والمعاصر. الموطن الحصري لأعمال أديب نوبل نجيب محفوظ ورضوى عاشور وتوفيق الحكيم.',
-    store_type: 'BOTH',
-    address: '1 Talaat Harb Square, Downtown, Cairo',
-    latitude: 30.0478,
-    longitude: 31.2389,
-    opening_hours: {
-      'يومياً': '10:00 ص - 10:00 م',
-    },
-    website_url: 'https://shorouk.com',
-    social_links: {
-      facebook: 'https://facebook.com/shorouk',
-      instagram: 'https://instagram.com/shoroukpublish',
-      whatsapp: '+201112233445',
-    },
-    logo_url: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=250&q=80',
-    cover_url: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=1200&q=80',
-    is_verified: true,
-    total_listings: 2600,
-    total_sales: 920,
-    total_events: 24,
-    rating_average: 4.8,
-    rating_count: 310,
-    follower_count: 2450,
-    is_active: true,
-    created_at: '2025-01-05T09:00:00Z',
-    offers_count: 2,
-  },
-  {
-    id: 'store-azbakeya-heritage',
-    owner_id: 'user-azbakeya-admin',
-    name: 'Azbakeya Heritage Treasures',
-    name_ar: 'كنوز سور الأزبكية التاريخي',
-    slug: 'azbakeya-heritage',
-    description: 'Centuries of rare, out-of-print, and collectible secondhand books directly from Cairo’s legendary open-air book market.',
-    description_ar: 'تراث سور الأزبكية العريق بين يديك: نوادر الكتب، المجلات التاريخية، الطبعات القديمة النادرة، وباقات الكتب المخفضة بأسعار لا تُنافس.',
-    store_type: 'OFFLINE',
-    address: 'Stall #14, Azbakeya Book Market, Attaba, Cairo',
-    latitude: 30.0522,
-    longitude: 31.2465,
-    opening_hours: {
-      'يومياً': '10:00 ص - 9:00 م',
-    },
-    social_links: {
-      facebook: 'https://facebook.com/azbakeya.heritage',
-      whatsapp: '+201223344556',
-    },
-    logo_url: 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&w=250&q=80',
-    cover_url: 'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=1200&q=80',
-    is_verified: true,
-    total_listings: 980,
-    total_sales: 440,
-    total_events: 6,
-    rating_average: 4.7,
-    rating_count: 180,
-    follower_count: 980,
-    is_active: true,
-    created_at: '2025-02-01T12:00:00Z',
-    offers_count: 1,
-  },
-  {
-    id: 'store-readers-corner-alex',
-    owner_id: 'user-alex-admin',
-    name: 'Readers Corner Alexandria',
-    name_ar: 'ركن القراء — الإسكندرية',
-    slug: 'readers-corner-alex',
-    description: 'Cozy coastal community bookstore and reading lounge right on Alexandria’s Corniche, hosting weekly book exchange clubs.',
-    description_ar: 'ملتقى عشاق القراءة والكتب على كورنيش الإسكندرية. مساحة هادئة للمطالعة، تبادل الروايات، وباقات كتب شهرية مع فواصل وإهداءات خاصة.',
-    store_type: 'OFFLINE',
-    address: '42 Corniche El Nile, Shatby, Alexandria',
-    latitude: 31.2156,
-    longitude: 29.9192,
-    opening_hours: {
-      'يومياً': '10:00 ص - 12:00 منتصف الليل',
-    },
-    social_links: {
-      facebook: 'https://facebook.com/readerscorner.alex',
-      instagram: 'https://instagram.com/readerscorner_alex',
-      whatsapp: '+201099887766',
-    },
-    logo_url: 'https://images.unsplash.com/photo-1532012164546-f432f2e3777f?auto=format&fit=crop&w=250&q=80',
-    cover_url: 'https://images.unsplash.com/photo-1526721940322-10fb6e3ae94a?auto=format&fit=crop&w=1200&q=80',
-    is_verified: true,
-    total_listings: 730,
-    total_sales: 310,
-    total_events: 14,
-    rating_average: 4.9,
-    rating_count: 155,
-    follower_count: 1280,
-    is_active: true,
-    created_at: '2025-02-15T14:00:00Z',
-    offers_count: 0,
-  },
-  {
-    id: 'store-bookish-online',
-    owner_id: 'user-bookish-admin',
-    name: 'Bookish Egypt (Online Deals)',
-    name_ar: 'بوكيش إيجيبت — عروض أونلاين',
-    slug: 'bookish-egypt',
-    description: 'The favorite online book boutique for bundle deals (10, 20, 25 books packages) with custom bookmark gifts and Egypt-wide shipping.',
-    description_ar: 'المتجر الإلكتروني الأول لحزم وعروض الكتب المخفضة (باقات 10، 20، 25 كتاب مع هدايا فواصل خشبية ودفاتر قراءة وتوصيل سريع لكافة المحافظات).',
-    store_type: 'ONLINE',
-    opening_hours: {
-      'خدمة العملاء والواتساب': 'متاح 24/7 لاستقبال الطلبات',
-    },
-    social_links: {
-      facebook: 'https://facebook.com/bookishegypt',
-      instagram: 'https://instagram.com/bookish_eg',
-      whatsapp: '+201011122233',
-    },
-    logo_url: 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=250&q=80',
-    cover_url: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=1200&q=80',
-    is_verified: true,
-    total_listings: 850,
-    total_sales: 1120,
-    total_events: 4,
-    rating_average: 4.9,
-    rating_count: 420,
-    follower_count: 3600,
-    is_active: true,
-    created_at: '2025-01-20T11:00:00Z',
-    offers_count: 3,
-  },
-]
+export const DEMO_STORES: Bookstore[] = []
 
 // ─────────────────────────────────────────────────────────────
 // DEMO STORE OFFERS (Packages: 10, 20, 25 books with gifts)
 // ─────────────────────────────────────────────────────────────
 
-export const DEMO_OFFERS: StoreOffer[] = [
-  {
-    id: 'offer-bundle-20-books',
-    store_id: 'store-bookish-online',
-    title: 'The Ultimate Reader Bundle: 20 Novels + Bookmarks & Reading Journal Gift',
-    title_ar: 'باقة القارئ النهم: حزمة 20 رواية متنوعة + فواصل خشبية ومفكرة قراءة هدية 🎁',
-    description: 'A handpicked package of 20 bestselling fiction, mystery, and classics. Comes with 3 laser-cut wooden bookmarks, aesthetic stickers, and a reading journal.',
-    description_ar: 'العرض الأقوى لعشاق القراءة! اختر 20 رواية من أحدث الإصدارات والأكثر مبيعاً بخصم 40%، مع هدية خاصة: 3 فواصل خشبية محفورة بالليزر، ومفكرة أنيقة لتدوين الاقتباسات، وشحن مخفض.',
-    offer_type: 'BUNDLE',
-    discount_pct: 40,
-    bundle_buy_qty: 20,
-    bundle_free_qty: 2,
-    bundle_price: 650,
-    gift_description: '3 فواصل كتب خشبية فاخرة + مفكرة تدوين الاقتباسات + ستيكرز أدبية',
-    starts_at: '2026-09-01T00:00:00Z',
-    ends_at: '2026-10-31T23:59:59Z',
-    stock_limit: 50,
-    redemption_count: 34,
-    promo_code: 'BUNDLE20',
-    cover_image_url: 'https://images.unsplash.com/photo-1495446815901-a7297e633e8d?auto=format&fit=crop&w=800&q=80',
-    is_featured: true,
-    status: 'ACTIVE',
-    created_at: '2026-09-01T10:00:00Z',
-  },
-  {
-    id: 'offer-bundle-10-books',
-    store_id: 'store-bookish-online',
-    title: 'Self-Development & Mindset Box: 10 Essential Books',
-    title_ar: 'باقة تطوير الذات والإنتاجية: 10 كتب تأسيسية بخصم 35% + فاصل معدني 🎁',
-    description: '10 fundamental books in psychology, habits, and mindset including Atomic Habits, Deep Work, and Thinking Fast and Slow in Arabic.',
-    description_ar: 'حزمة الـ 10 كتب الأكثر تأثيراً في بناء العادات، التركيز العميق، وإدارة المال والوقت، تشمل العادات الذرية وكتاب الأب الغني والأب الفقير بخصم كبير.',
-    offer_type: 'BUNDLE',
-    discount_pct: 35,
-    bundle_buy_qty: 10,
-    bundle_price: 380,
-    gift_description: 'فاصل قراءة معدني أنيق مطلي بالذهب + قائمة تتبع القراءة الشهرية',
-    starts_at: '2026-09-10T00:00:00Z',
-    ends_at: '2026-11-15T23:59:59Z',
-    stock_limit: 100,
-    redemption_count: 62,
-    promo_code: 'GROWTH10',
-    cover_image_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80',
-    is_featured: true,
-    status: 'ACTIVE',
-    created_at: '2026-09-10T12:00:00Z',
-  },
-  {
-    id: 'offer-diwan-buy3get1',
-    store_id: 'store-diwan-zamalek',
-    title: 'Buy 3 Get 1 Free on all Contemporary Arabic Literature',
-    title_ar: 'عرض ديوان: اشتري 3 كتب واحصل على الرابع مجاناً من قسم الروايات',
-    description: 'Select any 4 books from our contemporary Arabic literature collection and the 4th book of equal or lesser value is completely free.',
-    description_ar: 'استمتع بأحدث الروايات الصادرة هذا العام. اختر أي 4 روايات عربية وسيكون الكتاب الرابع هدية مجانية بالكامل من مكتبة ديوان.',
-    offer_type: 'BUNDLE',
-    bundle_buy_qty: 3,
-    bundle_free_qty: 1,
-    gift_description: 'حقيبة قماشية أنيقة Tote Bag خاصة بمكتبة ديوان مجاناً مع الطلب',
-    starts_at: '2026-09-15T00:00:00Z',
-    ends_at: '2026-10-25T23:59:59Z',
-    redemption_count: 85,
-    promo_code: 'DIWAN3PLUS1',
-    cover_image_url: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=800&q=80',
-    is_featured: true,
-    status: 'ACTIVE',
-    created_at: '2026-09-15T10:00:00Z',
-  },
-  {
-    id: 'offer-diwan-tier-3',
-    store_id: 'store-diwan-zamalek',
-    title: '3 Books Bundle + 1 Gift Book + 3 Bookmarks = 120 EGP',
-    title_ar: 'باكدج الـ 3 كتب',
-    description: 'Pick 3 books from our catalog and get 1 mystery gift book + 3 laser-cut bookmarks for 120 EGP',
-    description_ar: 'اختار اللي يعجبك من القائمة، والكتب الهدية من اختيار المكتبة عشوائي 😍',
-    offer_type: 'BUNDLE_TIER',
-    bundle_buy_qty: 3,
-    bundle_free_qty: 1,
-    bundle_bookmarks: 3,
-    bundle_price: 120,
-    offer_price: 120,
-    original_price: 210,
-    book_count: 3,
-    gift_description: 'كتاب هدية + 3 فواصل خشبية فاخرة',
-    is_featured: false,
-    status: 'ACTIVE',
-    starts_at: '2026-09-01T00:00:00Z',
-    ends_at: '2026-11-30T23:59:59Z',
-    created_at: '2026-09-01T10:00:00Z',
-  },
-  {
-    id: 'offer-diwan-tier-5',
-    store_id: 'store-diwan-zamalek',
-    title: '5 Books Bundle (Most Popular Deal) = 200 EGP',
-    title_ar: 'باكدج الـ 5 كتب (عرض التوفير الأكثر طلباً 🔥)',
-    description: 'Pick 5 books from our catalog and get 1 gift book + 5 bookmarks for 200 EGP',
-    description_ar: 'احصل على 5 كتب + 1 كتاب هدية + 5 فواصل خشبية فاخرة بسعر 200 ج.م فقط',
-    offer_type: 'BUNDLE_TIER',
-    bundle_buy_qty: 5,
-    bundle_free_qty: 1,
-    bundle_bookmarks: 5,
-    bundle_price: 200,
-    offer_price: 200,
-    original_price: 390,
-    book_count: 5,
-    gift_description: 'كتاب هدية + 5 فواصل خشبية فاخرة + شحن مخفض',
-    is_featured: true,
-    status: 'ACTIVE',
-    starts_at: '2026-09-01T00:00:00Z',
-    ends_at: '2026-11-30T23:59:59Z',
-    created_at: '2026-09-01T10:00:00Z',
-  },
-  {
-    id: 'offer-diwan-tier-10',
-    store_id: 'store-diwan-zamalek',
-    title: '10 Books Bundle = 380 EGP',
-    title_ar: 'باكدج الـ 10 كتب',
-    description: 'Pick 10 books from our catalog and get 2 gift books + 10 bookmarks for 380 EGP',
-    description_ar: '10 كتب من اختيارك + كتابين هدية + 10 فواصل قراءة',
-    offer_type: 'BUNDLE_TIER',
-    bundle_buy_qty: 10,
-    bundle_free_qty: 2,
-    bundle_bookmarks: 10,
-    bundle_price: 380,
-    offer_price: 380,
-    original_price: 780,
-    book_count: 10,
-    gift_description: 'كتابين هدية + 10 فواصل خشبية فاخرة',
-    is_featured: false,
-    status: 'ACTIVE',
-    starts_at: '2026-09-01T00:00:00Z',
-    ends_at: '2026-11-30T23:59:59Z',
-    created_at: '2026-09-01T10:00:00Z',
-  },
-  {
-    id: 'offer-diwan-tier-15',
-    store_id: 'store-diwan-zamalek',
-    title: '15 Books Bundle = 540 EGP',
-    title_ar: 'باكدج الـ 15 كتاب',
-    description: 'Pick 15 books from our catalog and get 3 gift books + 15 bookmarks for 540 EGP',
-    description_ar: '15 كتاب من اختيارك + 3 كتب هدية + 15 فاصل قراءة',
-    offer_type: 'BUNDLE_TIER',
-    bundle_buy_qty: 15,
-    bundle_free_qty: 3,
-    bundle_bookmarks: 15,
-    bundle_price: 540,
-    offer_price: 540,
-    original_price: 1150,
-    book_count: 15,
-    gift_description: '3 كتب هدية + 15 فاصل قراءة + مفكرة تدوين',
-    is_featured: false,
-    status: 'ACTIVE',
-    starts_at: '2026-09-01T00:00:00Z',
-    ends_at: '2026-11-30T23:59:59Z',
-    created_at: '2026-09-01T10:00:00Z',
-  },
-  {
-    id: 'offer-diwan-tier-20',
-    store_id: 'store-diwan-zamalek',
-    title: '20 Books Comprehensive Home Library Bundle = 690 EGP',
-    title_ar: 'باكدج الـ 20 كتاب الشامل للمكتبة المنزلية',
-    description: 'Pick 20 books from our catalog and get 4 gift books + 20 bookmarks for 690 EGP',
-    description_ar: '20 كتاب من اختيارك + 4 كتب هدية + 20 فاصل قراءة فاخر',
-    offer_type: 'BUNDLE_TIER',
-    bundle_buy_qty: 20,
-    bundle_free_qty: 4,
-    bundle_bookmarks: 20,
-    bundle_price: 690,
-    offer_price: 690,
-    original_price: 1550,
-    book_count: 20,
-    gift_description: '4 كتب هدية + 20 فاصل قراءة + شحن مجاني',
-    is_featured: false,
-    status: 'ACTIVE',
-    starts_at: '2026-09-01T00:00:00Z',
-    ends_at: '2026-11-30T23:59:59Z',
-    created_at: '2026-09-01T10:00:00Z',
-  },
-  {
-    id: 'offer-azbakeya-clearance',
-    store_id: 'store-azbakeya-heritage',
-    title: 'Azbakeya Super Box: 25 Vintage & Classic Books for 299 EGP',
-    title_ar: 'صندوق الأزبكية الخارق: 25 كتاب كلاسيكي وتاريخي بـ 299 ج فقط! 🔥',
-    description: 'Massive clearance package of 25 assorted books from our vintage collection. Great for building your personal home library.',
-    description_ar: 'فرصة ذهبية لتأسيس مكتبتك المنزلية! 25 كتاباً من كنوز الأدب العربي والتاريخ والمسرحيات والروايات المترجمة في كرتونة واحدة بسعر التصفية.',
-    offer_type: 'CLEARANCE',
-    discount_pct: 60,
-    bundle_buy_qty: 25,
-    bundle_price: 299,
-    gift_description: 'مجموعة مجلات أثرية عتيقة من الستينيات هدية تذكارية',
-    starts_at: '2026-09-20T00:00:00Z',
-    ends_at: '2026-10-30T23:59:59Z',
-    stock_limit: 20,
-    redemption_count: 16,
-    cover_image_url: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=800&q=80',
-    is_featured: false,
-    status: 'ACTIVE',
-    created_at: '2026-09-20T08:00:00Z',
-  },
-  {
-    id: 'offer-shorouk-discount',
-    store_id: 'store-shorouk-downtown',
-    title: 'Nobel & Classics Month: 25% Off Naguib Mahfouz Complete Works',
-    title_ar: 'شهر نوبل: خصم 25% على كافة أعمال أديب نوبل نجيب محفوظ',
-    description: 'Special 25% discount on all single editions and boxsets of Naguib Mahfouz at Dar El Shorouk.',
-    description_ar: 'احتفالاً بتراث الأدب المصري، خصم 25% فوري على كافة روايات نجيب محفوظ الكلاسيكية والأعمال الكاملة المجلدة.',
-    offer_type: 'DISCOUNT',
-    discount_pct: 25,
-    starts_at: '2026-09-01T00:00:00Z',
-    ends_at: '2026-10-31T23:59:59Z',
-    promo_code: 'NOBEL25',
-    redemption_count: 45,
-    cover_image_url: 'https://images.unsplash.com/photo-1507842229451-7f01be7ac102?auto=format&fit=crop&w=800&q=80',
-    is_featured: true,
-    status: 'ACTIVE',
-    created_at: '2026-09-01T12:00:00Z',
-  },
-  {
-    id: 'offer-diwan-pack-2',
-    store_id: 'store-diwan-zamalek',
-    title: 'Bestseller Duo: The Blue Elephant & Diamond Dust (2 Books Pack)',
-    title_ar: 'ثنائية التشويق البوليسي (الفيل الأزرق + تراب الماس) — باكدج كتابين بسعر حصري',
-    description: 'Exclusive 2-book bundle featuring Ahmed Mourad top mystery thrillers at a discounted set price.',
-    description_ar: 'ثنائية من أقوى روايات التشويق والإثارة النفسية في الأدب المعاصر للكاتب أحمد مراد، تأتيكم في باكدج توفير خاص بتغليف أنيق وهدية فاصل قراءة محفور.',
-    offer_type: 'CURATED_PACK',
-    book_count: 2,
-    genre: 'THRILLER',
-    genre_ar: 'غموض ورعب وتشويق',
-    original_price: 330,
-    offer_price: 210,
-    discount_pct: 36,
-    included_books: ['الفيل الأزرق (The Blue Elephant)', 'تراب الماس (Diamond Dust)'],
-    badge_text: 'ثنائية التوفير 🔥',
-    gift_description: 'فاصل كتب خشبي أنيق محفور + شحن سريع',
-    cover_image_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80',
-    is_featured: true,
-    status: 'ACTIVE',
-    created_at: '2026-09-18T10:00:00Z',
-  },
-  {
-    id: 'offer-shorouk-pack-3',
-    store_id: 'store-shorouk-downtown',
-    title: 'Cairo Trilogy by Naguib Mahfouz (Complete 3-Book Pack)',
-    title_ar: 'ثلاثية القاهرة الخالدة لنجيب محفوظ (3 كتب كاملة) — باكدج التراث الأدبي',
-    description: 'Complete 3-book masterpiece (Palace Walk, Palace of Desire, Sugar Street) at special bundle value.',
-    description_ar: 'الملحمة الروائية الأهم في تاريخ الأدب العربي: بين القصرين، قصر الشوق، والسكرية. طبعة دار الشروق المعتمدة مع علبة كرتونية تذكارية وبسعر خاص جداً.',
-    offer_type: 'CURATED_PACK',
-    book_count: 3,
-    genre: 'NOVELS',
-    genre_ar: 'روايات وأدب',
-    original_price: 540,
-    offer_price: 340,
-    discount_pct: 37,
-    included_books: ['بين القصرين (Palace Walk)', 'قصر الشوق (Palace of Desire)', 'السكرية (Sugar Street)'],
-    badge_text: 'ثلاثية نوبل 🌟',
-    gift_description: 'بوكس كرتوني تذكاري فاخر + 3 فواصل كلاسيكية',
-    cover_image_url: 'https://images.unsplash.com/photo-1507842229451-7f01be7ac102?auto=format&fit=crop&w=800&q=80',
-    is_featured: true,
-    status: 'ACTIVE',
-    created_at: '2026-09-19T11:00:00Z',
-  },
-  {
-    id: 'offer-bookish-pack-3',
-    store_id: 'store-bookish-online',
-    title: 'Self-Mastery & Habits Trio: Atomic Habits + Mindset + Deep Work (3 Books)',
-    title_ar: 'ثلاثية العادات والإنتاجية العالية (3 كتب الأكثر طلباً عالمياً)',
-    description: 'The ultimate productivity & mindset booster trio: Atomic Habits, Mindset, and Deep Work.',
-    description_ar: 'أقوى 3 كتب مترجمة لبناء روتين حديدي وتحقيق التركيز العميق والنجاح المهني. وفر 38% عند طلب الباكدج المجمع مع الشحن المنزلي السريع.',
-    offer_type: 'CURATED_PACK',
-    book_count: 3,
-    genre: 'PSYCHOLOGY',
-    genre_ar: 'علم نفس وتطوير ذات',
-    original_price: 620,
-    offer_price: 380,
-    discount_pct: 38,
-    included_books: ['العادات الذرية (Atomic Habits)', 'طريقة التفكير (Mindset)', 'العمل العميق (Deep Work)'],
-    badge_text: 'باكدج الإنتاجية ⚡',
-    gift_description: 'دفتر قراءة وتخطيط يومي Habit Tracker مجاناً',
-    cover_image_url: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=800&q=80',
-    is_featured: true,
-    status: 'ACTIVE',
-    created_at: '2026-09-21T14:00:00Z',
-  },
-  {
-    id: 'offer-diwan-pack-4',
-    store_id: 'store-diwan-zamalek',
-    title: 'Contemporary Thought & Renaissance (4 Books Pack)',
-    title_ar: 'رباعية الفكر والنهضة المعرفية (4 كتب تأسيسية)',
-    description: '4 essential books in philosophy, civilization and sociology by top Arab scholars.',
-    description_ar: 'حزمة نقدية فكرية متميزة تشمل كبار مفكري العصر لتأسيس وعي نقدي عميق، مع خصم خاص للمكتبة الفكرية.',
-    offer_type: 'CURATED_PACK',
-    book_count: 4,
-    genre: 'PHILOSOPHY',
-    genre_ar: 'فكر وفلسفة ومجتمع',
-    original_price: 750,
-    offer_price: 460,
-    discount_pct: 39,
-    included_books: ['مقدمة ابن خلدون', 'شروط النهضة (مالك بن نبي)', 'مشكلة الثقافة', 'تكوين العقل العربي'],
-    badge_text: 'رباعية الفكر 💡',
-    gift_description: 'مفكرة تدوين أفكار وقلم حبر فاخر مجاناً',
-    cover_image_url: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?auto=format&fit=crop&w=800&q=80',
-    is_featured: true,
-    status: 'ACTIVE',
-    created_at: '2026-09-22T09:00:00Z',
-  },
-  {
-    id: 'offer-diwan-pack-5',
-    store_id: 'store-diwan-zamalek',
-    title: 'Faith & Serenity Quintet (5 Books Pack for 200 EGP)',
-    title_ar: 'خماسية الإيمان والسكينة الأسرية (باكدج 5 كتب بـ 200 ج.م فقط) 🔥',
-    description: '5 uplifting spiritual and family guidance books at our best bundle price of 200 EGP.',
-    description_ar: 'مجموعة من أروع كتب التزكية والتربية والعلاقات الأسرية الهادفة، باكدج 5 كتب متكاملة بسعر التوفير الخارق 200 ج.م.',
-    offer_type: 'CURATED_PACK',
-    book_count: 5,
-    genre: 'RELIGIOUS',
-    genre_ar: 'دين وروحانيات',
-    original_price: 420,
-    offer_price: 200,
-    discount_pct: 52,
-    included_books: ['فاتتني صلاة', 'لأنك الله', 'ندي تشتكي لعائشة', 'مع النبي', 'رسائل من القرآن'],
-    badge_text: 'باكدج الـ 200 ج.م 💥',
-    gift_description: '5 فواصل قراءة إسلامية محفورة + شحن مخفض',
-    cover_image_url: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=800&q=80',
-    is_featured: true,
-    status: 'ACTIVE',
-    created_at: '2026-09-23T10:00:00Z',
-  },
-]
+export const DEMO_OFFERS: StoreOffer[] = []
 
 // ─────────────────────────────────────────────────────────────
 // DEMO STORE EVENTS (Author signings, clubs, meetups, RSVP)
 // ─────────────────────────────────────────────────────────────
 
-export const DEMO_EVENTS: StoreEvent[] = [
-  {
-    id: 'event-ahmed-mourad-signing',
-    store_id: 'store-diwan-zamalek',
-    title: 'Book Signing & Open Discussion with Author Ahmed Mourad',
-    title_ar: 'حفل توقيع ومناقشة مفتوحة مع الكاتب أحمد مراد',
-    description: 'Join us at Diwan Zamalek for an evening discussing contemporary Egyptian thrillers, screenwriting, and novel adaptations with bestselling author Ahmed Mourad.',
-    description_ar: 'أمسية أدبية مميزة في فرع الزمالك لمناقشة أحدث الأعمال الروائية، كواليس الكتابة البوليسية والسيناريو، وتوقيع نسخ القراء.',
-    event_type: 'SIGNING',
-    starts_at: '2026-10-16T18:00:00Z',
-    ends_at: '2026-10-16T21:00:00Z',
-    location: 'Diwan Zamalek — Main Garden Hall',
-    address: '159 26th of July St, Zamalek, Cairo',
-    is_free: true,
-    host_name: 'أحمد مراد (الكاتب والروائي)',
-    host_phone: '+201001234567',
-    host_role: 'الكاتب الضيف وحفل التوقيع',
-    cover_image_url: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800&q=80',
-    max_attendees: 120,
-    current_attendees: 84,
-    is_active: true,
-    created_at: '2026-09-20T10:00:00Z',
-  },
-  {
-    id: 'event-cilantro-maadi-swap',
-    title: 'Cilantro Maadi Community Book Swap & Coffee Morning',
-    title_ar: 'لقاء سيلانترو المعادي: ملتقى تبادل الكتب والقهوة الصباحية ☕📖',
-    description: 'Bring 1 to 5 books you have loved and exchange them with fellow Cairo readers over coffee at Cilantro Degla Maadi.',
-    description_ar: 'أحضر من كتاب إلى 5 كتب قرأتها وتبادلها مجاناً مع أصدقاء القراءة في المعادي. فرصة رائعة لاكتشاف ترشيحات جديدة والتعرف على مجتمع القراء.',
-    event_type: 'EXCHANGE',
-    starts_at: '2026-10-17T15:00:00Z',
-    ends_at: '2026-10-17T18:00:00Z',
-    location: 'Cilantro Cafe, Street 218, Degla, Maadi, Cairo',
-    address: 'Cilantro Cafe, Street 218, Degla, Maadi',
-    is_free: true,
-    host_name: 'سارة عبد الرحمن',
-    host_phone: '+201123456789',
-    host_role: 'منسقة نادي قراء المعادي',
-    cover_image_url: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80',
-    max_attendees: 45,
-    current_attendees: 38,
-    is_active: true,
-    created_at: '2026-09-22T14:00:00Z',
-  },
-  {
-    id: 'event-alex-corniche-discussion',
-    store_id: 'store-readers-corner-alex',
-    title: 'Alexandria Seafront Readers Club: Granada Trilogy Discussion',
-    title_ar: 'نادي قراء الإسكندرية: مناقشة ملحمة ثلاثية غرناطة لرئيسة الأدب رضوى عاشور',
-    description: 'An open literary circle discussing Radwa Ashour’s Granada Trilogy facing the Mediterranean sunset.',
-    description_ar: 'جلسة حوارية ملهمة أمام البحر لمناقشة رائعة رضوى عاشور "ثلاثية غرناطة" في مساحة ركن القراء بالشاطبي مع شاي بالنعناع.',
-    event_type: 'DISCUSSION',
-    starts_at: '2026-10-22T17:00:00Z',
-    ends_at: '2026-10-22T20:00:00Z',
-    location: 'Readers Corner Lounge, Shatby Corniche, Alexandria',
-    address: '42 Corniche El Nile, Shatby, Alexandria',
-    is_free: false,
-    price: 65,
-    host_name: 'د. يوسف إبراهيم',
-    host_phone: '+201234567890',
-    host_role: 'أستاذ النقد الأدبي ومنسق الجلسة',
-    cover_image_url: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=800&q=80',
-    max_attendees: 35,
-    current_attendees: 29,
-    is_active: true,
-    created_at: '2026-09-25T11:00:00Z',
-  },
-  {
-    id: 'event-shorouk-summer-sale',
-    store_id: 'store-shorouk-downtown',
-    title: 'Downtown Cairo Autumn Book Fair & Flash Clearance Day',
-    title_ar: 'مهرجان الشروق لخصومات الخريف وتصفية أعداد الكتب النادرة',
-    description: 'Up to 50% discount on thousands of literary works, art catalogues, and children’s literature at Talaat Harb branch.',
-    description_ar: 'يوم حافل بخصومات تصل إلى 50% على آلاف العناوين والمجلدات الفاخرة وكتب الأطفال بفرع طلعت حرب وسط البلد.',
-    event_type: 'SALE',
-    starts_at: '2026-10-24T10:00:00Z',
-    ends_at: '2026-10-25T22:00:00Z',
-    location: 'Dar El Shorouk Downtown, 1 Talaat Harb Square, Cairo',
-    address: '1 Talaat Harb Square, Downtown, Cairo',
-    is_free: true,
-    host_name: 'إدارة فرع الشروق وسط البلد',
-    host_phone: '+201019876543',
-    host_role: 'فريق تنظيم المبيعات والفعاليات',
-    cover_image_url: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=800&q=80',
-    max_attendees: 300,
-    current_attendees: 210,
-    is_active: true,
-    created_at: '2026-09-26T16:00:00Z',
-  },
-]
+export const DEMO_EVENTS: StoreEvent[] = []
 
 // ─────────────────────────────────────────────────────────────
 // SERVICE FUNCTIONS (Database-first with fallback to demo data)
@@ -1205,103 +626,7 @@ export async function rsvpEvent(
 // STORE INVENTORY & MERCHANT MANAGEMENT SERVICES
 // ─────────────────────────────────────────────────────────────
 
-export const DEMO_STORE_INVENTORY: StoreInventoryItem[] = [
-  {
-    id: 'inv-1',
-    store_id: 'store-diwan-zamalek',
-    title: 'The Blue Elephant (الفيل الأزرق)',
-    title_ar: 'الفيل الأزرق',
-    author: 'أحمد مراد (Ahmed Mourad)',
-    isbn: '9789770932223',
-    category_name: 'روايات وتشويق',
-    condition: 'LIKE_NEW',
-    price: 130,
-    original_price: 170,
-    stock_quantity: 18,
-    cover_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80',
-    is_active: true,
-    created_at: '2026-09-01T10:00:00Z',
-  },
-  {
-    id: 'inv-2',
-    store_id: 'store-diwan-zamalek',
-    title: 'Palace Walk (بين القصرين)',
-    title_ar: 'بين القصرين — ثلاثية القاهرة',
-    author: 'نجيب محفوظ (Naguib Mahfouz)',
-    isbn: '9789770912345',
-    category_name: 'أدب عربي وكلاسيكيات',
-    condition: 'NEW',
-    price: 160,
-    original_price: 200,
-    stock_quantity: 25,
-    cover_url: 'https://images.unsplash.com/photo-1507842229451-7f01be7ac102?auto=format&fit=crop&w=600&q=80',
-    is_active: true,
-    created_at: '2026-09-02T11:00:00Z',
-  },
-  {
-    id: 'inv-3',
-    store_id: 'store-diwan-zamalek',
-    title: 'Atomic Habits (العادات الذرية)',
-    title_ar: 'العادات الذرية — النسخة العربية المعتمدة',
-    author: 'جيمس كلير (James Clear)',
-    isbn: '9786035091800',
-    category_name: 'تطوير الذات وعلم النفس',
-    condition: 'NEW',
-    price: 190,
-    original_price: 240,
-    stock_quantity: 40,
-    cover_url: 'https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80',
-    is_active: true,
-    created_at: '2026-09-03T12:00:00Z',
-  },
-  {
-    id: 'inv-4',
-    store_id: 'store-diwan-zamalek',
-    title: 'Granada Trilogy (ثلاثية غرناطة)',
-    title_ar: 'ثلاثية غرناطة',
-    author: 'رضوى عاشور (Radwa Ashour)',
-    isbn: '9789770908881',
-    category_name: 'روايات وتاريخ',
-    condition: 'LIKE_NEW',
-    price: 175,
-    original_price: 220,
-    stock_quantity: 12,
-    cover_url: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80',
-    is_active: true,
-    created_at: '2026-09-04T13:00:00Z',
-  },
-  {
-    id: 'inv-5',
-    store_id: 'store-bookish-online',
-    title: 'Mindset: The New Psychology of Success',
-    title_ar: 'طريقة التفكير (السيكولوجية الجديدة للنجاح)',
-    author: 'كارول دويك (Carol Dweck)',
-    isbn: '9780345472327',
-    category_name: 'تطوير الذات',
-    condition: 'NEW',
-    price: 140,
-    original_price: 190,
-    stock_quantity: 35,
-    cover_url: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=600&q=80',
-    is_active: true,
-    created_at: '2026-09-05T14:00:00Z',
-  },
-  {
-    id: 'inv-6',
-    store_id: 'store-azbakeya-heritage',
-    title: 'الأغاني للأصفهاني (طبعة نادرة مجلدة)',
-    title_ar: 'كتاب الأغاني لأبي الفرج الأصفهاني (المجلد الأول والثاني)',
-    author: 'أبو الفرج الأصفهاني',
-    category_name: 'تراث ونوادر',
-    condition: 'ACCEPTABLE',
-    price: 250,
-    original_price: 450,
-    stock_quantity: 2,
-    cover_url: 'https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&w=600&q=80',
-    is_active: true,
-    created_at: '2026-09-06T15:00:00Z',
-  },
-]
+export const DEMO_STORE_INVENTORY: StoreInventoryItem[] = []
 
 const INVENTORY_STORAGE_KEY = 'waraq_store_inventory_v1'
 const STORES_STORAGE_KEY = 'waraq_custom_stores_v1'
@@ -1322,49 +647,66 @@ export const STORE_ID_ALIASES: Record<string, string> = {
 }
 
 /**
- * Get bookstore inventory items (Real saved inventory + authentic real bookstore presets)
+ * Purge legacy store demo data from client localStorage
+ */
+export function purgeStoreDemoData(): void {
+  if (typeof window === 'undefined') return
+  try {
+    const demoStoreIds = [
+      'store-diwan-zamalek',
+      'store-shorouk-downtown',
+      'store-azbakeya-heritage',
+      'store-readers-corner-alex',
+      'store-bookish-online',
+      'store-1',
+      'diwan-bookstore',
+    ]
+    demoStoreIds.forEach(id => {
+      localStorage.removeItem(`waraq_store_inventory_v1_${id}`)
+      localStorage.removeItem(`waraq_store_orders_v1_${id}`)
+    })
+
+    const storedStores = localStorage.getItem(STORES_STORAGE_KEY)
+    if (storedStores) {
+      try {
+        const map = JSON.parse(storedStores)
+        let changed = false
+        demoStoreIds.forEach(id => {
+          if (map[id]) {
+            delete map[id]
+            changed = true
+          }
+        })
+        if (changed) {
+          localStorage.setItem(STORES_STORAGE_KEY, JSON.stringify(map))
+        }
+      } catch {}
+    }
+  } catch {}
+}
+
+/**
+ * Get bookstore inventory items (Real saved inventory)
  */
 export async function getStoreInventory(storeId: string): Promise<StoreInventoryItem[]> {
   const resolvedStoreId = STORE_ID_ALIASES[storeId] || storeId
-  const seedItems = REAL_STORE_INVENTORY_SEEDS[resolvedStoreId] || []
 
   if (typeof window !== 'undefined') {
+    purgeStoreDemoData()
     try {
       const stored = localStorage.getItem(`${INVENTORY_STORAGE_KEY}_${resolvedStoreId}`)
       if (stored) {
         const parsed = JSON.parse(stored) as StoreInventoryItem[]
-        // Filter out legacy auto-seeded dummy books
-        const realItems = parsed.filter(i => !i.id.startsWith('seed-'))
-
-        if (seedItems.length > 0) {
-          // If the stored items were a subset, ensure all authentic seed books are included
-          const storedMap = new Map(realItems.map(item => [item.id, item]))
-          const result: StoreInventoryItem[] = [...realItems]
-          for (const s of seedItems) {
-            if (!storedMap.has(s.id)) {
-              result.push(s)
-            }
-          }
-          if (result.length !== parsed.length) {
-            localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${resolvedStoreId}`, JSON.stringify(result))
-          }
-          return result
-        }
-
-        if (realItems.length > 0) {
-          return realItems
-        }
+        // Return only real user-added inventory (filter out any mock seed/inv items)
+        const realItems = parsed.filter(i => !i.id.startsWith('seed-') && !i.id.startsWith('inv-') && !i.id.startsWith('demo-'))
+        return realItems
       }
     } catch {}
   }
 
-  // Return authentic real bookstore inventory seeds for known stores
-  if (seedItems.length > 0) {
-    return seedItems
-  }
-
   return []
 }
+
 
 /**
  * Submit a customer order to the bookstore (Single Book, Bundle Package, Curated Pack, or Series)
@@ -1423,116 +765,7 @@ export async function submitStoreOrder(
 /**
  * Sample realistic store orders for demo stores to provide immediate interactive follow-up experience
  */
-const DEMO_STORE_SAMPLE_ORDERS: Record<string, StoreOrder[]> = {
-  'store-1': [
-    {
-      id: 'ord-diwan-101',
-      order_number: 'ORD-DWN92-101',
-      store_id: 'store-1',
-      order_type: 'CURATED_PACK',
-      pack_title: 'باكدج نجيب محفوظ (اللص والكلاب + بين القصرين)',
-      total_price: 245,
-      customer_name: 'أحمد محمود عبد الرحمن',
-      customer_phone: '01012345678',
-      customer_city: 'القاهرة',
-      customer_address: 'مدينة نصر - الحي السابع - عمارة 14 ش الطيران',
-      customer_notes: 'يرجى التوصيل بعد الساعة 4 عصراً',
-      status: 'NEW',
-      items: [
-        {
-          book_id: 'bk-1',
-          title: 'بين القصرين',
-          title_ar: 'بين القصرين',
-          book_title: 'بين القصرين',
-          author: 'نجيب محفوظ',
-          price: 130,
-          quantity: 1,
-          cover_url: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=400&q=80',
-        },
-        {
-          book_id: 'bk-2',
-          title: 'اللص والكلاب',
-          title_ar: 'اللص والكلاب',
-          book_title: 'اللص والكلاب',
-          author: 'نجيب محفوظ',
-          price: 115,
-          quantity: 1,
-          cover_url: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=400&q=80',
-        },
-      ],
-      created_at: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
-    },
-    {
-      id: 'ord-diwan-102',
-      order_number: 'ORD-DWN88-102',
-      store_id: 'store-1',
-      order_type: 'SINGLE_BOOK',
-      total_price: 180,
-      customer_name: 'سارة خالد المنشاوي',
-      customer_phone: '01123456789',
-      customer_city: 'الجيزة',
-      customer_address: 'الدقي - ميدان المساحة - شارع مصدق',
-      customer_notes: 'الدفع كاش عند الاستلام بالتمام',
-      status: 'CONFIRMED',
-      items: [
-        {
-          book_id: 'bk-3',
-          title: 'قواعد العشق الأربعون',
-          title_ar: 'قواعد العشق الأربعون',
-          book_title: 'قواعد العشق الأربعون',
-          author: 'إليف شافاق',
-          price: 180,
-          quantity: 1,
-          cover_url: 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?auto=format&fit=crop&w=400&q=80',
-        },
-      ],
-      created_at: new Date(Date.now() - 3 * 3600 * 1000).toISOString(),
-    },
-    {
-      id: 'ord-diwan-103',
-      order_number: 'ORD-DWN75-103',
-      store_id: 'store-1',
-      order_type: 'BUNDLE_PACKAGE',
-      bundle_title: 'باقة توفير 3 روايات أدبية + فاصل قراءة',
-      total_price: 320,
-      customer_name: 'محمود طارق الشامي',
-      customer_phone: '01234567890',
-      customer_city: 'الإسكندرية',
-      customer_address: 'سموحة - ش فوزي معاذ بجوار مسجد علي بن أبي طالب',
-      status: 'DISPATCHED',
-      items: [
-        {
-          book_id: 'bk-4',
-          title: 'عزازيل',
-          title_ar: 'عزازيل',
-          book_title: 'عزازيل',
-          author: 'يوسف زيدان',
-          price: 120,
-          quantity: 1,
-        },
-        {
-          book_id: 'bk-5',
-          title: 'ساق البامبو',
-          title_ar: 'ساق البامبو',
-          book_title: 'ساق البامبو',
-          author: 'سعود السنعوسي',
-          price: 110,
-          quantity: 1,
-        },
-        {
-          book_id: 'bk-6',
-          title: 'تراب الماس',
-          title_ar: 'تراب الماس',
-          book_title: 'تراب الماس',
-          author: 'أحمد مراد',
-          price: 90,
-          quantity: 1,
-        },
-      ],
-      created_at: new Date(Date.now() - 26 * 3600 * 1000).toISOString(),
-    },
-  ],
-}
+const DEMO_STORE_SAMPLE_ORDERS: Record<string, StoreOrder[]> = {}
 
 /**
  * Get orders received by a specific bookstore (Supabase DB + local cache merge)
@@ -1891,25 +1124,35 @@ export async function updateBookstore(
   }
 
   if (!target) {
-    target = DEMO_STORES.find(s => s.id === storeId)
-  }
-
-  if (!target) {
-    target = DEMO_STORES[0]
+    try {
+      const supabase = createClient()
+      const { data } = await supabase.from('bookstores').select('*').eq('id', storeId).maybeSingle()
+      if (data) target = data as Bookstore
+    } catch {}
   }
 
   const updatedStore: Bookstore = {
+    owner_id: updates.owner_id || target?.owner_id || 'system',
+    name: updates.name || target?.name || 'مكتبة جديدة',
+    slug: updates.slug || target?.slug || `store-${storeId}`,
+    store_type: updates.store_type || target?.store_type || 'ONLINE',
+    is_verified: updates.is_verified ?? target?.is_verified ?? false,
+    total_listings: updates.total_listings ?? target?.total_listings ?? 0,
+    total_sales: updates.total_sales ?? target?.total_sales ?? 0,
+    total_events: updates.total_events ?? target?.total_events ?? 0,
+    rating_average: updates.rating_average ?? target?.rating_average ?? 5.0,
+    rating_count: updates.rating_count ?? target?.rating_count ?? 0,
+    follower_count: updates.follower_count ?? target?.follower_count ?? 0,
+    is_active: updates.is_active ?? target?.is_active ?? true,
+    created_at: updates.created_at || target?.created_at || new Date().toISOString(),
     ...target,
     ...updates,
     id: storeId,
     updated_at: new Date().toISOString(),
   }
 
-  // Update in memory DEMO_STORES if present
-  const demoIdx = DEMO_STORES.findIndex(s => s.id === storeId)
-  if (demoIdx !== -1) {
-    DEMO_STORES[demoIdx] = updatedStore
-  }
+
+
 
   // Persist directly to Supabase DB bookstores table
   try {
@@ -2075,138 +1318,7 @@ export async function deleteStoreEvent(eventId: string): Promise<boolean> {
 
 const APPLICATIONS_STORAGE_KEY = 'waraq_store_applications_v1'
 
-export const DEMO_STORE_APPLICATIONS: StoreApplication[] = [
-  {
-    id: 'app-rawi-online',
-    applicant_name: 'عمر خالد المنشاوي',
-    owner_name: 'عمر خالد المنشاوي',
-    business_name: 'راوي للكتب — متجر إلكتروني',
-    store_name: 'Rawi Books Online',
-    store_name_ar: 'راوي للكتب الورقية (أونلاين فقط)',
-    store_type: 'ONLINE',
-    is_online_only: true,
-    phone: '01099887766',
-    email: 'orders@rawibooks.eg',
-    city: 'القاهرة',
-    address: 'متجر إلكتروني — شحن وتوصيل لكافة المحافظات',
-    commercial_reg: 'سجل تجاري إلكتروني CR-77291-ONLINE',
-    monthly_book_estimate: '2,200+ كتاب شهرياً (أونلاين)',
-    bio: 'Online-only secondhand & indie bookstore delivering curated literature and rare novels across all Egyptian governorates via courier.',
-    bio_ar: 'متجر ومكتبة أونلاين متخصصة في توفير الروايات النادرة والكتب المستعملة بعناية مع التوصيل المنزلي لجميع محافظات مصر خلال 48 ساعة.',
-    partner_type: 'BOOKSTORE',
-    details: 'نعمل كمتجر إلكتروني عبر إنستغرام وموقعنا مع مستودع شحن بالمعادي ونرغب في الانضمام كشريك أونلاين على ورق كونكت.',
-    website_url: 'https://rawibooks.eg',
-    social_links: {
-      instagram: 'https://instagram.com/rawibooks.eg',
-      facebook: 'https://facebook.com/rawibooks.eg',
-      tiktok: 'https://tiktok.com/@rawibooks',
-      whatsapp: '01099887766',
-    },
-    verification_signals: {
-      social_verified: true,
-      whatsapp_business: true,
-      sample_video_verified: true,
-      national_id_or_cr: true,
-    },
-    status: 'PENDING',
-    created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'app-dar-tanmia',
-    applicant_name: 'أحمد سعيد عبد القادر',
-    owner_name: 'أحمد سعيد عبد القادر',
-    business_name: 'مكتبة تنمية',
-    store_name: 'Tanmeya Bookstore',
-    store_name_ar: 'مكتبة تنمية',
-    store_type: 'BOTH',
-    is_online_only: false,
-    phone: '01012348899',
-    email: 'info@tanmeya-books.com',
-    city: 'القاهرة',
-    address: 'شارع 9، المعادي، القاهرة',
-    commercial_reg: 'CR-104928-EG',
-    monthly_book_estimate: '1,500+ كتاب',
-    bio: 'Premier bookstore specializing in contemporary thought, literature, and rare Arabic translations.',
-    bio_ar: 'مكتبة رائدة متخصصة في الكتب الفكرية والتاريخية وترجمات الروايات العالمية مع خدمة التوصيل السريع لكافة المحافظات.',
-    partner_type: 'BOOKSTORE',
-    details: 'مكتبة متخصصة في الكتب الفكرية والتاريخية وترجمات الروايات العالمية. لدينا فرع في المعادي ونقدم خدمة توصيل لجميع المحافظات.',
-    website_url: 'https://tanmeyabooks.com',
-    social_links: {
-      instagram: 'https://instagram.com/tanmeya_bookstore',
-      facebook: 'https://facebook.com/tanmeyabooks',
-      whatsapp: '01012348899',
-    },
-    verification_signals: {
-      social_verified: true,
-      whatsapp_business: true,
-      sample_video_verified: true,
-      national_id_or_cr: true,
-    },
-    status: 'PENDING',
-    created_at: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'app-alex-read-club',
-    applicant_name: 'سارة فهمي النجار',
-    owner_name: 'سارة فهمي النجار',
-    business_name: 'ركن الإسكندرية للقراءة والكتب النادرة',
-    store_name: 'Alexandria Reading Corner',
-    store_name_ar: 'ركن الإسكندرية للقراءة والكتب النادرة',
-    store_type: 'OFFLINE',
-    is_online_only: false,
-    phone: '01224567891',
-    email: 'contact@alexread.org',
-    city: 'الإسكندرية',
-    address: 'ميدان محطة الرمل، عمارة الفنار، الإسكندرية',
-    commercial_reg: 'CR-884219-ALX',
-    monthly_book_estimate: '800+ كتاب شهرياً',
-    bio: 'Cultural reading haven along the Alexandria Corniche featuring weekly book clubs and author signings.',
-    bio_ar: 'مكتبة ومساحة ثقافية على كورنيش الإسكندرية. ننظم لقاءات أسبوعية لمناقشة الكتب وتوقيعات حصرية لكتاب الإسكندرية.',
-    partner_type: 'BOTH',
-    details: 'مكتبة ومساحة ثقافية على كورنيش الإسكندرية. ننظم لقاءات أسبوعية لمناقشة الكتب وتوقيعات حصرية لكتاب الإسكندرية.',
-    social_links: {
-      instagram: 'https://instagram.com/alexreadcorner',
-      facebook: 'https://facebook.com/alexreadcorner',
-      whatsapp: '01224567891',
-    },
-    verification_signals: {
-      social_verified: true,
-      whatsapp_business: false,
-      sample_video_verified: false,
-      national_id_or_cr: false,
-    },
-    status: 'PENDING',
-    created_at: new Date(Date.now() - 18 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'app-badr-books',
-    applicant_name: 'محمود بدر الدين',
-    owner_name: 'محمود بدر الدين',
-    business_name: 'بوكستور بدر الثقافي',
-    store_name: 'Badr Cultural Bookstore',
-    store_name_ar: 'بوكستور بدر الثقافي',
-    store_type: 'OFFLINE',
-    is_online_only: false,
-    phone: '01198765432',
-    email: 'badr.store@gmail.com',
-    city: 'الجيزة',
-    address: 'شارع مصدق، الدقي، الجيزة',
-    commercial_reg: 'CR-552011-GIZ',
-    monthly_book_estimate: '3,000+ كتاب',
-    bio: 'University & literature book depot offering discounted textbooks and classics.',
-    bio_ar: 'مكتبة جامعية ومستودع كتب أدبية وعلمية بخصومات خاصة للطلاب والباحثين.',
-    partner_type: 'BOOKSTORE',
-    details: 'مكتبة جامعية ومستودع كتب أدبية وعلمية بخصومات خاصة للطلاب.',
-    social_links: {
-      whatsapp: '01198765432',
-      facebook: 'https://facebook.com/badrbookstore',
-    },
-    status: 'APPROVED',
-    created_at: new Date(Date.now() - 72 * 3600 * 1000).toISOString(),
-    reviewed_at: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
-    approved_store_id: 'store-diwan-zamalek',
-  },
-]
+export const DEMO_STORE_APPLICATIONS: StoreApplication[] = []
 
 export async function getStoreApplications(): Promise<StoreApplication[]> {
   if (typeof window !== 'undefined') {

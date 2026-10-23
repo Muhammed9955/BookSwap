@@ -23,6 +23,10 @@ import {
   Settings,
   Store,
   Smartphone,
+  Menu,
+  Calendar,
+  Tag,
+  Compass,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLanguage } from '@/i18n/language-context'
@@ -142,6 +146,7 @@ export function TopNav({
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [searchFocused, setSearchFocused] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [signingOut, setSigningOut] = useState(false)
 
@@ -182,6 +187,15 @@ export function TopNav({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Close menus on route change
+  useEffect(() => {
+    setMobileMenuOpen(false)
+    setDropdownOpen(false)
+    setMobileSearchOpen(false)
+    setCategoriesOpen(false)
+    setSearchFocused(false)
+  }, [pathname])
+
   // Keyboard shortcut '/' to focus search bar like GitHub/Udemy
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -195,6 +209,7 @@ export function TopNav({
         setCategoriesOpen(false)
         setDropdownOpen(false)
         setMobileSearchOpen(false)
+        setMobileMenuOpen(false)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -205,13 +220,20 @@ export function TopNav({
   useEffect(() => {
     try {
       router.prefetch('/')
+      router.prefetch('/explore')
+      router.prefetch('/events')
+      router.prefetch('/communities')
+      router.prefetch('/challenges')
+      router.prefetch('/stores')
+      router.prefetch('/offers')
       router.prefetch('/search')
       router.prefetch('/notifications')
       router.prefetch('/messages')
       router.prefetch('/profile')
       router.prefetch('/transactions')
-      router.prefetch('/communities')
       router.prefetch('/books/add')
+      router.prefetch('/login')
+      router.prefetch('/register')
     } catch {}
   }, [router])
 
@@ -247,14 +269,25 @@ export function TopNav({
     <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-white dark:bg-slate-900 shadow-sm transition-colors">
       <div className="page-container">
         <div className="flex h-16 items-center justify-between gap-1.5 sm:gap-4 px-1 sm:px-0">
-          {/* Official WARAQ Logo — compact on small mobile screens to keep space balanced */}
-          <div className="shrink-0">
+          {/* Official WARAQ Logo & Mobile Menu Trigger */}
+          <div className="shrink-0 flex items-center gap-1.5 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(true)}
+              className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-black bg-muted/80 hover:bg-primary/10 hover:text-primary border border-border/80 text-foreground transition-all cursor-pointer select-none hover:scale-105 active:scale-95"
+              aria-label="Open navigation menu"
+              title={lang === 'ar' ? 'تصفح كل الأقسام' : 'Open menu'}
+            >
+              <Menu className="h-4 w-4 text-primary shrink-0" />
+              <span className="hidden xs:inline text-[11px] font-black">{lang === 'ar' ? 'الأقسام' : 'Menu'}</span>
+            </button>
+
             <WaraqLogo size="md" priority className="hidden sm:inline-flex" />
             <WaraqLogo size="sm" priority className="sm:hidden" />
           </div>
 
-          {/* Udemy-style Centered Prominent Search Bar */}
-          <div className="hidden md:flex flex-1 min-w-0 max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-2 sm:mx-4 lg:mx-6 items-center relative" ref={searchContainerRef}>
+          {/* Udemy-style Centered Search Bar */}
+          <div className="hidden md:flex flex-1 min-w-0 max-w-sm lg:max-w-md xl:max-w-xl mx-2 sm:mx-3 items-center relative" ref={searchContainerRef}>
             <form
               onSubmit={handleSearchSubmit}
               className="relative w-full h-11 flex items-center bg-muted/50 hover:bg-muted/80 focus-within:bg-background border-2 border-border/80 focus-within:border-primary focus-within:ring-4 focus-within:ring-primary/10 rounded-full transition-all shadow-xs group"
@@ -440,11 +473,44 @@ export function TopNav({
           </div>
 
           {/* Right Side Navigation & Actions */}
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            {/* Marketplace Link */}
+            <Link
+              href="/explore"
+              className={cn(
+                "hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer",
+                pathname.startsWith('/explore')
+                  ? "text-primary bg-primary/10 font-black"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
+            >
+              <BookOpen className="h-4 w-4 text-primary" />
+              <span>{lang === 'ar' ? 'المعرض' : 'Market'}</span>
+            </Link>
+
+            {/* Events Link */}
+            <Link
+              href="/events"
+              className={cn(
+                "hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer",
+                pathname.startsWith('/events')
+                  ? "text-purple-600 bg-purple-500/10 font-black"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
+            >
+              <Calendar className="h-4 w-4 text-purple-600" />
+              <span>{lang === 'ar' ? 'الفعاليات' : 'Events'}</span>
+            </Link>
+
             {/* Communities Link */}
             <Link
               href="/communities"
-              className="hidden md:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className={cn(
+                "hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer",
+                pathname.startsWith('/communities')
+                  ? "text-emerald-600 bg-emerald-500/10 font-black"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
             >
               <Users className="h-4 w-4 text-emerald-600" />
               <span>{lang === 'ar' ? 'المجتمعات' : 'Communities'}</span>
@@ -453,7 +519,12 @@ export function TopNav({
             {/* Challenges Link */}
             <Link
               href="/challenges"
-              className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className={cn(
+                "hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer",
+                pathname.startsWith('/challenges')
+                  ? "text-orange-500 bg-orange-500/10 font-black"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
             >
               <Flame className="h-4 w-4 text-orange-500 fill-orange-500" />
               <span>{lang === 'ar' ? 'التحديات' : 'Challenges'}</span>
@@ -462,29 +533,25 @@ export function TopNav({
             {/* Bookstores Link */}
             <Link
               href="/stores"
-              className="hidden xl:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className={cn(
+                "hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer",
+                pathname.startsWith('/stores')
+                  ? "text-primary bg-primary/10 font-black"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
             >
               <Store className="h-4 w-4 text-primary" />
               <span>{lang === 'ar' ? 'المكتبات' : 'Bookstores'}</span>
             </Link>
 
-            {/* Quick Explore Icon/Link for Desktop */}
-            <Link
-              href="/explore"
-              className="hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-            >
-              <BookOpen className="h-4 w-4 text-primary" />
-              <span>{lang === 'ar' ? 'استكشف' : 'Explore'}</span>
-            </Link>
-
             {/* Quick Wishlist Icon */}
             <Link
               href="/wishlist"
-              className="hidden lg:flex h-9 w-9 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+              className="hidden xl:flex h-8 w-8 items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
               title={t('nav_wishlist', lang)}
               aria-label={t('nav_wishlist', lang)}
             >
-              <Sparkles className="h-4.5 w-4.5 text-amber-500" />
+              <Sparkles className="h-4 w-4 text-amber-500" />
             </Link>
 
             {/* Mobile Search Button (Toggle mobile search bar) — hidden on <360px where bottom nav has search */}
@@ -625,6 +692,25 @@ export function TopNav({
 
                       {/* Dropdown Menu Items */}
                       <div className="space-y-0.5">
+                        {/* Partner Bookstore Flow */}
+                        <Link
+                          href="/stores"
+                          onClick={() => setDropdownOpen(false)}
+                          className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-bold text-foreground/90 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 hover:text-emerald-600 transition-colors cursor-pointer group"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className="p-1 rounded-lg bg-emerald-500/10 text-emerald-600 group-hover:scale-110 transition-transform">
+                              <Store className="h-4 w-4" />
+                            </div>
+                            <span>{lang === 'ar' ? 'دليل المكتبات الشريكة 🏬' : 'Partner Bookstores'}</span>
+                          </div>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold">
+                            {lang === 'ar' ? 'متاجر وعروض' : 'Stores & Deals'}
+                          </span>
+                        </Link>
+
+                        <div className="my-1 border-t border-border/50" />
+
                         <Link
                           href="/transactions"
                           onClick={() => setDropdownOpen(false)}
@@ -728,16 +814,19 @@ export function TopNav({
                           <span>{lang === 'ar' ? 'تحديات القراءة والماراثونات 🔥' : 'Reading Challenges & Quests'}</span>
                         </Link>
 
-                        <Link
-                          href="/stores/dashboard"
-                          onClick={() => setDropdownOpen(false)}
-                          className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-foreground/90 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 hover:text-emerald-600 transition-colors cursor-pointer group"
-                        >
-                          <div className="p-1 rounded-lg bg-emerald-500/10 text-emerald-600 group-hover:scale-110 transition-transform">
-                            <Store className="h-4 w-4" />
-                          </div>
-                          <span>{lang === 'ar' ? 'لوحة إدارة متجري والمخزون 🏬' : 'Store Manager Dashboard'}</span>
-                        </Link>
+                        {/* Store Manager Dashboard — Matched to store partner / staff roles */}
+                        {(activeUser.profile?.role === 'ADMIN' || activeUser.profile?.role === 'MODERATOR' || (activeUser.profile as any)?.role === 'STORE_OWNER') && (
+                          <Link
+                            href="/stores/dashboard"
+                            onClick={() => setDropdownOpen(false)}
+                            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-foreground/90 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 hover:text-emerald-600 transition-colors cursor-pointer group"
+                          >
+                            <div className="p-1 rounded-lg bg-emerald-500/10 text-emerald-600 group-hover:scale-110 transition-transform">
+                              <Store className="h-4 w-4" />
+                            </div>
+                            <span>{lang === 'ar' ? 'لوحة إدارة متجري والمخزون 🏬' : 'Store Manager Dashboard'}</span>
+                          </Link>
+                        )}
 
                         <Link
                           href="/download"
@@ -873,6 +962,372 @@ export function TopNav({
                 {lang === 'ar' ? item.ar : item.en}
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Mobile & Guest Explore Drawer / Sheet */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex animate-in fade-in duration-200" role="dialog" aria-modal="true">
+          {/* Backdrop overlay */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity cursor-pointer"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+
+          {/* Drawer Panel */}
+          <div
+            className={cn(
+              "relative z-10 w-full max-w-sm sm:max-w-md bg-white dark:bg-slate-900 border-border shadow-2xl flex flex-col h-full overflow-hidden animate-in duration-300",
+              isRTL ? "ms-auto border-s slide-in-from-right" : "me-auto border-e slide-in-from-left"
+            )}
+          >
+            {/* Drawer Header */}
+            <div className="p-4 border-b border-border/80 flex items-center justify-between bg-muted/30 shrink-0">
+              <div className="flex items-center gap-2">
+                <WaraqLogo size="sm" priority />
+                <span className="text-xs font-black text-foreground">
+                  {lang === 'ar' ? 'أقسام المنصة' : 'Menu & Hubs'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-1.5 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Drawer Scrollable Body */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* If NOT logged in (Guest Non-User Welcome Card) */}
+              {!activeUser ? (
+                <div className="p-4 rounded-3xl bg-gradient-to-br from-primary/15 via-emerald-500/10 to-indigo-500/15 border-2 border-primary/25 shadow-sm space-y-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-10 w-10 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-black shadow-md shadow-primary/20 text-lg">
+                      📖
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-foreground">
+                        {lang === 'ar' ? 'أهلاً بك في منصة وَرَق! 👋' : 'Welcome to WARAQ! 👋'}
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground leading-tight">
+                        {lang === 'ar' ? 'سوق القراء لتبادل، شراء واستعارة الكتب والفعاليات' : 'Book marketplace, reader clubs & live events'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <Link
+                      href="/login"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center justify-center py-2.5 px-3 rounded-xl bg-primary text-primary-foreground text-xs font-black shadow-xs hover:bg-primary/90 transition-all text-center"
+                    >
+                      {t('nav_login', lang)}
+                    </Link>
+                    <Link
+                      href="/register"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center justify-center py-2.5 px-3 rounded-xl bg-white dark:bg-slate-800 text-foreground border border-border text-xs font-black hover:bg-muted transition-all text-center"
+                    >
+                      {t('nav_register', lang)}
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/80 flex items-center justify-between">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="h-10 w-10 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center ring-2 ring-primary/30 shrink-0">
+                      {effectiveAvatar ? (
+                        <img src={effectiveAvatar} alt="Profile" className="h-full w-full object-cover" referrerPolicy="no-referrer" />
+                      ) : (
+                        <span className="text-sm font-black text-primary">{(effectiveName?.charAt(0) ?? 'U').toUpperCase()}</span>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs font-black text-foreground truncate">{effectiveName || (lang === 'ar' ? 'قارئ وَرَق' : 'WARAQ Reader')}</p>
+                      <Link href="/profile" onClick={() => setMobileMenuOpen(false)} className="text-[11px] font-bold text-primary hover:underline">
+                        {lang === 'ar' ? 'عرض الملف الشخصي ←' : 'View Profile →'}
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Main Hubs Navigation Links */}
+              <div className="space-y-1.5">
+                <div className="px-2 py-1 text-[11px] font-black uppercase text-muted-foreground tracking-wider">
+                  {lang === 'ar' ? 'الأقسام الرئيسية' : 'Main Hubs'}
+                </div>
+
+                {/* 1. Marketplace */}
+                <Link
+                  href="/explore"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-muted/30 hover:bg-primary/10 hover:border-primary/30 border border-border/60 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                      <BookOpen className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-foreground group-hover:text-primary transition-colors">
+                          {lang === 'ar' ? 'سوق ومعرض الكتب' : 'Book Marketplace'}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-primary/15 text-primary">
+                          {lang === 'ar' ? 'شراء ومبادلة' : 'Buy & Swap'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground line-clamp-1">
+                        {lang === 'ar' ? 'تصفح آلاف الكتب للبيع والاستعارة والمبادلة الفورية' : 'Browse thousands of books for buy, loan & swap'}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className={cn('h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors', isRTL && 'rotate-180')} />
+                </Link>
+
+                {/* 2. Events Hub */}
+                <Link
+                  href="/events"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-muted/30 hover:bg-purple-500/10 hover:border-purple-500/30 border border-border/60 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-purple-500/15 text-purple-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                      <Calendar className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-foreground group-hover:text-purple-600 transition-colors">
+                          {lang === 'ar' ? 'الفعاليات وورش العمل' : 'Events & Workshops'}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-purple-500/15 text-purple-600">
+                          {lang === 'ar' ? 'حفلات توقيع ⚡' : 'Book Clubs ⚡'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground line-clamp-1">
+                        {lang === 'ar' ? 'حفلات توقيع الكتّاب، ملتقيات ومناقشات القراءة' : 'Book signings, meetups & reading discussions'}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className={cn('h-4 w-4 text-muted-foreground group-hover:text-purple-600 transition-colors', isRTL && 'rotate-180')} />
+                </Link>
+
+                {/* 3. Communities & Reading Clubs */}
+                <Link
+                  href="/communities"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-muted/30 hover:bg-emerald-500/10 hover:border-emerald-500/30 border border-border/60 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                      <Users className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-foreground group-hover:text-emerald-600 transition-colors">
+                          {lang === 'ar' ? 'نوادي القراءة والمجتمعات' : 'Communities & Clubs'}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/15 text-emerald-600">
+                          {lang === 'ar' ? 'نقاط آمنة 🌳' : 'Safe Hubs 🌳'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground line-clamp-1">
+                        {lang === 'ar' ? 'انضم لمجتمعات القراء ونقاط التبادل الآمنة' : 'Join reader clubs & verified meetup safe hubs'}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className={cn('h-4 w-4 text-muted-foreground group-hover:text-emerald-600 transition-colors', isRTL && 'rotate-180')} />
+                </Link>
+
+                {/* 4. Reading Challenges */}
+                <Link
+                  href="/challenges"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-muted/30 hover:bg-orange-500/10 hover:border-orange-500/30 border border-border/60 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-orange-500/15 text-orange-500 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                      <Flame className="h-5 w-5 fill-orange-500" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-foreground group-hover:text-orange-500 transition-colors">
+                          {lang === 'ar' ? 'تحديات القراءة والماراثونات' : 'Reading Challenges'}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-orange-500/15 text-orange-600">
+                          🔥 2026
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground line-clamp-1">
+                        {lang === 'ar' ? 'تحدي 50 كتاب ومسابقات القراءة وجوائزها' : '50 Books Quest & reader leaderboards'}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className={cn('h-4 w-4 text-muted-foreground group-hover:text-orange-500 transition-colors', isRTL && 'rotate-180')} />
+                </Link>
+
+                {/* 5. Bookstores & Partners */}
+                <Link
+                  href="/stores"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-muted/30 hover:bg-blue-500/10 hover:border-blue-500/30 border border-border/60 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-blue-500/15 text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                      <Store className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-foreground group-hover:text-blue-600 transition-colors">
+                          {lang === 'ar' ? 'دليل المكتبات والشركاء' : 'Bookstores Catalog'}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-blue-500/15 text-blue-600">
+                          {lang === 'ar' ? 'مكتبات معتمدة' : 'Verified'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground line-clamp-1">
+                        {lang === 'ar' ? 'مكتبات معتمدة، عروض الشحن وباكدجات حصرية' : 'Official bookshops, exclusive bundles & fast shipping'}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className={cn('h-4 w-4 text-muted-foreground group-hover:text-blue-600 transition-colors', isRTL && 'rotate-180')} />
+                </Link>
+
+                {/* 6. Special Offers & Deals */}
+                <Link
+                  href="/offers"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between p-3 rounded-2xl bg-muted/30 hover:bg-amber-500/10 hover:border-amber-500/30 border border-border/60 transition-all group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-xl bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                      <Tag className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-black text-foreground group-hover:text-amber-600 transition-colors">
+                          {lang === 'ar' ? 'العروض وتخفيضات الكتب' : 'Special Offers & Bundles'}
+                        </span>
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/15 text-amber-600">
+                          {lang === 'ar' ? 'توفير 🎁' : 'Deals 🎁'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground line-clamp-1">
+                        {lang === 'ar' ? 'خصومات باكدجات التوفير وسلاسل الروايات' : 'Bundle discounts, free gifts & series packs'}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className={cn('h-4 w-4 text-muted-foreground group-hover:text-amber-600 transition-colors', isRTL && 'rotate-180')} />
+                </Link>
+              </div>
+
+              {/* Extra Services & Platform Links */}
+              <div className="space-y-1 pt-2 border-t border-border/60">
+                <div className="px-2 py-1 text-[11px] font-black uppercase text-muted-foreground tracking-wider">
+                  {lang === 'ar' ? 'خدمات إضافية' : 'Services'}
+                </div>
+
+                <Link
+                  href="/books/add"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-foreground hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer"
+                >
+                  <PlusCircle className="h-4 w-4 text-primary" />
+                  <span>{lang === 'ar' ? 'أضف كتاباً للبيع أو المبادلة' : 'Add Book Listing'}</span>
+                </Link>
+
+                <Link
+                  href="/partner-form"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-foreground hover:bg-amber-500/10 hover:text-amber-600 transition-colors cursor-pointer"
+                >
+                  <Sparkles className="h-4 w-4 text-amber-500" />
+                  <span>{lang === 'ar' ? 'انضم كشريك (مكتبة أو منظم فعاليات)' : 'Partner With Us'}</span>
+                </Link>
+
+                {/* Role Matched Store/Admin Management in Mobile Drawer */}
+                {activeUser && (activeUser.profile?.role === 'ADMIN' || activeUser.profile?.role === 'MODERATOR' || (activeUser.profile as any)?.role === 'STORE_OWNER') && (
+                  <div className="pt-2 border-t border-border/60 space-y-1">
+                    <div className="px-2 py-1 text-[11px] font-black uppercase text-emerald-600 tracking-wider">
+                      {lang === 'ar' ? 'أدوات الإدارة والشركاء' : 'Partner & Admin Tools'}
+                    </div>
+                    <Link
+                      href="/stores/dashboard"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-black text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors cursor-pointer"
+                    >
+                      <Store className="h-4 w-4 text-emerald-600" />
+                      <span>{lang === 'ar' ? 'لوحة إدارة متجري والمخزون 🏬' : 'Store Manager Dashboard'}</span>
+                    </Link>
+                    {activeUser.profile?.role === 'ADMIN' && (
+                      <Link
+                        href="/admin"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-black text-red-600 bg-red-500/10 hover:bg-red-500/20 transition-colors cursor-pointer"
+                      >
+                        <Shield className="h-4 w-4 text-red-600" />
+                        <span>{lang === 'ar' ? 'لوحة تحكم الإدارة 🛡️' : 'Admin Dashboard'}</span>
+                      </Link>
+                    )}
+                  </div>
+                )}
+
+                <Link
+                  href="/download"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
+                >
+                  <Smartphone className="h-4 w-4 text-muted-foreground" />
+                  <span>{lang === 'ar' ? 'تحميل تطبيق الموبايل (PWA)' : 'Download Mobile App'}</span>
+                </Link>
+
+                <Link
+                  href="/about"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-foreground hover:bg-muted transition-colors cursor-pointer"
+                >
+                  <BookOpen className="h-4 w-4 text-muted-foreground" />
+                  <span>{lang === 'ar' ? 'عن منصة وَرَق' : 'About WARAQ'}</span>
+                </Link>
+              </div>
+            </div>
+
+            {/* Drawer Footer Actions */}
+            <div className="p-4 border-t border-border/80 bg-muted/20 flex items-center justify-between gap-2 shrink-0">
+              <div className="flex items-center gap-2">
+                <ThemeToggle className="h-9 w-9" />
+                <button
+                  type="button"
+                  onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
+                  className="flex items-center justify-center h-9 px-3 rounded-xl text-xs font-black bg-muted hover:bg-accent text-foreground transition-colors border border-border cursor-pointer"
+                >
+                  {lang === 'ar' ? 'English' : 'عربي'}
+                </button>
+              </div>
+
+              {activeUser ? (
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  disabled={signingOut}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>{signingOut ? (lang === 'ar' ? 'جاري الخروج...' : 'Signing out...') : (lang === 'ar' ? 'خروج' : 'Logout')}</span>
+                </button>
+              ) : (
+                <Link
+                  href="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-black shadow-xs hover:bg-primary/90 transition-colors"
+                >
+                  <span>{t('nav_login', lang)}</span>
+                </Link>
+              )}
+            </div>
           </div>
         </div>
       )}

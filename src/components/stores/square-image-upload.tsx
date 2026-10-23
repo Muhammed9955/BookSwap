@@ -223,7 +223,7 @@ export function SquareImageUpload({
               ) : value ? (
                 <>
                   <img
-                    src={hasImgError ? IMG_NOT_FOUND_PLACEHOLDER : value}
+                    src={hasImgError ? (folder === 'logos' ? '/images/avatar-placeholder.svg' : COVER_PLACEHOLDER) : (value || (folder === 'logos' ? '/images/avatar-placeholder.svg' : COVER_PLACEHOLDER))}
                     alt={label}
                     onError={() => setHasImgError(true)}
                     className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-110"
@@ -369,7 +369,14 @@ export function SquareImageUpload({
                     value === url ? "border-primary ring-2 ring-primary/40 scale-105" : "border-border/80"
                   )}
                 >
-                  <img src={url} alt="" className="h-full w-full object-cover" />
+                  <img
+                    src={url}
+                    alt=""
+                    onError={(e) => {
+                      e.currentTarget.src = folder === 'logos' ? '/images/avatar-placeholder.svg' : '/images/cover-placeholder.svg'
+                    }}
+                    className="h-full w-full object-cover"
+                  />
                 </button>
               ))}
             </div>
@@ -443,7 +450,7 @@ export function SquareImageUpload({
           <>
             {/* Background Full Square Image with Placeholder & Error Fallback */}
             <img
-              src={hasImgError ? IMG_NOT_FOUND_PLACEHOLDER : (value || (folder === 'covers' ? COVER_PLACEHOLDER : IMG_NOT_FOUND_PLACEHOLDER))}
+              src={hasImgError ? (folder === 'logos' ? '/images/avatar-placeholder.svg' : COVER_PLACEHOLDER) : (value || (folder === 'covers' ? COVER_PLACEHOLDER : '/images/avatar-placeholder.svg'))}
               alt={label}
               onError={() => setHasImgError(true)}
               className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -651,7 +658,14 @@ export function SquareImageUpload({
                 )}
                 title={lang === 'ar' ? `نموذج ${i + 1}` : `Preset ${i + 1}`}
               >
-                <img src={url} alt="" className="h-full w-full object-cover" />
+                <img
+                  src={url}
+                  alt=""
+                  onError={(e) => {
+                    e.currentTarget.src = folder === 'logos' ? '/images/avatar-placeholder.svg' : '/images/cover-placeholder.svg'
+                  }}
+                  className="h-full w-full object-cover"
+                />
                 {value === url && (
                   <div className="absolute inset-0 bg-primary/40 flex items-center justify-center text-white">
                     <Check className="h-3.5 w-3.5" />

@@ -51,6 +51,8 @@ import {
   List,
   Star,
   Info,
+  RectangleVertical,
+  Columns2,
 } from 'lucide-react'
 import { MainLayout } from '@/components/layout/main-layout'
 import { Button } from '@/components/ui/button'
@@ -209,8 +211,26 @@ export function CommunityDetailClient({
   const [newPostContent, setNewPostContent] = useState('')
   const [bookFilter, setBookFilter] = useState<'ALL' | 'SWAP' | 'BORROW' | 'SELL'>('ALL')
   const [bookshelfView, setBookshelfView] = useState<'grid' | 'list'>('grid')
+  const [mobileCols, setMobileCols] = useState<'1' | '2'>('2')
   const [bookshelfSearch, setBookshelfSearch] = useState('')
   const [isPosting, setIsPosting] = useState(false)
+
+  // Sync mobile columns preference from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('waraq_mobile_books_layout')
+      if (saved === '1' || saved === '2') {
+        setMobileCols(saved)
+      }
+    } catch {}
+  }, [])
+
+  const handleMobileColsChange = (cols: '1' | '2') => {
+    setMobileCols(cols)
+    try {
+      localStorage.setItem('waraq_mobile_books_layout', cols)
+    } catch {}
+  }
 
   // Real Shelf Books and Admin Pending Books State
   const [shelfBooks, setShelfBooks] = useState<any[]>(
@@ -1440,36 +1460,74 @@ export function CommunityDetailClient({
 
                 {/* Right controls: View Switcher, Admin Quick Scan & Add Book Button */}
                 <div className="flex items-center gap-2 w-full md:w-auto">
-                  {/* View Switcher */}
-                  <div className="flex items-center p-1 rounded-2xl bg-muted/50 border border-border/60 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setBookshelfView('grid')}
-                      className={cn(
-                        'flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer',
-                        bookshelfView === 'grid'
-                          ? 'bg-card text-foreground shadow-xs'
-                          : 'text-muted-foreground hover:text-foreground'
-                      )}
-                      title={lang === 'ar' ? 'معرض' : 'Grid'}
-                    >
-                      <LayoutGrid className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">{lang === 'ar' ? 'معرض' : 'Grid'}</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBookshelfView('list')}
-                      className={cn(
-                        'flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer',
-                        bookshelfView === 'list'
-                          ? 'bg-card text-foreground shadow-xs'
-                          : 'text-muted-foreground hover:text-foreground'
-                      )}
-                      title={lang === 'ar' ? 'قائمة' : 'List'}
-                    >
-                      <List className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">{lang === 'ar' ? 'قائمة' : 'List'}</span>
-                    </button>
+                  {/* View Switcher & Mobile Column Switcher */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center p-1 rounded-2xl bg-muted/50 border border-border/60">
+                      <button
+                        type="button"
+                        onClick={() => setBookshelfView('grid')}
+                        className={cn(
+                          'flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer',
+                          bookshelfView === 'grid'
+                            ? 'bg-card text-foreground shadow-xs'
+                            : 'text-muted-foreground hover:text-foreground'
+                        )}
+                        title={lang === 'ar' ? 'معرض' : 'Grid'}
+                      >
+                        <LayoutGrid className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">{lang === 'ar' ? 'معرض' : 'Grid'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBookshelfView('list')}
+                        className={cn(
+                          'flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer',
+                          bookshelfView === 'list'
+                            ? 'bg-card text-foreground shadow-xs'
+                            : 'text-muted-foreground hover:text-foreground'
+                        )}
+                        title={lang === 'ar' ? 'قائمة' : 'List'}
+                      >
+                        <List className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">{lang === 'ar' ? 'قائمة' : 'List'}</span>
+                      </button>
+                    </div>
+
+                    {/* Mobile Column Layout Switcher (1 col vs 2 cols) - Only active in grid mode */}
+                    {bookshelfView === 'grid' && (
+                      <div className="flex sm:hidden items-center p-1 rounded-2xl border border-border/60 bg-muted/50 text-xs font-bold">
+                        <button
+                          type="button"
+                          onClick={() => handleMobileColsChange('1')}
+                          className={cn(
+                            'px-2 py-1 rounded-xl transition-all flex items-center gap-1 cursor-pointer',
+                            mobileCols === '1'
+                              ? 'bg-primary text-primary-foreground font-black shadow-xs'
+                              : 'text-muted-foreground hover:text-foreground'
+                          )}
+                          title={lang === 'ar' ? 'عرض عمود واحد' : '1 Column Layout'}
+                          aria-label="1 Column Mobile Layout"
+                        >
+                          <RectangleVertical className="h-3.5 w-3.5" />
+                          <span>1</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMobileColsChange('2')}
+                          className={cn(
+                            'px-2 py-1 rounded-xl transition-all flex items-center gap-1 cursor-pointer',
+                            mobileCols === '2'
+                              ? 'bg-primary text-primary-foreground font-black shadow-xs'
+                              : 'text-muted-foreground hover:text-foreground'
+                          )}
+                          title={lang === 'ar' ? 'عرض عمودين' : '2 Columns Layout'}
+                          aria-label="2 Columns Mobile Layout"
+                        >
+                          <Columns2 className="h-3.5 w-3.5" />
+                          <span>2</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Admin Quick Scan Button */}
@@ -1687,7 +1745,10 @@ export function CommunityDetailClient({
               </div>
             ) : bookshelfView === 'grid' ? (
               /* =================== SHOWCASE GRID VIEW (BIG BOOKS) =================== */
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-7">
+              <div className={cn(
+                "grid gap-3.5 sm:gap-7 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4",
+                mobileCols === '1' ? 'grid-cols-1' : 'grid-cols-2'
+              )}>
                 {filteredBooks.map(book => {
                   const bookType = book.listing_type || book.type
                   const isMyBook = currentUserId && (book.owner_id === currentUserId || book.added_by === currentUserId)
@@ -1695,7 +1756,7 @@ export function CommunityDetailClient({
                   return (
                     <div
                       key={book.id}
-                      className="group relative flex flex-col justify-between rounded-3xl border border-border/70 bg-gradient-to-b from-card via-card to-muted/20 p-4 sm:p-5 shadow-sm hover:shadow-2xl hover:border-primary/50 transition-all duration-300 hover:-translate-y-2 overflow-hidden"
+                      className="group relative flex flex-col justify-between rounded-3xl border border-border/70 bg-gradient-to-b from-card via-card to-muted/20 p-3 sm:p-5 shadow-sm hover:shadow-2xl hover:border-primary/50 transition-all duration-300 hover:-translate-y-2 overflow-hidden"
                     >
                       {/* Ambient hover glow */}
                       <div className="pointer-events-none absolute inset-0 rounded-3xl bg-gradient-to-br from-primary/10 via-transparent to-indigo-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
