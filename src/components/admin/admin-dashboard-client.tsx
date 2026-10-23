@@ -22,7 +22,7 @@ import { cn, formatRelativeTime } from '@/lib/utils'
 import { updateCommunityDetails, deleteCommunity } from '@/lib/communities/community-service'
 import {
   getStoreApplications, approveStoreApplication, rejectStoreApplication, getBookstores,
-  toggleStoreActive, toggleStoreVerified, deleteBookstore
+  toggleStoreActive, toggleStoreVerified, deleteBookstore, updateBookstore
 } from '@/lib/stores/store-service'
 import { WaraqLogo } from '@/components/ui/waraq-logo'
 
@@ -277,6 +277,100 @@ export function AdminDashboardClient({
       setTimeout(() => setApprovalFeedback(null), 5000)
     }
     setStoreActionLoading(null)
+  }
+
+  // Edit Bookstore Modal State
+  const [editingStore, setEditingStore] = useState<Bookstore | null>(null)
+  const [editStoreForm, setEditStoreForm] = useState<{
+    name: string
+    name_ar: string
+    store_type: StoreType
+    address: string
+    slogan: string
+    description_ar: string
+    whatsapp: string
+    facebook: string
+    instagram: string
+    website_url: string
+    is_active: boolean
+    is_verified: boolean
+  }>({
+    name: '',
+    name_ar: '',
+    store_type: 'ONLINE',
+    address: '',
+    slogan: '',
+    description_ar: '',
+    whatsapp: '',
+    facebook: '',
+    instagram: '',
+    website_url: '',
+    is_active: true,
+    is_verified: false,
+  })
+  const [isSavingStore, setIsSavingStore] = useState(false)
+
+  const handleOpenEditStore = (store: Bookstore) => {
+    setEditingStore(store)
+    setEditStoreForm({
+      name: store.name || '',
+      name_ar: store.name_ar || store.name || '',
+      store_type: store.store_type || 'ONLINE',
+      address: store.address || '',
+      slogan: store.slogan || '',
+      description_ar: store.description_ar || store.description || '',
+      whatsapp: store.social_links?.whatsapp || '',
+      facebook: store.social_links?.facebook || '',
+      instagram: store.social_links?.instagram || '',
+      website_url: store.website_url || '',
+      is_active: store.is_active !== false,
+      is_verified: Boolean(store.is_verified),
+    })
+  }
+
+  const handleSaveStoreEdit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingStore) return
+    setIsSavingStore(true)
+    try {
+      const updates: Partial<Bookstore> = {
+        name: editStoreForm.name.trim(),
+        name_ar: editStoreForm.name_ar.trim() || editStoreForm.name.trim(),
+        store_type: editStoreForm.store_type,
+        address: editStoreForm.address.trim(),
+        slogan: editStoreForm.slogan.trim(),
+        description: editStoreForm.description_ar.trim(),
+        description_ar: editStoreForm.description_ar.trim(),
+        website_url: editStoreForm.website_url.trim() || undefined,
+        social_links: {
+          whatsapp: editStoreForm.whatsapp.trim() || undefined,
+          facebook: editStoreForm.facebook.trim() || undefined,
+          instagram: editStoreForm.instagram.trim() || undefined,
+        },
+        is_active: editStoreForm.is_active,
+        is_verified: editStoreForm.is_verified,
+      }
+      const res = await updateBookstore(editingStore.id, updates)
+      if (res && res.id) {
+        setActiveStores(prev =>
+          prev.map(s => (s.id === editingStore.id ? { ...s, ...updates } : s))
+        )
+        if (inspectingStore?.id === editingStore.id) {
+          setInspectingStore(prev => prev ? { ...prev, ...updates } : null)
+        }
+        setApprovalFeedback(
+          lang === 'ar'
+            ? `✅ تم حفظ وتحديث بيانات متجر "${updates.name_ar || updates.name}" بنجاح`
+            : `✅ Store "${updates.name}" updated successfully`
+        )
+        setTimeout(() => setApprovalFeedback(null), 4000)
+        setEditingStore(null)
+      } else {
+        alert(lang === 'ar' ? 'فشل حفظ التعديلات' : 'Failed to save store changes')
+      }
+    } finally {
+      setIsSavingStore(false)
+    }
   }
 
   const handleRejectStore = async (appId: string) => {
@@ -1782,6 +1876,18 @@ export function AdminDashboardClient({
                                     >
                                       <Eye className="h-3.5 w-3.5 text-primary" />
                                       <span>{lang === 'ar' ? 'التفاصيل' : 'Details'}</span>
+                                    </Button>
+
+                                    {/* Edit Store */}
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleOpenEditStore(store)}
+                                      className="h-7 text-xs font-bold rounded-lg gap-1 cursor-pointer px-2 text-blue-600 border-blue-500/30 hover:bg-blue-500/10"
+                                      title={lang === 'ar' ? 'تعديل بيانات المتجر' : 'Edit store details'}
+                                    >
+                                      <Edit3 className="h-3.5 w-3.5" />
+                                      <span>{lang === 'ar' ? 'تعديل' : 'Edit'}</span>
                                     </Button>
 
                                     {/* Hide / Unhide Store */}
@@ -3584,6 +3690,21 @@ export function AdminDashboardClient({
             {/* Actions & Admin Controls (Hide / Unhide / Delete / Open) */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-border">
               <div className="flex flex-wrap items-center gap-2">
+                {/* Edit Store Details */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const s = inspectingStore
+                    setInspectingStore(null)
+                    handleOpenEditStore(s)
+                  }}
+                  className="text-xs font-bold gap-1.5 cursor-pointer text-blue-600 border-blue-500/30 hover:bg-blue-500/10"
+                >
+                  <Edit3 className="h-3.5 w-3.5" />
+                  <span>{lang === 'ar' ? 'تعديل بيانات المتجر' : 'Edit Store'}</span>
+                </Button>
+
                 {/* Hide / Unhide Store */}
                 <Button
                   size="sm"
@@ -3645,6 +3766,202 @@ export function AdminDashboardClient({
                 </Button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Bookstore Modal */}
+      {editingStore && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
+          <div className="w-full max-w-xl rounded-3xl bg-card border-2 border-border p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="font-black text-foreground text-sm flex items-center gap-2">
+                <Edit3 className="h-4 w-4 text-primary" />
+                <span>{lang === 'ar' ? `تعديل بيانات: ${editingStore.name_ar || editingStore.name}` : `Edit Store: ${editingStore.name}`}</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingStore(null)}
+                className="p-1 rounded-full text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveStoreEdit} className="space-y-4 text-xs">
+              {/* Names */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-foreground">
+                    {lang === 'ar' ? 'اسم المتجر (بالعربية) *' : 'Store Name (Arabic) *'}
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editStoreForm.name_ar}
+                    onChange={e => setEditStoreForm(prev => ({ ...prev, name_ar: e.target.value }))}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 font-bold text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-foreground">
+                    {lang === 'ar' ? 'الاسم بالإنجليزية' : 'Store Name (English)'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editStoreForm.name}
+                    onChange={e => setEditStoreForm(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 font-bold text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Format & Slogan */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-foreground">
+                    {lang === 'ar' ? 'طبيعة التواجد *' : 'Store Format *'}
+                  </label>
+                  <select
+                    value={editStoreForm.store_type}
+                    onChange={e => setEditStoreForm(prev => ({ ...prev, store_type: e.target.value as StoreType }))}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 font-bold text-foreground focus:outline-none focus:border-primary cursor-pointer"
+                  >
+                    <option value="ONLINE">{lang === 'ar' ? 'متجر إلكتروني أونلاين فقط' : 'Online Only'}</option>
+                    <option value="OFFLINE">{lang === 'ar' ? 'مقر وفرع فعلي' : 'Physical Store'}</option>
+                    <option value="BOTH">{lang === 'ar' ? 'مقر فعلي + بيع وشحن أونلاين' : 'Hybrid'}</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-foreground">
+                    {lang === 'ar' ? 'شعار المتجر (Slogan)' : 'Slogan / Tagline'}
+                  </label>
+                  <input
+                    type="text"
+                    value={editStoreForm.slogan}
+                    onChange={e => setEditStoreForm(prev => ({ ...prev, slogan: e.target.value }))}
+                    placeholder="وجهتك الأولى للروايات والكتب النادرة"
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Address */}
+              <div className="space-y-1">
+                <label className="font-bold text-foreground">
+                  {lang === 'ar' ? 'العنوان / نطاق التغطية' : 'Address / Coverage'}
+                </label>
+                <input
+                  type="text"
+                  value={editStoreForm.address}
+                  onChange={e => setEditStoreForm(prev => ({ ...prev, address: e.target.value }))}
+                  placeholder={editStoreForm.store_type === 'ONLINE' ? 'شحن لجميع المحافظات' : 'شارع 9، المعادي، القاهرة'}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              {/* Contacts: WhatsApp & Socials */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-foreground">WhatsApp</label>
+                  <input
+                    type="text"
+                    value={editStoreForm.whatsapp}
+                    onChange={e => setEditStoreForm(prev => ({ ...prev, whatsapp: e.target.value }))}
+                    placeholder="010..."
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 font-mono text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-foreground">Facebook</label>
+                  <input
+                    type="text"
+                    value={editStoreForm.facebook}
+                    onChange={e => setEditStoreForm(prev => ({ ...prev, facebook: e.target.value }))}
+                    placeholder="fb.com/..."
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-foreground">Instagram</label>
+                  <input
+                    type="text"
+                    value={editStoreForm.instagram}
+                    onChange={e => setEditStoreForm(prev => ({ ...prev, instagram: e.target.value }))}
+                    placeholder="@..."
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1">
+                <label className="font-bold text-foreground">
+                  {lang === 'ar' ? 'نبذة ووصف المتجر' : 'Store Bio / Description'}
+                </label>
+                <textarea
+                  rows={3}
+                  value={editStoreForm.description_ar}
+                  onChange={e => setEditStoreForm(prev => ({ ...prev, description_ar: e.target.value }))}
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:border-primary resize-none"
+                />
+              </div>
+
+              {/* Status Toggles: Active & Verified */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 rounded-2xl bg-muted/40 border border-border">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={editStoreForm.is_active}
+                    onChange={e => setEditStoreForm(prev => ({ ...prev, is_active: e.target.checked }))}
+                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary accent-primary"
+                  />
+                  <div>
+                    <span className="font-bold text-foreground block">
+                      {lang === 'ar' ? 'المتجر نشط ومعروض للجمهور' : 'Store Active & Public'}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground block">
+                      {lang === 'ar' ? 'إلغاء التحديد يخفي المتجر من الدليل العام والبحث' : 'Unchecking hides store from directory'}
+                    </span>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={editStoreForm.is_verified}
+                    onChange={e => setEditStoreForm(prev => ({ ...prev, is_verified: e.target.checked }))}
+                    className="h-4 w-4 rounded border-border text-emerald-600 focus:ring-emerald-500 accent-emerald-600"
+                  />
+                  <div>
+                    <span className="font-bold text-foreground block">
+                      {lang === 'ar' ? 'شارة التوثيق الرسمي 🟢' : 'Verified Badge 🟢'}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground block">
+                      {lang === 'ar' ? 'تظهر شارة التوثيق الأخضر للمتجر' : 'Grants official green checkmark'}
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-border">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setEditingStore(null)}
+                  className="rounded-xl font-bold cursor-pointer"
+                >
+                  {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSavingStore}
+                  className="rounded-xl font-bold bg-primary text-primary-foreground cursor-pointer"
+                >
+                  {isSavingStore ? (lang === 'ar' ? 'جاري الحفظ...' : 'Saving...') : (lang === 'ar' ? 'حفظ التعديلات' : 'Save Changes')}
+                </Button>
+              </div>
+            </form>
           </div>
         </div>
       )}

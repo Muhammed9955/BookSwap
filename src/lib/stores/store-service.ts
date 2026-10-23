@@ -437,6 +437,7 @@ export async function deleteBookstore(storeId: string): Promise<{ success: boole
   }
 }
 
+
 export const STORE_SLUG_ALIASES: Record<string, string> = {
   'diwan-zamalek': 'diwan-bookstore',
   'diwan': 'diwan-bookstore',
@@ -1350,9 +1351,27 @@ export async function updateBookstore(
 
   // Persist directly to Supabase DB bookstores table
   try {
-    await saveStoreToDatabase(updatedStore, updatedStore.owner_id)
+    const supabase = createClient()
+    const { error: sbError } = await supabase
+      .from('bookstores')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', storeId)
+
+    if (sbError && typeof window !== 'undefined') {
+      await fetch('/api/stores', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeId, ...updates }),
+      })
+    }
   } catch (err) {
-    console.warn('updateBookstore saveStoreToDatabase error:', err)
+    console.warn('updateBookstore Supabase update error:', err)
+    try {
+      await saveStoreToDatabase(updatedStore, updatedStore.owner_id)
+    } catch {}
   }
 
   if (typeof window !== 'undefined') {

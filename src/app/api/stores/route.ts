@@ -201,7 +201,22 @@ export async function PATCH(req: NextRequest) {
     const isAdmin = profile?.role === 'ADMIN' || profile?.role === 'MODERATOR'
 
     const body = await req.json()
-    const { storeId, is_active, is_verified } = body
+    const {
+      storeId,
+      is_active,
+      is_verified,
+      name,
+      name_ar,
+      store_type,
+      address,
+      description,
+      description_ar,
+      social_links,
+      website_url,
+      slogan,
+      logo_url,
+      cover_url,
+    } = body
 
     if (!storeId) {
       return NextResponse.json({ success: false, error: 'Store ID is required' }, { status: 400 })
@@ -230,6 +245,18 @@ export async function PATCH(req: NextRequest) {
       updatePayload.is_verified = is_verified
       updatePayload.verified_at = is_verified ? new Date().toISOString() : null
     }
+
+    if (name) updatePayload.name = name.trim()
+    if (name_ar) updatePayload.name_ar = name_ar.trim()
+    if (store_type) updatePayload.store_type = store_type
+    if (typeof address === 'string') updatePayload.address = address.trim()
+    if (typeof description === 'string') updatePayload.description = description.trim()
+    if (typeof description_ar === 'string') updatePayload.description_ar = description_ar.trim()
+    if (typeof slogan === 'string') updatePayload.slogan = slogan.trim()
+    if (typeof website_url === 'string') updatePayload.website_url = website_url.trim() || null
+    if (typeof logo_url === 'string') updatePayload.logo_url = logo_url.trim()
+    if (typeof cover_url === 'string') updatePayload.cover_url = cover_url.trim()
+    if (social_links && typeof social_links === 'object') updatePayload.social_links = social_links
 
     const { data: updated, error } = await supabase
       .from('bookstores')
