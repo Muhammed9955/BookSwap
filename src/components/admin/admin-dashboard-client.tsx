@@ -95,6 +95,7 @@ export function AdminDashboardClient({
   const [inspectingStore, setInspectingStore] = useState<Bookstore | null>(null)
 
   useEffect(() => {
+    // 1. Initial Load of applications and bookstores
     getStoreApplications().then(apps => {
       setStoreApps(apps)
       setAppsLoading(false)
@@ -103,9 +104,71 @@ export function AdminDashboardClient({
       setActiveStores(stores)
       setStoresLoading(false)
     })
-  }, [])
+
+    // 2. Realtime Subscription on partner_requests (Store join applications)
+    const requestsChannel = supabase
+      .channel('realtime-partner-requests-admin')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'partner_requests',
+        },
+        async (payload) => {
+          // Instantly refresh requests list in realtime
+          const updatedApps = await getStoreApplications()
+          setStoreApps(updatedApps)
+
+          if (payload.eventType === 'INSERT') {
+            const newRecord = payload.new as any
+            const storeTitle = newRecord?.business_name || newRecord?.name || 'متجر جديد'
+            setApprovalFeedback(
+              lang === 'ar'
+                ? `⚡ طلب انضمام جديد وصل في الوقت الفعلي: "${storeTitle}"`
+                : `⚡ Realtime update: New partner application received: "${storeTitle}"`
+            )
+            setTimeout(() => setApprovalFeedback(null), 6000)
+          }
+        }
+      )
+      .subscribe()
+
+    // 3. Realtime Subscription on bookstores (Active verified stores)
+    const storesChannel = supabase
+      .channel('realtime-bookstores-admin')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookstores',
+        },
+        async () => {
+          const freshStores = await getBookstores()
+          setActiveStores(freshStores)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(requestsChannel)
+      supabase.removeChannel(storesChannel)
+    }
+  }, [lang, supabase])
 
   const handleApproveStore = async (appId: string) => {
+    const targetApp = storeApps.find(a => a.id === appId)
+    const storeDisplayName = targetApp?.store_name_ar || targetApp?.store_name || targetApp?.business_name || 'المتجر'
+
+    // Confirmation dialog before approving & dispatching
+    const confirmed = window.confirm(
+      lang === 'ar'
+        ? `هل أنت متأكد من اعتماد وتوثيق متجر "${storeDisplayName}"؟\n\nعند التأكيد سيتم:\n1. اعتماد وتفعيل صفحة المتجر ومنحه شارة التوثيق 🟢\n2. ترقية حساب المستخدم لصلاحية تاجر (PARTNER) لتمكينه من لوحة التحكم\n3. إرسال إشعار فوري بحسابه يوجهه مباشرة لإضافة الكتب\n4. إرسال بريد إلكتروني ترحيبي يحتوي على رابط لوحة التحكم وإرشادات باقات التوفير`
+        : `Are you sure you want to approve & verify "${storeDisplayName}"?\n\nThis will:\n1. Verify and activate the store\n2. Elevate user account role to PARTNER for instant dashboard access\n3. Send an in-app notification directing to /stores/dashboard\n4. Send an official approval email with next steps & bundle package guidelines`
+    )
+    if (!confirmed) return
+
     setApprovingId(appId)
     const result = await approveStoreApplication(appId)
     if (result.success) {
@@ -120,27 +183,10 @@ export function AdminDashboardClient({
         setActiveStores(prev => [result.store!, ...prev.filter(s => s.id !== result.store!.id)])
       }
 
-      // Send approval notification email with direct dashboard link via Resend API
-      const targetApp = storeApps.find(a => a.id === appId)
-      if (targetApp && targetApp.email && result.store) {
-        try {
-          fetch('/api/stores/notify-approved', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              to: targetApp.email,
-              ownerName: targetApp.owner_name || targetApp.applicant_name,
-              storeName: result.store.name_ar || result.store.name,
-              storeSlug: result.store.slug,
-            }),
-          }).catch(console.warn)
-        } catch {}
-      }
-
       setApprovalFeedback(
         lang === 'ar'
-          ? `🎉 تم اعتماد وتوثيق ${result.store?.name_ar || result.store?.name} بنجاح! تم إنشاء صفحة المتجر وتفعيل شارة التوثيق وإرسال رابط لوحة التحكم.`
-          : `🎉 ${result.store?.name} has been approved & verified! Storefront created and dashboard link sent.`
+          ? `🎉 تم اعتماد وتوثيق ${result.store?.name_ar || result.store?.name} بنجاح! تم إنشاء صفحة المتجر، ترقية صلاحيات المالك، وإرسال رابط لوحة التحكم عبر الإيميل والإشعار الداخلي.`
+          : `🎉 ${result.store?.name} has been approved & verified! Storefront created, permissions upgraded, and activation email/notification sent.`
       )
       if (inspectingApp?.id === appId) {
         setInspectingApp(null)
@@ -1117,7 +1163,13 @@ export function AdminDashboardClient({
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+                    <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                      {/* Realtime Live Pulse Badge */}
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>{lang === 'ar' ? 'بث مباشر للطلبات (Realtime)' : 'Live Realtime'}</span>
+                      </div>
+
                       {[
                         { id: 'ALL', labelAr: 'الكل', labelEn: 'All', count: storeApps.length },
                         { id: 'PENDING', labelAr: 'قيد الانتظار', labelEn: 'Pending', count: pendingStoresCount },
@@ -1213,6 +1265,12 @@ export function AdminDashboardClient({
                                         <p className="text-[11px] text-muted-foreground truncate max-w-[200px]">
                                           {app.owner_name || app.applicant_name} • <span dir="ltr" className="font-mono text-[10px]">{app.phone}</span>
                                         </p>
+                                        {app.email && (
+                                          <p className="text-[10px] text-primary truncate max-w-[200px] flex items-center gap-1 mt-0.5 font-mono" dir="ltr">
+                                            <Mail className="h-2.5 w-2.5 shrink-0" />
+                                            <span>{app.email}</span>
+                                          </p>
+                                        )}
                                         <p className="text-[10px] text-muted-foreground/75 mt-0.5">
                                           {formatRelativeTime(app.created_at, lang)}
                                         </p>
@@ -1348,7 +1406,7 @@ export function AdminDashboardClient({
                                           {app.phone && (
                                             <a
                                               href={`https://wa.me/${app.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                                                `🎉 مرحباً بك يا ${app.owner_name || app.applicant_name}! تم توثيق واعتماد متجرك (${app.store_name_ar || app.business_name}) بنجاح على منصة WaraqConnect.\n\n📚 يمكنك الآن الدخول للوحة التحكم لإضافة كتبك وباقات عروض التوفير:\n${typeof window !== 'undefined' ? window.location.origin : ''}/store-dashboard`
+                                                `🎉 مرحباً بك يا ${app.owner_name || app.applicant_name}! تم توثيق واعتماد متجرك (${app.store_name_ar || app.business_name}) بنجاح على منصة WaraqConnect.\n\n📚 يمكنك الآن الدخول للوحة التحكم لإضافة كتبك وباقات عروض التوفير:\n${typeof window !== 'undefined' ? window.location.origin : ''}/stores/dashboard`
                                               )}`}
                                               target="_blank"
                                               rel="noreferrer"
@@ -1363,7 +1421,7 @@ export function AdminDashboardClient({
                                               href={`mailto:${app.email}?subject=${encodeURIComponent(
                                                 `🎉 تم اعتماد وتفعيل متجركم (${app.store_name_ar || app.business_name}) على منصة WaraqConnect`
                                               )}&body=${encodeURIComponent(
-                                                `مرحباً ${app.owner_name || app.applicant_name}،\n\nيسعدنا إعلامك بأنه تم اعتماد وتوثيق متجركم رسمياً كشريك في منصة WaraqConnect!\n\nيمكنك الآن البدء بإضافة كتبك وإنشاء باقات عروض التوفير (Mix & Match) عبر لوحة التحكم:\n${typeof window !== 'undefined' ? window.location.origin : ''}/store-dashboard\n\nمع تحيات فريق WaraqConnect.`
+                                                `مرحباً ${app.owner_name || app.applicant_name}،\n\nيسعدنا إعلامك بأنه تم اعتماد وتوثيق متجركم رسمياً كشريك في منصة WaraqConnect!\n\nيمكنك الآن البدء بإضافة كتبك وإنشاء باقات عروض التوفير (Mix & Match) عبر لوحة التحكم:\n${typeof window !== 'undefined' ? window.location.origin : ''}/stores/dashboard\n\nمع تحيات فريق WaraqConnect.`
                                               )}`}
                                               className="p-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-colors"
                                               title={lang === 'ar' ? 'إرسال إيميل التفعيل' : 'Send Activation Email'}
@@ -2826,6 +2884,39 @@ export function AdminDashboardClient({
                   })()}
                 </div>
 
+                {/* Email Verification Channel */}
+                <div className="p-3 rounded-xl border border-primary/20 bg-primary/5 flex flex-col justify-between gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold flex items-center gap-1.5 text-primary">
+                      <Mail className="h-3.5 w-3.5" />
+                      <span>{lang === 'ar' ? 'البريد الإلكتروني للإشعارات' : 'Notification Email'}</span>
+                    </span>
+                    {inspectingApp.email ? (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-bold">
+                        {lang === 'ar' ? 'متاح للإرسال ✉️' : 'Ready ✉️'}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 font-bold">
+                        {lang === 'ar' ? 'غير مسجل' : 'Missing'}
+                      </span>
+                    )}
+                  </div>
+                  {inspectingApp.email ? (
+                    <a
+                      href={`mailto:${inspectingApp.email}`}
+                      className="inline-flex items-center justify-between text-xs font-semibold text-primary hover:underline font-mono"
+                      dir="ltr"
+                    >
+                      <span className="truncate">{inspectingApp.email}</span>
+                      <ExternalLink className="h-3.5 w-3.5 shrink-0 ms-1" />
+                    </a>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      {lang === 'ar' ? 'لم يسجل بريد إلكتروني بالطلب' : 'No email in application'}
+                    </p>
+                  )}
+                </div>
+
                 {/* Website */}
                 <div className="p-3 rounded-xl border border-border bg-card flex flex-col justify-between gap-2">
                   <div className="flex items-center justify-between">
@@ -3021,7 +3112,7 @@ export function AdminDashboardClient({
                         href={`mailto:${inspectingApp.email}?subject=${encodeURIComponent(
                           `🎉 تم اعتماد وتفعيل متجركم (${inspectingApp.store_name_ar || inspectingApp.business_name}) على منصة WaraqConnect`
                         )}&body=${encodeURIComponent(
-                          `مرحباً ${inspectingApp.owner_name || inspectingApp.applicant_name}،\n\nيسعدنا إعلامك بأنه تم اعتماد وتوثيق متجركم رسمياً كشريك في منصة WaraqConnect!\n\nيمكنك الآن البدء بإضافة كتبك وإنشاء باقات عروض التوفير عبر لوحة التحكم:\n${typeof window !== 'undefined' ? window.location.origin : ''}/store-dashboard\n\nمع تحيات فريق WaraqConnect.`
+                          `مرحباً ${inspectingApp.owner_name || inspectingApp.applicant_name}،\n\nيسعدنا إعلامك بأنه تم اعتماد وتوثيق متجركم رسمياً كشريك في منصة WaraqConnect!\n\nيمكنك الآن البدء بإضافة كتبك وإنشاء باقات عروض التوفير عبر لوحة التحكم:\n${typeof window !== 'undefined' ? window.location.origin : ''}/stores/dashboard\n\nمع تحيات فريق WaraqConnect.`
                         )}`}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs"
                       >
