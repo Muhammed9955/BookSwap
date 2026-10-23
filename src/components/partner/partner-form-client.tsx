@@ -38,8 +38,11 @@ import {
   FileText,
   AlertCircle,
   BookOpen,
-  Mail
+  Mail,
+  User,
+  Lock
 } from 'lucide-react'
+import { FastAuthModal } from '@/components/auth/fast-auth-modal'
 import { cn } from '@/lib/utils'
 import { compressImageFile } from '@/lib/image-utils'
 import { uploadCommunityImage } from '@/lib/storage/upload-helper'
@@ -102,6 +105,10 @@ const DEFAULT_COVERS = [
 
 export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientProps) {
   const { lang, isRTL } = useLanguage()
+
+  // Authentication State with FastAuthModal Popup Support
+  const [currentUser, setCurrentUser] = useState(user)
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
 
   // Form State - Focused 100% on Bookstore/Store Partners
   const [storeType, setStoreType] = useState<StoreType>('ONLINE')
@@ -338,6 +345,18 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
       return
     }
 
+    if (!currentUser) {
+      const shouldLogin = window.confirm(
+        lang === 'ar'
+          ? '💡 لربط المتجر بحسابك واستلام إشعار تفعيل لوحة التحكم فور الاعتماد، يفضل تسجيل الدخول أولاً.\n\nهل ترغب في تسجيل الدخول الآن عبر نافذة سريعة دون فقدان أي بيانات كتبتها؟'
+          : 'It is recommended to sign in first so your store is linked to your account.\n\nOpen sign-in popup now without losing any entered data?'
+      )
+      if (shouldLogin) {
+        setIsAuthModalOpen(true)
+        return
+      }
+    }
+
     setSending(true)
 
     const formatLabel =
@@ -380,13 +399,13 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
 
     try {
       await submitStoreApplication({
-        applicant_id: user?.id,
+        applicant_id: currentUser?.id,
         applicant_name: ownerName,
         owner_name: ownerName,
         business_name: storeNameAr,
         store_name: storeNameEn || storeNameAr,
         store_name_ar: storeNameAr,
-        email: email.trim() || user?.email || (user?.profile as { email?: string } | undefined)?.email,
+        email: email.trim() || currentUser?.email || (currentUser?.profile as { email?: string } | undefined)?.email,
         slogan,
         phone,
         city,
@@ -691,6 +710,56 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Main Onboarding Form (7 cols) */}
           <div className="lg:col-span-7 space-y-6">
+            {/* Partner Authentication Banner (Login via Popup) */}
+            {currentUser ? (
+              <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3 text-xs shadow-2xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 rounded-xl bg-emerald-500/20 text-emerald-600 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-foreground">
+                      {lang === 'ar' ? 'مسجل الدخول بحساب شريك:' : 'Logged in as partner:'}{' '}
+                      <span className="text-emerald-600 dark:text-emerald-400 font-mono">{currentUser.email || 'شريك معتمد'}</span>
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      {lang === 'ar'
+                        ? 'سيتم ربط المتجر تلقائياً بهذا الحساب وتفعيل صلاحيات لوحة التحكم فور الاعتماد.'
+                        : 'Store will be tied directly to this account for merchant dashboard access.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-primary/10 to-transparent border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-2xs">
+                <div className="flex items-start gap-2.5">
+                  <div className="h-8 w-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                    <Sparkles className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-foreground">
+                      {lang === 'ar' ? 'هل تمتلك حساباً على منصة ورق؟' : 'Have an existing Waraq account?'}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                      {lang === 'ar'
+                        ? 'سجل دخولك الآن عبر النافذة المنبثقة لربط المتجر بحسابك وتفعيل لوحة التحكم فور الاعتماد دون مغادرة الصفحة.'
+                        : 'Sign in now via popup to link your store and activate merchant dashboard without leaving this page.'}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="rounded-xl font-bold text-xs gap-1.5 shrink-0 bg-background/80 hover:bg-background border-primary/40 text-primary cursor-pointer self-start sm:self-auto"
+                >
+                  <User className="h-3.5 w-3.5" />
+                  <span>{lang === 'ar' ? 'تسجيل الدخول (نافذة منبثقة) 🔑' : 'Quick Sign In (Popup) 🔑'}</span>
+                </Button>
+              </div>
+            )}
+
             {/* Step Indicators */}
             <div ref={formTopRef} className="scroll-mt-24 flex items-center justify-between p-2 rounded-2xl bg-muted/40 border border-border">
               {[
@@ -1776,6 +1845,33 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
           </div>
         </div>
       </div>
+
+      {/* Fast Auth Modal Popup for Quick Partner Login */}
+      <FastAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={(authUser) => {
+          setCurrentUser({
+            id: authUser.id,
+            email: authUser.email,
+            profile: authUser.user_metadata,
+          })
+          if (authUser.email && !email) {
+            setEmail(authUser.email)
+          }
+          if ((authUser.user_metadata?.full_name || authUser.user_metadata?.name) && !ownerName) {
+            setOwnerName(authUser.user_metadata.full_name || authUser.user_metadata.name)
+          }
+          setIsAuthModalOpen(false)
+        }}
+        actionType="general"
+        title={lang === 'ar' ? 'تسجيل الدخول كشريك مكتبة' : 'Sign in as Bookstore Partner'}
+        subtitle={
+          lang === 'ar'
+            ? 'سجل دخولك لربط المتجر ببريدك واستلام إشعارات التفعيل ولوحة التحكم فوراً'
+            : 'Sign in to link store to your account and activate dashboard upon verification'
+        }
+      />
     </MainLayout>
   )
 }

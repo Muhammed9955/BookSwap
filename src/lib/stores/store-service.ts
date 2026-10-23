@@ -197,6 +197,7 @@ export async function getBookstores(params?: {
   storeType?: StoreType | 'ALL'
   cityId?: string
   query?: string
+  includeInactive?: boolean
   _client?: SupabaseClient
 }): Promise<Bookstore[]> {
   try {
@@ -204,8 +205,11 @@ export async function getBookstores(params?: {
     let q = supabase
       .from('bookstores')
       .select('*')
-      .eq('is_active', true)
       .order('created_at', { ascending: false })
+
+    if (!params?.includeInactive) {
+      q = q.eq('is_active', true)
+    }
 
     if (params?.storeType && params.storeType !== 'ALL') {
       q = q.eq('store_type', params.storeType)
@@ -271,6 +275,166 @@ function filterDemoStores(params?: {
     )
   }
   return list
+}
+
+/**
+ * Toggle bookstore active/hidden status (Admin or Store Owner)
+ */
+export async function toggleStoreActive(
+  storeId: string,
+  isActive: boolean
+): Promise<{ success: boolean; store?: Bookstore }> {
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('bookstores')
+      .update({ is_active: isActive, updated_at: new Date().toISOString() })
+      .eq('id', storeId)
+      .select('*')
+      .single()
+
+    if (error) {
+      const res = await fetch('/api/stores', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeId, is_active: isActive }),
+      })
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success) {
+          updateLocalActive(storeId, isActive)
+          return { success: true, store: json.store }
+        }
+      }
+      return { success: false }
+    }
+
+    updateLocalActive(storeId, isActive)
+    return { success: true, store: data as Bookstore }
+  } catch (err) {
+    console.error('toggleStoreActive error:', err)
+    return { success: false }
+  }
+
+  function updateLocalActive(id: string, active: boolean) {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(STORES_STORAGE_KEY)
+        if (stored) {
+          const map = JSON.parse(stored)
+          if (map[id]) {
+            map[id].is_active = active
+            localStorage.setItem(STORES_STORAGE_KEY, JSON.stringify(map))
+          }
+        }
+      } catch {}
+    }
+  }
+}
+
+/**
+ * Toggle bookstore official verified badge status (Admin only)
+ */
+export async function toggleStoreVerified(
+  storeId: string,
+  isVerified: boolean
+): Promise<{ success: boolean; store?: Bookstore }> {
+  try {
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('bookstores')
+      .update({
+        is_verified: isVerified,
+        verified_at: isVerified ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', storeId)
+      .select('*')
+      .single()
+
+    if (error) {
+      const res = await fetch('/api/stores', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeId, is_verified: isVerified }),
+      })
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success) {
+          updateLocalVerified(storeId, isVerified)
+          return { success: true, store: json.store }
+        }
+      }
+      return { success: false }
+    }
+
+    updateLocalVerified(storeId, isVerified)
+    return { success: true, store: data as Bookstore }
+  } catch (err) {
+    console.error('toggleStoreVerified error:', err)
+    return { success: false }
+  }
+
+  function updateLocalVerified(id: string, verified: boolean) {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(STORES_STORAGE_KEY)
+        if (stored) {
+          const map = JSON.parse(stored)
+          if (map[id]) {
+            map[id].is_verified = verified
+            localStorage.setItem(STORES_STORAGE_KEY, JSON.stringify(map))
+          }
+        }
+      } catch {}
+    }
+  }
+}
+
+/**
+ * Delete a bookstore permanently from database and local caches (Admin only)
+ */
+export async function deleteBookstore(storeId: string): Promise<{ success: boolean }> {
+  try {
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('bookstores')
+      .delete()
+      .eq('id', storeId)
+
+    if (error) {
+      const res = await fetch(`/api/stores?id=${encodeURIComponent(storeId)}`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        const json = await res.json()
+        if (json.success) {
+          removeLocalStore(storeId)
+          return { success: true }
+        }
+      }
+      return { success: false }
+    }
+
+    removeLocalStore(storeId)
+    return { success: true }
+  } catch (err) {
+    console.error('deleteBookstore error:', err)
+    return { success: false }
+  }
+
+  function removeLocalStore(id: string) {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(STORES_STORAGE_KEY)
+        if (stored) {
+          const map = JSON.parse(stored)
+          delete map[id]
+          localStorage.setItem(STORES_STORAGE_KEY, JSON.stringify(map))
+        }
+      } catch {}
+    }
+  }
 }
 
 export const STORE_SLUG_ALIASES: Record<string, string> = {
@@ -697,8 +861,8 @@ export async function getStoreInventory(storeId: string): Promise<StoreInventory
       const stored = localStorage.getItem(`${INVENTORY_STORAGE_KEY}_${resolvedStoreId}`)
       if (stored) {
         const parsed = JSON.parse(stored) as StoreInventoryItem[]
-        // Return only real user-added inventory (filter out any mock seed/inv items)
-        const realItems = parsed.filter(i => !i.id.startsWith('seed-') && !i.id.startsWith('inv-') && !i.id.startsWith('demo-'))
+        // Return real user-added inventory (filter out any mock seed/demo items)
+        const realItems = parsed.filter(i => !i.id.startsWith('seed-') && !i.id.startsWith('demo-'))
         return realItems
       }
     } catch {}
@@ -970,6 +1134,16 @@ export async function addStoreBook(
       const current = await getStoreInventory(resolvedStoreId)
       const updated = [newItem, ...current]
       localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${resolvedStoreId}`, JSON.stringify(updated))
+
+      // Update total_listings count on bookstore
+      const storedStores = localStorage.getItem(STORES_STORAGE_KEY)
+      if (storedStores) {
+        const map = JSON.parse(storedStores)
+        if (map[resolvedStoreId]) {
+          map[resolvedStoreId].total_listings = (map[resolvedStoreId].total_listings || 0) + 1
+          localStorage.setItem(STORES_STORAGE_KEY, JSON.stringify(map))
+        }
+      }
     } catch {}
   }
 
@@ -995,6 +1169,16 @@ export async function addStoreBooksBatch(
       const current = await getStoreInventory(resolvedStoreId)
       const updated = [...newItems, ...current]
       localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${resolvedStoreId}`, JSON.stringify(updated))
+
+      // Update total_listings count on bookstore
+      const storedStores = localStorage.getItem(STORES_STORAGE_KEY)
+      if (storedStores) {
+        const map = JSON.parse(storedStores)
+        if (map[resolvedStoreId]) {
+          map[resolvedStoreId].total_listings = (map[resolvedStoreId].total_listings || 0) + items.length
+          localStorage.setItem(STORES_STORAGE_KEY, JSON.stringify(map))
+        }
+      }
     } catch {}
   }
 
@@ -1011,6 +1195,16 @@ export async function deleteStoreBook(storeId: string, itemId: string): Promise<
       const current = await getStoreInventory(resolvedStoreId)
       const updated = current.filter(i => i.id !== itemId)
       localStorage.setItem(`${INVENTORY_STORAGE_KEY}_${resolvedStoreId}`, JSON.stringify(updated))
+
+      // Decrement total_listings count on bookstore
+      const storedStores = localStorage.getItem(STORES_STORAGE_KEY)
+      if (storedStores) {
+        const map = JSON.parse(storedStores)
+        if (map[resolvedStoreId] && map[resolvedStoreId].total_listings > 0) {
+          map[resolvedStoreId].total_listings = Math.max(0, map[resolvedStoreId].total_listings - 1)
+          localStorage.setItem(STORES_STORAGE_KEY, JSON.stringify(map))
+        }
+      }
       return true
     } catch {}
   }
@@ -1616,18 +1810,28 @@ export async function approveStoreApplication(
   }
 
   // 6. Trigger transactional approval email via Resend API
-  if (target.email) {
+  let destinationEmail = target.email
+  if (!destinationEmail && resolvedOwnerId) {
     try {
-      fetch('/api/stores/notify-approved', {
+      const { data: prof } = await supabase.from('profiles').select('email').eq('id', resolvedOwnerId).maybeSingle()
+      if (prof?.email) destinationEmail = prof.email
+    } catch {}
+  }
+
+  if (destinationEmail) {
+    try {
+      const emailRes = await fetch('/api/stores/notify-approved', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          to: target.email,
-          ownerName: target.owner_name || target.applicant_name,
+          to: destinationEmail,
+          ownerName: target.owner_name || target.applicant_name || 'شريكنا العزيز',
           storeName: newStore.name_ar || newStore.name,
           storeSlug: newStore.slug,
         }),
-      }).catch(console.warn)
+      })
+      const emailJson = await emailRes.json().catch(() => null)
+      console.log('Store approval email dispatched successfully:', destinationEmail, emailJson)
     } catch (e) {
       console.warn('Failed to send approval email:', e)
     }

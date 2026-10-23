@@ -118,6 +118,8 @@ export async function sendStoreApprovedEmail({
   }
 
   try {
+    const fromAddress = process.env.RESEND_FROM_EMAIL || 'WaraqConnect <onboarding@resend.dev>'
+
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -125,7 +127,7 @@ export async function sendStoreApprovedEmail({
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        from: 'WaraqConnect <noreply@waraqconnect.com>',
+        from: fromAddress,
         to: [to],
         subject: `🎉 تم توثيق واعتماد متجر (${storeName}) على منصة WaraqConnect! ابدأ بإضافة كتبك الآن`,
         html: htmlContent,

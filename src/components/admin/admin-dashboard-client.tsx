@@ -21,7 +21,8 @@ import { createClient } from '@/lib/supabase/client'
 import { cn, formatRelativeTime } from '@/lib/utils'
 import { updateCommunityDetails, deleteCommunity } from '@/lib/communities/community-service'
 import {
-  getStoreApplications, approveStoreApplication, rejectStoreApplication, getBookstores
+  getStoreApplications, approveStoreApplication, rejectStoreApplication, getBookstores,
+  toggleStoreActive, toggleStoreVerified, deleteBookstore
 } from '@/lib/stores/store-service'
 import { WaraqLogo } from '@/components/ui/waraq-logo'
 
@@ -100,7 +101,7 @@ export function AdminDashboardClient({
       setStoreApps(apps)
       setAppsLoading(false)
     })
-    getBookstores().then(stores => {
+    getBookstores({ includeInactive: true }).then(stores => {
       setActiveStores(stores)
       setStoresLoading(false)
     })
@@ -145,7 +146,7 @@ export function AdminDashboardClient({
           table: 'bookstores',
         },
         async () => {
-          const freshStores = await getBookstores()
+          const freshStores = await getBookstores({ includeInactive: true })
           setActiveStores(freshStores)
         }
       )
@@ -196,6 +197,88 @@ export function AdminDashboardClient({
     setApprovingId(null)
   }
 
+  const [storeActionLoading, setStoreActionLoading] = useState<string | null>(null)
+
+  const handleToggleStoreActive = async (storeId: string, currentActive: boolean) => {
+    const nextActive = !currentActive
+    const store = activeStores.find(s => s.id === storeId)
+    const storeName = store?.name_ar || store?.name || 'المتجر'
+
+    const confirmMsg = nextActive
+      ? (lang === 'ar' ? `هل ترغب في إعادة إظهار وتفعيل متجر "${storeName}" ليظهر للقراء في الدليل والبحث؟` : `Unhide & activate "${storeName}" in directory?`)
+      : (lang === 'ar' ? `هل أنت متأكد من إخفاء متجر "${storeName}"؟ لن يظهر للقراء في الدليل العام أو نتائج البحث، ولكن ستبقى بياناته محفوظة.` : `Hide "${storeName}" from public directory?`)
+
+    if (!window.confirm(confirmMsg)) return
+
+    setStoreActionLoading(storeId)
+    const res = await toggleStoreActive(storeId, nextActive)
+    if (res.success) {
+      setActiveStores(prev =>
+        prev.map(s => (s.id === storeId ? { ...s, is_active: nextActive } : s))
+      )
+      if (inspectingStore?.id === storeId) {
+        setInspectingStore(prev => prev ? { ...prev, is_active: nextActive } : null)
+      }
+      setApprovalFeedback(
+        lang === 'ar'
+          ? (nextActive ? `✅ تم تفعيل وإظهار ${storeName} في الدليل العام بنجاح` : `👁️‍🗨️ تم إخفاء ${storeName} من الدليل العام`)
+          : (nextActive ? `✅ "${storeName}" is now active & visible in directory` : `👁️‍🗨️ "${storeName}" is now hidden from public view`)
+      )
+      setTimeout(() => setApprovalFeedback(null), 4000)
+    }
+    setStoreActionLoading(null)
+  }
+
+  const handleToggleStoreVerified = async (storeId: string, currentVerified: boolean) => {
+    const nextVerified = !currentVerified
+    const store = activeStores.find(s => s.id === storeId)
+    const storeName = store?.name_ar || store?.name || 'المتجر'
+
+    setStoreActionLoading(storeId)
+    const res = await toggleStoreVerified(storeId, nextVerified)
+    if (res.success) {
+      setActiveStores(prev =>
+        prev.map(s => (s.id === storeId ? { ...s, is_verified: nextVerified } : s))
+      )
+      if (inspectingStore?.id === storeId) {
+        setInspectingStore(prev => prev ? { ...prev, is_verified: nextVerified } : null)
+      }
+      setApprovalFeedback(
+        lang === 'ar'
+          ? (nextVerified ? `🟢 تم منح شارة التوثيق لـ ${storeName}` : `⚪ تم إزالة شارة التوثيق عن ${storeName}`)
+          : (nextVerified ? `🟢 "${storeName}" verified badge granted` : `⚪ "${storeName}" verified badge removed`)
+      )
+      setTimeout(() => setApprovalFeedback(null), 4000)
+    }
+    setStoreActionLoading(null)
+  }
+
+  const handleDeleteStore = async (storeId: string, storeName?: string) => {
+    const displayName = storeName || (activeStores.find(s => s.id === storeId)?.name_ar || activeStores.find(s => s.id === storeId)?.name || 'المتجر')
+    const promptConfirm = window.confirm(
+      lang === 'ar'
+        ? `⚠️ تحذير نهائي:\nهل أنت متأكد من حذف متجر "${displayName}" نهائياً من المنصة وقاعدة البيانات؟\n\nهذا الإجراء لا يمكن التراجع عنه وسيتم إزالة المتجر نهائياً.`
+        : `⚠️ Danger:\nPermanently delete bookstore "${displayName}" from database?\nThis action cannot be undone.`
+    )
+    if (!promptConfirm) return
+
+    setStoreActionLoading(storeId)
+    const res = await deleteBookstore(storeId)
+    if (res.success) {
+      setActiveStores(prev => prev.filter(s => s.id !== storeId))
+      if (inspectingStore?.id === storeId) {
+        setInspectingStore(null)
+      }
+      setApprovalFeedback(
+        lang === 'ar'
+          ? `🗑️ تم حذف متجر ${storeName} نهائياً بنجاح`
+          : `🗑️ Store "${storeName}" deleted permanently`
+      )
+      setTimeout(() => setApprovalFeedback(null), 5000)
+    }
+    setStoreActionLoading(null)
+  }
+
   const handleRejectStore = async (appId: string) => {
     const reason = prompt(
       lang === 'ar' ? 'سبب الرفض (اختياري):' : 'Rejection reason (optional):',
@@ -236,16 +319,22 @@ export function AdminDashboardClient({
     return matchesStatus && matchesType && matchesSearch
   })
 
+  const [storeActiveFilter, setStoreActiveFilter] = useState<'ALL' | 'ACTIVE' | 'HIDDEN'>('ALL')
+
   const filteredActiveStores = activeStores.filter(store => {
     const matchesType = storeTypeFilter === 'ALL' || store.store_type === storeTypeFilter
+    const matchesActive =
+      storeActiveFilter === 'ALL' ||
+      (storeActiveFilter === 'ACTIVE' && store.is_active !== false) ||
+      (storeActiveFilter === 'HIDDEN' && store.is_active === false)
     const q = appSearch.trim().toLowerCase()
-    if (!q) return matchesType
+    if (!q) return matchesType && matchesActive
     const matchesSearch =
       store.name.toLowerCase().includes(q) ||
       (store.name_ar && store.name_ar.toLowerCase().includes(q)) ||
       (store.address && store.address.toLowerCase().includes(q)) ||
       store.slug.toLowerCase().includes(q)
-    return matchesType && matchesSearch
+    return matchesType && matchesActive && matchesSearch
   })
 
   const [communities, setCommunities] = useState<Community[]>(initialCommunities)
@@ -1499,9 +1588,37 @@ export function AdminDashboardClient({
                         )}
                       />
                     </div>
-                    <Badge variant="muted" className="text-xs font-bold self-center">
-                      {filteredActiveStores.length} {lang === 'ar' ? 'متجر معتمد' : 'stores'}
-                    </Badge>
+
+                    {/* Store Active/Hidden Filter Chips */}
+                    <div className="flex items-center gap-1.5 self-center">
+                      {[
+                        { id: 'ALL', labelAr: 'الكل', labelEn: 'All', count: activeStores.length },
+                        { id: 'ACTIVE', labelAr: 'نشط وظاهر', labelEn: 'Active', count: activeStores.filter(s => s.is_active !== false).length },
+                        { id: 'HIDDEN', labelAr: 'مخفي', labelEn: 'Hidden', count: activeStores.filter(s => s.is_active === false).length },
+                      ].map(tab => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setStoreActiveFilter(tab.id as any)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5",
+                            storeActiveFilter === tab.id
+                              ? "bg-primary text-primary-foreground shadow-xs"
+                              : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                          )}
+                        >
+                          <span>{lang === 'ar' ? tab.labelAr : tab.labelEn}</span>
+                          <span className={cn(
+                            "text-[10px] px-1.5 py-0.2 rounded-full",
+                            storeActiveFilter === tab.id
+                              ? "bg-primary-foreground/20 text-primary-foreground"
+                              : "bg-muted text-muted-foreground"
+                          )}>
+                            {tab.count}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Active Stores Table */}
@@ -1514,9 +1631,9 @@ export function AdminDashboardClient({
                             <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'طبيعة التواجد' : 'Format'}</th>
                             <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'المقر / التغطية' : 'Location / Scope'}</th>
                             <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'فيسبوك (FB)' : 'Facebook (FB)'}</th>
-                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'الإحصائيات والتقييم' : 'Metrics & Rating'}</th>
-                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'التوثيق' : 'Verification'}</th>
-                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'إجراءات' : 'Actions'}</th>
+                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'الظهور والحالة' : 'Visibility & Status'}</th>
+                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'شارة التوثيق' : 'Verification'}</th>
+                            <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'إجراءات الإدارة' : 'Admin Actions'}</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
@@ -1613,45 +1730,99 @@ export function AdminDashboardClient({
                                 </td>
 
                                 <td className="p-3.5 whitespace-nowrap">
-                                  <div className="text-xs whitespace-nowrap">
-                                    <span className="font-bold text-amber-500 flex items-center gap-1 whitespace-nowrap">
-                                      <Star className="h-3 w-3 fill-amber-400 shrink-0" />
-                                      <span>{store.rating_average || 5.0}</span>
-                                      <span className="text-[10px] text-muted-foreground font-normal">({store.rating_count || 1})</span>
-                                    </span>
-                                    <p className="text-[10px] text-muted-foreground mt-0.5 whitespace-nowrap">
-                                      {store.total_listings || 0} {lang === 'ar' ? 'كتاب معروض' : 'books'}
-                                    </p>
+                                  <div>
+                                    {store.is_active === false ? (
+                                      <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 font-bold text-[10px] gap-1 px-2 py-0.5">
+                                        <EyeOff className="h-3 w-3 shrink-0" />
+                                        <span>{lang === 'ar' ? 'مخفي من الدليل' : 'Hidden'}</span>
+                                      </Badge>
+                                    ) : (
+                                      <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 font-bold text-[10px] gap-1 px-2 py-0.5">
+                                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                        <span>{lang === 'ar' ? 'نشط ومعروض' : 'Active & Live'}</span>
+                                      </Badge>
+                                    )}
+                                    <div className="flex items-center gap-2 mt-1 text-[11px] text-muted-foreground">
+                                      <span className="font-semibold text-amber-500 flex items-center gap-0.5">
+                                        <Star className="h-2.5 w-2.5 fill-amber-400 shrink-0" />
+                                        <span>{store.rating_average || 5.0}</span>
+                                      </span>
+                                      <span>•</span>
+                                      <span>{store.total_listings || 0} {lang === 'ar' ? 'كتاب' : 'bks'}</span>
+                                    </div>
                                   </div>
                                 </td>
 
                                 <td className="p-3.5 whitespace-nowrap">
-                                  <Badge className="bg-emerald-600 text-white font-bold text-[10px] gap-1.5 whitespace-nowrap inline-flex items-center shrink-0 px-2.5 py-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleStoreVerified(store.id, store.is_verified)}
+                                    disabled={storeActionLoading === store.id}
+                                    className={cn(
+                                      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer whitespace-nowrap shrink-0",
+                                      store.is_verified
+                                        ? "bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 shadow-2xs"
+                                        : "bg-muted/60 text-muted-foreground border-border hover:bg-muted hover:text-foreground"
+                                    )}
+                                    title={lang === 'ar' ? (store.is_verified ? 'انقر لإلغاء شارة التوثيق' : 'انقر لمنح شارة التوثيق') : (store.is_verified ? 'Click to revoke badge' : 'Click to verify store')}
+                                  >
                                     <CheckCircle2 className="h-3 w-3 shrink-0" />
-                                    <span className="whitespace-nowrap">{lang === 'ar' ? 'موثق رسمي' : 'Verified'}</span>
-                                  </Badge>
+                                    <span>{store.is_verified ? (lang === 'ar' ? 'موثق رسمي' : 'Verified') : (lang === 'ar' ? 'غير موثق' : 'Unverified')}</span>
+                                  </button>
                                 </td>
 
                                 <td className="p-3.5 whitespace-nowrap">
-                                  <div className="flex items-center gap-2 whitespace-nowrap">
+                                  <div className="flex items-center gap-1.5 whitespace-nowrap">
                                     <Button
                                       variant="outline"
                                       size="sm"
                                       onClick={() => setInspectingStore(store)}
-                                      className="h-7 text-xs font-bold rounded-lg gap-1 cursor-pointer"
+                                      className="h-7 text-xs font-bold rounded-lg gap-1 cursor-pointer px-2"
                                       title={lang === 'ar' ? 'عرض التفاصيل الكاملة وكافة القنوات' : 'View full details & all channels'}
                                     >
                                       <Eye className="h-3.5 w-3.5 text-primary" />
                                       <span>{lang === 'ar' ? 'التفاصيل' : 'Details'}</span>
                                     </Button>
+
+                                    {/* Hide / Unhide Store */}
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleToggleStoreActive(store.id, store.is_active !== false)}
+                                      disabled={storeActionLoading === store.id}
+                                      className={cn(
+                                        "h-7 text-xs font-bold rounded-lg gap-1 cursor-pointer px-2",
+                                        store.is_active === false
+                                          ? "text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
+                                          : "text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
+                                      )}
+                                      title={store.is_active === false ? (lang === 'ar' ? 'إظهار المتجر في الدليل العام' : 'Unhide in directory') : (lang === 'ar' ? 'إخفاء المتجر من الدليل العام للجمهور' : 'Hide from public directory')}
+                                    >
+                                      {store.is_active === false ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+                                      <span>{store.is_active === false ? (lang === 'ar' ? 'إظهار' : 'Unhide') : (lang === 'ar' ? 'إخفاء' : 'Hide')}</span>
+                                    </Button>
+
+                                    {/* Delete Store */}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDeleteStore(store.id, store.name_ar || store.name)}
+                                      disabled={storeActionLoading === store.id}
+                                      className="h-7 text-xs font-bold rounded-lg gap-1 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer px-2"
+                                      title={lang === 'ar' ? 'حذف المتجر نهائياً من قاعدة البيانات' : 'Delete store permanently'}
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                      <span className="hidden sm:inline">{lang === 'ar' ? 'حذف' : 'Delete'}</span>
+                                    </Button>
+
                                     <Link href={`/stores/${store.slug}`} target="_blank">
-                                      <Button variant="ghost" size="sm" className="h-7 text-xs font-bold rounded-lg gap-1 text-muted-foreground hover:text-foreground">
+                                      <Button variant="ghost" size="sm" className="h-7 text-xs font-bold rounded-lg gap-1 text-muted-foreground hover:text-foreground px-2">
                                         <ExternalLink className="h-3 w-3" />
                                         <span className="hidden lg:inline">{lang === 'ar' ? 'المتجر' : 'Live'}</span>
                                       </Button>
                                     </Link>
                                     <Link href={`/stores/dashboard?store=${store.id}`} target="_blank">
-                                      <Button variant="ghost" size="sm" className="h-7 text-xs font-bold rounded-lg text-primary">
+                                      <Button variant="ghost" size="sm" className="h-7 text-xs font-bold rounded-lg text-primary px-2">
                                         {lang === 'ar' ? 'لوحة التاجر' : 'Merchant'}
                                       </Button>
                                     </Link>
@@ -3410,30 +3581,69 @@ export function AdminDashboardClient({
               </div>
             </div>
 
-            {/* Actions */}
+            {/* Actions & Admin Controls (Hide / Unhide / Delete / Open) */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-border">
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Hide / Unhide Store */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleToggleStoreActive(inspectingStore.id, inspectingStore.is_active !== false)}
+                  className={cn(
+                    "text-xs font-bold gap-1.5 cursor-pointer",
+                    inspectingStore.is_active === false
+                      ? "text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
+                      : "text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
+                  )}
+                >
+                  {inspectingStore.is_active === false ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                  <span>{inspectingStore.is_active === false ? (lang === 'ar' ? 'إظهار المتجر بالدليل' : 'Unhide') : (lang === 'ar' ? 'إخفاء من الدليل' : 'Hide')}</span>
+                </Button>
+
+                {/* Toggle Verified Badge */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleToggleStoreVerified(inspectingStore.id, inspectingStore.is_verified)}
+                  className="text-xs font-bold gap-1.5 cursor-pointer"
+                >
+                  <CheckCircle2 className={cn("h-3.5 w-3.5", inspectingStore.is_verified ? "text-emerald-600" : "text-muted-foreground")} />
+                  <span>{inspectingStore.is_verified ? (lang === 'ar' ? 'إلغاء التوثيق' : 'Unverify') : (lang === 'ar' ? 'منح التوثيق 🟢' : 'Verify 🟢')}</span>
+                </Button>
+
+                {/* Delete Store */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleDeleteStore(inspectingStore.id, inspectingStore.name_ar || inspectingStore.name)}
+                  className="text-xs font-bold gap-1.5 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>{lang === 'ar' ? 'حذف المتجر نهائياً' : 'Delete Store'}</span>
+                </Button>
+              </div>
+
               <div className="flex items-center gap-2">
                 <Link href={`/stores/${inspectingStore.slug}`} target="_blank">
                   <Button size="sm" className="text-xs font-bold gap-1.5 cursor-pointer">
                     <ExternalLink className="h-3.5 w-3.5" />
-                    <span>{lang === 'ar' ? 'فتح صفحة المتجر العامة' : 'Open Public Storefront'}</span>
+                    <span>{lang === 'ar' ? 'فتح صفحة المتجر' : 'Public Storefront'}</span>
                   </Button>
                 </Link>
                 <Link href={`/stores/dashboard?store=${inspectingStore.id}`} target="_blank">
                   <Button variant="outline" size="sm" className="text-xs font-bold gap-1.5 cursor-pointer">
-                    <span>{lang === 'ar' ? 'لوحة التاجر' : 'Merchant Dashboard'}</span>
+                    <span>{lang === 'ar' ? 'لوحة التاجر' : 'Merchant'}</span>
                   </Button>
                 </Link>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInspectingStore(null)}
+                  className="text-xs cursor-pointer"
+                >
+                  {lang === 'ar' ? 'إغلاق' : 'Close'}
+                </Button>
               </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setInspectingStore(null)}
-                className="text-xs cursor-pointer"
-              >
-                {lang === 'ar' ? 'إغلاق' : 'Close'}
-              </Button>
             </div>
           </div>
         </div>

@@ -13,12 +13,16 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const storeType = searchParams.get('storeType')
     const query = searchParams.get('query')
+    const includeInactive = searchParams.get('includeInactive') === 'true'
 
     let q = supabase
       .from('bookstores')
       .select('*')
-      .eq('is_active', true)
       .order('created_at', { ascending: false })
+
+    if (!includeInactive) {
+      q = q.eq('is_active', true)
+    }
 
     if (storeType && storeType !== 'ALL') {
       q = q.eq('store_type', storeType)
@@ -172,3 +176,123 @@ export async function POST(req: NextRequest) {
     )
   }
 }
+
+/**
+ * PATCH /api/stores
+ * Update store status (e.g. is_active for hide/unhide, is_verified for official badge)
+ */
+export async function PATCH(req: NextRequest) {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    const isAdmin = profile?.role === 'ADMIN' || profile?.role === 'MODERATOR'
+
+    const body = await req.json()
+    const { storeId, is_active, is_verified } = body
+
+    if (!storeId) {
+      return NextResponse.json({ success: false, error: 'Store ID is required' }, { status: 400 })
+    }
+
+    if (!isAdmin) {
+      const { data: store } = await supabase
+        .from('bookstores')
+        .select('owner_id')
+        .eq('id', storeId)
+        .maybeSingle()
+
+      if (store?.owner_id !== user.id) {
+        return NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
+      }
+    }
+
+    const updatePayload: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    }
+    if (typeof is_active === 'boolean') updatePayload.is_active = is_active
+    if (typeof is_verified === 'boolean') {
+      if (!isAdmin) {
+        return NextResponse.json({ success: false, error: 'Only administrators can toggle store verification' }, { status: 403 })
+      }
+      updatePayload.is_verified = is_verified
+      updatePayload.verified_at = is_verified ? new Date().toISOString() : null
+    }
+
+    const { data: updated, error } = await supabase
+      .from('bookstores')
+      .update(updatePayload)
+      .eq('id', storeId)
+      .select('*')
+      .single()
+
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, store: updated })
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err?.message }, { status: 500 })
+  }
+}
+
+/**
+ * DELETE /api/stores?id=...
+ * Permanently delete a bookstore (admin only)
+ */
+export async function DELETE(req: NextRequest) {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    const isAdmin = profile?.role === 'ADMIN' || profile?.role === 'MODERATOR'
+    if (!isAdmin) {
+      return NextResponse.json({ success: false, error: 'Forbidden: Admins only' }, { status: 403 })
+    }
+
+    const { searchParams } = new URL(req.url)
+    const storeId = searchParams.get('id')
+
+    if (!storeId) {
+      return NextResponse.json({ success: false, error: 'Store ID is required' }, { status: 400 })
+    }
+
+    const { error } = await supabase
+      .from('bookstores')
+      .delete()
+      .eq('id', storeId)
+
+    if (error) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, message: 'Store deleted successfully' })
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err?.message }, { status: 500 })
+  }
+}
+

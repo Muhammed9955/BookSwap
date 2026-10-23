@@ -354,7 +354,14 @@ export function useStoreInventory({ activeStoreId, currentUserId, lang }: UseSto
   // ─────────────────────────────────────────────────────────────
   const handleAddBook = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newBook.title) return
+    const cleanTitle = newBook.title?.trim()
+    if (!cleanTitle) {
+      alert(lang === 'ar' ? 'يرجى كتابة عنوان الكتاب' : 'Please enter the book title')
+      return
+    }
+
+    const cleanAuthor = newBook.author?.trim() || (lang === 'ar' ? 'مؤلف معتمد' : 'Author')
+    const finalCover = newBook.cover_url?.trim() || getStoreBookCover({ title: cleanTitle, category: newBook.category_name })
 
     const priceNum = Math.max(0, Number(newBook.price) || 0)
     const origPriceNum = Number(newBook.original_price) || 0
@@ -372,17 +379,17 @@ export function useStoreInventory({ activeStoreId, currentUserId, lang }: UseSto
 
     if (editingBookId) {
       const updated = await updateStoreBook(activeStoreId, editingBookId, {
-        title: newBook.title,
-        title_ar: newBook.title_ar || newBook.title,
-        author: newBook.author,
-        isbn: newBook.isbn || undefined,
-        category_name: newBook.category_name,
-        condition: newBook.condition,
+        title: cleanTitle,
+        title_ar: newBook.title_ar?.trim() || cleanTitle,
+        author: cleanAuthor,
+        isbn: newBook.isbn?.trim() || undefined,
+        category_name: newBook.category_name || 'روايات وأدب',
+        condition: newBook.condition || 'NEW',
         price: priceNum,
         original_price: finalOriginalPrice,
         has_discount: hasDiscountApplied,
-        stock_quantity: Math.max(0, Number(newBook.stock_quantity) || 0),
-        cover_url: newBook.cover_url || undefined,
+        stock_quantity: Math.max(1, Number(newBook.stock_quantity) || 1),
+        cover_url: finalCover,
         description: newBook.description || undefined,
         description_ar: newBook.description_ar || newBook.description || undefined,
         goodreads_url: newBook.goodreads_url?.trim() || undefined,
@@ -404,17 +411,17 @@ export function useStoreInventory({ activeStoreId, currentUserId, lang }: UseSto
     } else {
       const created = await addStoreBook({
         store_id: activeStoreId,
-        title: newBook.title,
-        title_ar: newBook.title_ar || newBook.title,
-        author: newBook.author,
-        isbn: newBook.isbn || undefined,
-        category_name: newBook.category_name,
-        condition: newBook.condition,
+        title: cleanTitle,
+        title_ar: newBook.title_ar?.trim() || cleanTitle,
+        author: cleanAuthor,
+        isbn: newBook.isbn?.trim() || undefined,
+        category_name: newBook.category_name || 'روايات وأدب',
+        condition: newBook.condition || 'NEW',
         price: priceNum,
         original_price: finalOriginalPrice,
         has_discount: hasDiscountApplied,
-        stock_quantity: Math.max(0, Number(newBook.stock_quantity) || 0),
-        cover_url: newBook.cover_url || undefined,
+        stock_quantity: Math.max(1, Number(newBook.stock_quantity) || 1),
+        cover_url: finalCover,
         description: newBook.description || undefined,
         description_ar: newBook.description_ar || newBook.description || undefined,
         goodreads_url: newBook.goodreads_url?.trim() || undefined,
