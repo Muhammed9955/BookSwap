@@ -3,16 +3,18 @@ import { PartnerFormClient } from '@/components/partner/partner-form-client'
 import { createClient } from '@/lib/supabase/server'
 
 export const metadata: Metadata = {
-  title: 'انضم كشريك — توثيق المكتبات ودور النشر وبائعي الكتب | WaraqConnect (ورق كونكت)',
+  title: {
+    absolute: 'انضم كشريك — توثيق المكتبات ودور النشر وبائعي الكتب | WaraqConnect',
+  },
   description:
-    'هل تمتلك مكتبة ورقية، دار نشر، أو متجراً إلكترونياً للكتب؟ سجّل الآن كشريك معتمد في منصة ورق كونكت (WaraqConnect). انضم مجاناً 100% مع شهر تجربة كامل يبدأ مع أول طلب حقيقي، وعمولة مبيعات 10% فقط، وتوجيه فوري لطلبات القراء عبر واتساب المكتبة.',
+    'هل تمتلك مكتبة ورقية، دار نشر، أو متجراً إلكترونياً للكتب في مصر؟ سجّل الآن كشريك معتمد في منصة ورق كونكت (WaraqConnect). انضم مجاناً 100% مع شهر تجربة كامل، وعمولة مبيعات 10% فقط، وتوجيه فوري لطلبات القراء عبر واتساب المكتبة مع باقات توفير كتب مميزة.',
   keywords: [
-    'تسجيل مكتبة',
+    'تسجيل مكتبة في مصر',
     'شركاء ورق كونكت',
     'بيع كتب في مصر',
     'مكتبات القاهرة',
     'مكتبات الإسكندرية',
-    'معرض الكتاب',
+    'معرض القاهرة الدولي للكتاب',
     'توثيق متجر كتب',
     'دار نشر مصرية',
     'تسويق كتب ورقية',
@@ -22,33 +24,34 @@ export const metadata: Metadata = {
     'bookstore onboarding Egypt',
   ],
   alternates: {
-    canonical: 'https://waraqconnect.com/partner-form',
+    canonical: '/partner-form',
   },
   openGraph: {
-    title: 'انضم كشريك — توثيق المكتبات ودور النشر وبائعي الكتب | WaraqConnect',
+    title: 'انضم كشريك — توثيق المكتبات ودور النشر وبائعي الكتب في مصر | WaraqConnect',
     description:
-      'سجّل مكتبتك في شبكة ورق كونكت واستقبل طلبات القراء مباشرة عبر الواتساب مع باقات التوفير والشهر الأول مجاناً 100%.',
-    url: 'https://waraqconnect.com/partner-form',
+      'سجّل مكتبتك في شبكة ورق كونكت مجاناً واعرض عروض الحزم والفعاليات لآلاف القراء في كافة المحافظات مع توجيه الطلبات فوراً لواتساب مكتبتك والشهر الأول مجاناً 100%.',
+    url: '/partner-form',
     siteName: 'WaraqConnect — ورق كونكت',
     locale: 'ar_EG',
     type: 'website',
     images: [
       {
-        url: 'https://images.unsplash.com/photo-1507842229451-7f01be7ac102?auto=format&fit=crop&w=1200&q=80',
+        url: '/images/partner-share-card.jpg',
         width: 1200,
         height: 630,
-        alt: 'WaraqConnect Bookstore Partner Program',
+        alt: 'برنامج شركاء ورق كونكت للمكتبات ودور النشر — WaraqConnect Partner Program',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'انضم كشريك — توثيق المكتبات وبائعي الكتب | WaraqConnect',
+    title: 'انضم كشريك — توثيق المكتبات ودور النشر وبائعي الكتب في مصر | WaraqConnect',
     description:
-      'سجّل مكتبتك في شبكة ورق كونكت واستقبل طلبات القراء مباشرة عبر الواتساب مع باقات التوفير والشهر الأول مجاناً 100%.',
-    images: ['https://images.unsplash.com/photo-1507842229451-7f01be7ac102?auto=format&fit=crop&w=1200&q=80'],
+      'سجّل مكتبتك في شبكة ورق كونكت مجاناً واعرض عروض الحزم والفعاليات لآلاف القراء في كافة المحافظات مع توجيه الطلبات فوراً لواتساب مكتبتك والشهر الأول مجاناً 100%.',
+    images: ['/images/partner-share-card.jpg'],
   },
 }
+
 
 interface PartnerFormPageProps {
   searchParams?: Promise<{ unauthorized?: string }>

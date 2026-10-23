@@ -58,12 +58,32 @@ export const metadata: Metadata = {
     title: 'WaraqConnect — ورق كونكت | عالم جديد بين كل صفحة والتانية',
     description: 'عالم جديد بين كل صفحة والتانية. منصة وتطبيق WaraqConnect لتبادل واستعارة وشراء الكتب وتحديات القراءة.',
   },
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.png', type: 'image/png' },
+      { url: '/icons/icon-96x96.png', sizes: '96x96', type: 'image/png' },
+      { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: [
+      { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    other: [
+      {
+        rel: 'apple-touch-icon-precomposed',
+        url: '/icons/icon-192x192.png',
+      },
+    ],
+  },
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'WaraqConnect',
   },
+
   robots: {
     index: true,
     follow: true,
