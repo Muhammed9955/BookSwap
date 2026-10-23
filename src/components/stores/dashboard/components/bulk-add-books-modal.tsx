@@ -506,10 +506,10 @@ export function BulkAddBooksModal({
                             <span>{lang === 'ar' ? 'رابط صورة الغلاف' : 'Cover URL'}</span>
                           </label>
                           <input
-                            type="url"
+                            type="text"
                             value={editCoverInput}
                             onChange={e => setEditCoverInput(e.target.value)}
-                            placeholder="https://..."
+                            placeholder={lang === 'ar' ? 'رابط الصورة (https:// أو /images/...)' : 'Image URL (https:// or /images/...)'}
                             className="w-full bg-card border border-border rounded-lg px-2 py-1 text-[11px]"
                           />
                         </div>

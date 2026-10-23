@@ -284,7 +284,7 @@ export function AddBookModal({
           </div>
         )}
 
-        <form onSubmit={onSubmit} className="space-y-3.5">
+        <form noValidate onSubmit={onSubmit} className="space-y-3.5">
           {/* Titles */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -535,11 +535,11 @@ export function AddBookModal({
 
               <div>
                 <input
-                  type="url"
+                  type="text"
                   value={newBook.cover_url}
                   onChange={e => setNewBook((prev: any) => ({ ...prev, cover_url: e.target.value }))}
                   className="w-full bg-card border border-border rounded-xl px-3 py-2.5 text-xs font-mono text-foreground focus:outline-none focus:border-primary"
-                  placeholder="https://..."
+                  placeholder={lang === 'ar' ? 'رابط الصورة (https:// أو /images/...)' : 'Image URL (https:// or /images/...)'}
                 />
               </div>
             </div>
@@ -620,7 +620,7 @@ export function AddBookModal({
                 )}
               </label>
               <input
-                type="url"
+                type="text"
                 value={newBook.goodreads_url || ''}
                 onChange={e => setNewBook((prev: any) => ({ ...prev, goodreads_url: e.target.value }))}
                 className="w-full bg-card border border-border rounded-xl px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:border-primary"
