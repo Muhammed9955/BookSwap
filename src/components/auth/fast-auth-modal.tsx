@@ -172,11 +172,13 @@ export function FastAuthModal({
     try {
       setGoogleLoading(true)
       setError(null)
-      const currentUrl = typeof window !== 'undefined' ? window.location.href : '/'
+      const origin = typeof window !== 'undefined' ? window.location.origin : ''
+      const nextPath = typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : '/'
+      const callbackUrl = `${origin}/auth/callback?next=${encodeURIComponent(nextPath)}`
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: currentUrl,
+          redirectTo: callbackUrl,
         },
       })
       if (oauthError) throw oauthError
@@ -225,10 +227,14 @@ export function FastAuthModal({
 
         if (data.user) {
           setSuccessMsg(lang === 'ar' ? 'تم تسجيل الدخول بنجاح! جاري المتابعة...' : 'Signed in! Continuing...')
-          setTimeout(() => {
+          try {
             onSuccess?.(data.user)
+          } catch (e) {
+            console.error('FastAuthModal onSuccess error:', e)
+          }
+          setTimeout(() => {
             onClose()
-          }, 400)
+          }, 300)
         }
       } else {
         // Register mode
@@ -264,10 +270,14 @@ export function FastAuthModal({
         if (data.user) {
           const registeredUser = data.user
           setSuccessMsg(lang === 'ar' ? 'تم إنشاء الحساب بنجاح! جاري المتابعة...' : 'Account created! Continuing...')
-          setTimeout(() => {
+          try {
             onSuccess?.(registeredUser)
+          } catch (e) {
+            console.error('FastAuthModal onSuccess error:', e)
+          }
+          setTimeout(() => {
             onClose()
-          }, 400)
+          }, 300)
         }
       }
     } catch (err: any) {

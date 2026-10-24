@@ -583,7 +583,7 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
 
   if (submitted) {
     return (
-      <MainLayout user={user}>
+      <MainLayout user={currentUser || user}>
         <div className="page-container py-20 flex flex-col items-center text-center max-w-lg mx-auto gap-6 animate-in fade-in">
           <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 shadow-md">
             <CheckCircle2 className="h-10 w-10 animate-bounce" />
@@ -597,21 +597,40 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
             </h1>
             <p className="text-muted-foreground text-sm leading-relaxed">
               {lang === 'ar'
-                ? `تم تسجيل بيانات مكتبة (${storeNameAr}) بنجاح وإرسال إشعار مباشر لفريق إدارة المنصة. سيتم مراجعة الروابط واعتماد شارة التوثيق وتفعيل صفحة المتجر خلال 24 ساعة.`
-                : `Store (${storeNameAr}) has been submitted for verification. Our partner success team will review social links and activate your verified badge within 24 hours.`}
+                ? `تم تسجيل بيانات مكتبة (${storeNameAr}) بنجاح وإرسال إشعار مباشر لفريق إدارة المنصة. تم ربط الطلب بحسابك (${currentUser?.email || email}) وسيتم مراجعة الروابط واعتماد شارة التوثيق وتفعيل صفحة المتجر خلال 24 ساعة.`
+                : `Store (${storeNameAr}) has been submitted for verification. Your application is linked to (${currentUser?.email || email}). Verification badge will be activated within 24 hours.`}
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-card border border-border w-full text-start text-xs space-y-2">
+          <div className="p-4 rounded-2xl bg-card border border-border w-full text-start text-xs space-y-3">
             <p className="font-bold text-foreground flex items-center gap-2">
               <ShieldCheck className="h-4 w-4 text-emerald-600" />
               <span>{lang === 'ar' ? 'ماذا سيحدث بعد ذلك؟' : 'What happens next?'}</span>
             </p>
-            <ul className="text-muted-foreground space-y-1 list-disc list-inside">
+            <ul className="text-muted-foreground space-y-1.5 list-disc list-inside">
+              <li>{lang === 'ar' ? 'تم تسجيل طلبك وربطه بحسابك بنجاح دون أي حاجة لإعادة التقديم.' : 'Application saved and linked to your account.'}</li>
               <li>{lang === 'ar' ? 'فحص حساب فيسبوك/إنستغرام للتأكد من نشاط المتجر ومنع الحسابات الوهمية.' : 'Verify store social media activity to ensure legitimacy.'}</li>
               <li>{lang === 'ar' ? 'تفعيل رابط المتجر العام ليتمكن القراء من تصفح كتبك وعروض الباكدجات.' : 'Public store link activated for catalog and mix & match bundles.'}</li>
               <li>{lang === 'ar' ? 'إرسال دليل إدارة لوحة المتجر وتلقي الطلبات عبر الواتساب.' : 'Receive store dashboard guide & direct WhatsApp customer order routing.'}</li>
             </ul>
+
+            <a
+              href={`https://wa.me/${whatsappAdmin}?text=${encodeURIComponent(
+                `🏪 *تأكيد تقديم طلب شراكة مكتبة (${storeNameAr})*\n` +
+                `👤 المسؤول: ${ownerName}\n` +
+                `📱 الواتساب: ${whatsapp}\n` +
+                `✉️ البريد: ${currentUser?.email || email}\n` +
+                `✨ تم تقديم الطلب بنجاح عبر منصة ورق كونكت.`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block pt-1"
+            >
+              <Button className="w-full rounded-xl font-bold gap-2 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-sm text-xs">
+                <MessageCircle className="h-4 w-4" />
+                <span>{lang === 'ar' ? 'تأكيد الطلب مع فريق الدعم عبر واتساب' : 'Chat with Partner Support on WhatsApp'}</span>
+              </Button>
+            </a>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 w-full">
@@ -632,7 +651,7 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
   }
 
   return (
-    <MainLayout user={user}>
+    <MainLayout user={currentUser || user}>
       {/* Hero Header */}
       <section className="relative overflow-hidden hero-gradient text-white py-14 md:py-20">
         <div className="absolute -top-32 -start-32 h-96 w-96 rounded-full bg-emerald-500/20 blur-3xl pointer-events-none" />

@@ -52,6 +52,9 @@ export async function GET(request: Request) {
           onboarding_completed: false,
         })
 
+        if (next && next !== '/' && next !== '/onboarding') {
+          return NextResponse.redirect(`${origin}${next}`)
+        }
         return NextResponse.redirect(`${origin}/onboarding`)
       }
 
@@ -72,6 +75,9 @@ export async function GET(request: Request) {
       }
 
       if (!profile.onboarding_completed) {
+        if (next && next !== '/' && next !== '/onboarding') {
+          return NextResponse.redirect(`${origin}${next}`)
+        }
         return NextResponse.redirect(`${origin}/onboarding`)
       }
 
