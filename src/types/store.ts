@@ -49,6 +49,8 @@ export interface Bookstore {
   shipping_scope?: string
   opening_hours?: Record<string, string>
   website_url?: string
+  email?: string
+  phone?: string
   social_links?: {
     facebook?: string
     instagram?: string

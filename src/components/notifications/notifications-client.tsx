@@ -315,6 +315,15 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
       ) : (
         <div className="space-y-2.5">
           {displayedNotifications.map(notif => {
+            const isStoreVerification =
+              notif.type === 'STORE_APPROVED' ||
+              Boolean(
+                (notif.title && (notif.title.includes('توثيق') || notif.title.includes('اعتماد') || notif.title.includes('متجر') || notif.title.toLowerCase().includes('store'))) ||
+                (notif.body && (notif.body.includes('لوحة التحكم') || notif.body.includes('تفعيل متجر') || notif.body.includes('توثيق') || notif.body.toLowerCase().includes('dashboard')))
+              )
+
+            const destinationUrl = isStoreVerification ? '/stores/dashboard' : notif.action_url
+
             const cardInner = (
               <div
                 className={cn(
@@ -327,7 +336,7 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
               >
                 {/* Notification Emoji Icon */}
                 <div className="h-10 w-10 rounded-xl bg-muted/60 dark:bg-slate-800 flex items-center justify-center text-xl shrink-0 border border-border/40">
-                  {NOTIFICATION_ICONS[notif.type] ?? '🔔'}
+                  {NOTIFICATION_ICONS[notif.type] ?? (isStoreVerification ? '🏪🎉' : '🔔')}
                 </div>
 
                 {/* Content */}
@@ -378,19 +387,19 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
                     )
                   })()}
 
-                  {/* STORE_APPROVED Quick Action Button */}
-                  {notif.type === 'STORE_APPROVED' && (
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {/* STORE_APPROVED / Store Verification Quick Action Button */}
+                  {isStoreVerification && (
+                    <div className="mt-2.5 flex flex-wrap items-center gap-2">
                       <Link
                         href="/stores/dashboard"
                         onClick={(e) => {
                           e.stopPropagation()
                           if (!notif.is_read) markRead(notif.id)
                         }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-black hover:bg-emerald-500/25 transition-all shadow-xs"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-black hover:bg-primary/90 transition-all shadow-xs"
                       >
                         <span>🏪</span>
-                        <span>{lang === 'ar' ? 'الدخول للوحة المتجر وإضافة الكتب 📚' : 'Open Store Dashboard & Add Books 📚'}</span>
+                        <span>{lang === 'ar' ? 'الانتقال إلى لوحة تحكم المتجر وإدارة الكتب 🚀' : 'Go to Store Dashboard 🚀'}</span>
                       </Link>
                     </div>
                   )}
@@ -400,9 +409,11 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
                       <span className="text-[10px] text-muted-foreground">
                         {formatRelativeTime(notif.created_at, lang)}
                       </span>
-                      {notif.action_url && (
+                      {destinationUrl && (
                         <span className="text-[10px] font-bold text-primary group-hover:underline">
-                          {lang === 'ar' ? 'عرض في لوحة الإدارة ←' : 'View in Dashboard →'}
+                          {isStoreVerification
+                            ? (lang === 'ar' ? 'الانتقال للوحة تحكم المتجر ←' : 'Go to Store Dashboard →')
+                            : (lang === 'ar' ? 'عرض في لوحة الإدارة ←' : 'View in Dashboard →')}
                         </span>
                       )}
                     </div>
@@ -431,12 +442,12 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
               </div>
             )
 
-            // Wrap in Link if notification has an action URL (e.g. /transactions)
-            if (notif.action_url) {
+            // Wrap in Link if notification has a destination URL
+            if (destinationUrl) {
               return (
                 <Link
                   key={notif.id}
-                  href={notif.action_url}
+                  href={destinationUrl}
                   onClick={() => !notif.is_read && markRead(notif.id)}
                   className="block focus:outline-none"
                 >

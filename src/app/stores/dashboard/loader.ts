@@ -20,9 +20,12 @@ export async function loadStoreDashboardData() {
     .maybeSingle()
 
   const stores = await getBookstores({ _client: supabase })
-  const userStore = stores.find(s => s.owner_id === user.id)
+  let userStore = stores.find(s => s.owner_id === user.id)
+  if (!userStore && user.email) {
+    userStore = stores.find(s => s.email?.toLowerCase() === user.email?.toLowerCase())
+  }
   const isStaff = profile?.role === 'ADMIN' || profile?.role === 'MODERATOR'
-  const isPartner = Boolean(userStore)
+  const isPartner = Boolean(userStore) || profile?.role === 'PARTNER'
 
   // Normal users who are neither staff nor bookstore owners are blocked
   if (!isStaff && !isPartner) {
@@ -32,7 +35,7 @@ export async function loadStoreDashboardData() {
   const offers = await getAllOffers({ _client: supabase })
   const events = await getAllEvents(supabase)
 
-  const defaultStore = userStore || stores[0] || null
+  const defaultStore = userStore || (isStaff ? stores[0] : null) || null
 
   return {
     user,

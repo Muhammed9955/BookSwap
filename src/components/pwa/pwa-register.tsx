@@ -133,7 +133,14 @@ export function PwaRegister() {
               ? newNotif.body_ar || newNotif.body || ''
               : newNotif.body || newNotif.body_ar || ''
 
-          const url = newNotif.action_url || '/notifications'
+          const isStoreVerification =
+            newNotif.type === 'STORE_APPROVED' ||
+            Boolean(
+              (newNotif.title && (newNotif.title.includes('توثيق') || newNotif.title.includes('اعتماد') || newNotif.title.includes('متجر'))) ||
+              (newNotif.body && (newNotif.body.includes('لوحة التحكم') || newNotif.body.includes('تفعيل متجر') || newNotif.body.includes('توثيق')))
+            )
+
+          const url = isStoreVerification ? '/stores/dashboard' : (newNotif.action_url || '/notifications')
 
           // Trigger native PWA / OS Push notification
           showLocalPwaNotification(title, {

@@ -173,9 +173,16 @@ export function AuthProvider({
             playNotificationChime()
             if (payload?.new) {
               const n = payload.new
+              const isStoreVerification =
+                n.type === 'STORE_APPROVED' ||
+                Boolean(
+                  (n.title && (n.title.includes('توثيق') || n.title.includes('اعتماد') || n.title.includes('متجر'))) ||
+                  (n.body && (n.body.includes('لوحة التحكم') || n.body.includes('تفعيل متجر') || n.body.includes('توثيق')))
+                )
+              const notifUrl = isStoreVerification ? '/stores/dashboard' : (n.action_url || '/notifications')
               showLocalPwaNotification(n.title_ar || n.title, {
                 body: n.body_ar || n.body || undefined,
-                url: n.action_url || '/notifications',
+                url: notifUrl,
                 tag: n.id,
               })
             }
