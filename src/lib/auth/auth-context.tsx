@@ -14,7 +14,7 @@ export interface UserProfile {
   full_name_ar?: string | null
   avatar_url?: string | null
   bio?: string | null
-  role?: 'USER' | 'MODERATOR' | 'ADMIN'
+  role?: 'USER' | 'MODERATOR' | 'ADMIN' | 'PARTNER' | 'STORE_OWNER'
   city_id?: string | null
   area_id?: string | null
   email_verified?: boolean

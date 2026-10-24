@@ -203,11 +203,21 @@ export function TopNav({
     }
   }, [activeUser?.id])
 
-  const isStorePartner = Boolean(
+  const isAdmin = Boolean(
     activeUser?.profile?.role === 'ADMIN' ||
+    authProfile?.role === 'ADMIN' ||
+    (authUser as any)?.app_metadata?.role === 'admin' ||
+    (authUser as any)?.user_metadata?.role === 'admin' ||
     activeUser?.profile?.role === 'MODERATOR' ||
-    activeUser?.profile?.role === 'PARTNER' ||
+    authProfile?.role === 'MODERATOR'
+  )
+
+  const isStorePartner = Boolean(
+    isAdmin ||
+    (activeUser?.profile as any)?.role === 'PARTNER' ||
+    (authProfile as any)?.role === 'PARTNER' ||
     (activeUser?.profile as any)?.role === 'STORE_OWNER' ||
+    (authProfile as any)?.role === 'STORE_OWNER' ||
     hasConfirmedStore
   )
 
@@ -685,6 +695,19 @@ export function TopNav({
                   </Link>
                 )}
 
+                {/* Admin Dashboard Direct Badge for Admins */}
+                {isAdmin && (
+                  <Link
+                    href="/admin"
+                    prefetch={true}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+                    title={lang === 'ar' ? 'لوحة تحكم الإدارة' : 'Admin Dashboard'}
+                  >
+                    <Shield className="h-3.5 w-3.5 shrink-0 text-rose-600 dark:text-rose-400" />
+                    <span className="hidden lg:inline">{lang === 'ar' ? 'الإدارة 🛡️' : 'Admin 🛡️'}</span>
+                  </Link>
+                )}
+
                 {/* User Avatar with Status Ring and Solid Dropdown */}
                 <div className="relative" ref={dropdownRef}>
                   <button
@@ -714,11 +737,11 @@ export function TopNav({
                     <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform duration-200 hidden sm:block', dropdownOpen && 'rotate-180')} />
                   </button>
 
-                  {/* Solid Elevated User Dropdown Card */}
+                  {/* Solid Elevated User Dropdown Card with Mobile Scroll Fix */}
                   {dropdownOpen && (
-                    <div className="absolute end-0 mt-2.5 w-72 rounded-3xl bg-white dark:bg-slate-900 border-2 border-border shadow-2xl p-2.5 z-50 animate-in fade-in-50 zoom-in-95 ring-1 ring-black/5 dark:ring-white/10">
+                    <div className="absolute end-0 mt-2.5 w-[calc(100vw-24px)] max-w-[300px] sm:w-72 max-h-[calc(100dvh-75px)] sm:max-h-[min(650px,calc(100vh-90px))] overflow-y-auto overscroll-contain rounded-3xl bg-white dark:bg-slate-900 border-2 border-border shadow-2xl p-2.5 z-50 animate-in fade-in-50 zoom-in-95 ring-1 ring-black/5 dark:ring-white/10 scrollbar-thin">
                       {/* Profile User Info Card */}
-                      <div className="p-3 rounded-2xl bg-muted/50 border border-border/60 mb-1.5 flex items-center gap-3">
+                      <div className="p-3 rounded-2xl bg-muted/50 border border-border/60 mb-1.5 flex items-center gap-3 shrink-0">
                         <div className="h-11 w-11 rounded-full overflow-hidden bg-primary/10 flex items-center justify-center ring-2 ring-primary/30 shrink-0">
                           {effectiveAvatar ? (
                             <img
@@ -737,15 +760,47 @@ export function TopNav({
                           <p className="text-sm font-black text-foreground truncate">
                             {effectiveName || (lang === 'ar' ? 'قارئ وَرَق' : 'WARAQ Reader')}
                           </p>
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
-                            <span>⭐</span>
-                            <span>{lang === 'ar' ? 'قارئ موثق' : 'Verified Reader'}</span>
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                            {isAdmin ? (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-rose-500/15 text-rose-700 dark:text-rose-300 text-[10px] font-black border border-rose-500/30">
+                                <span>🛡️</span>
+                                <span>{lang === 'ar' ? 'مدير المنصة' : 'Admin'}</span>
+                              </span>
+                            ) : isStorePartner ? (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[10px] font-black border border-emerald-500/30">
+                                <span>🏬</span>
+                                <span>{lang === 'ar' ? 'شريك مكتبة' : 'Store Partner'}</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold">
+                                <span>⭐</span>
+                                <span>{lang === 'ar' ? 'قارئ موثق' : 'Verified Reader'}</span>
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
 
                       {/* Dropdown Menu Items */}
                       <div className="space-y-0.5">
+                        {/* Admin Dashboard - Prominent Quick Link for Admins */}
+                        {isAdmin && (
+                          <Link
+                            href="/admin"
+                            onClick={() => setDropdownOpen(false)}
+                            className="flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-black text-rose-700 dark:text-rose-300 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 transition-all cursor-pointer group shadow-2xs mb-1"
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className="p-1 rounded-lg bg-rose-500/25 text-rose-600 dark:text-rose-300 group-hover:scale-110 transition-transform">
+                                <Shield className="h-4 w-4" />
+                              </div>
+                              <span>{lang === 'ar' ? 'لوحة تحكم الإدارة 🛡️' : 'Admin Dashboard 🛡️'}</span>
+                            </div>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-600 text-white font-black tracking-wider">
+                              ADMIN
+                            </span>
+                          </Link>
+                        )}
                         {/* Partner Bookstore Flow */}
                         <Link
                           href="/stores"
@@ -918,16 +973,16 @@ export function TopNav({
                           <span>{t('nav_add', lang)}</span>
                         </Link>
 
-                        {activeUser.profile?.role === 'ADMIN' && (
+                        {isAdmin && (
                           <Link
                             href="/admin"
                             onClick={() => setDropdownOpen(false)}
-                            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors cursor-pointer"
+                            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors cursor-pointer"
                           >
-                            <div className="p-1 rounded-lg bg-red-500/10 text-red-600">
+                            <div className="p-1 rounded-lg bg-rose-500/10 text-rose-600">
                               <Shield className="h-4 w-4" />
                             </div>
-                            <span>{lang === 'ar' ? 'لوحة تحكم الإدارة' : 'Admin Dashboard'}</span>
+                            <span>{lang === 'ar' ? 'لوحة تحكم الإدارة 🛡️' : 'Admin Dashboard 🛡️'}</span>
                           </Link>
                         )}
                       </div>
@@ -1302,30 +1357,73 @@ export function TopNav({
                   <span>{lang === 'ar' ? 'انضم كشريك (مكتبة أو منظم فعاليات)' : 'Partner With Us'}</span>
                 </Link>
 
-                {/* Role Matched Store/Admin Management in Mobile Drawer */}
+                {/* Admin Management in Mobile Drawer */}
+                {isAdmin && (
+                  <div className="pt-2 border-t border-border/60 space-y-1">
+                    <div className="px-2 py-1 text-[11px] font-black uppercase text-rose-600 dark:text-rose-400 tracking-wider flex items-center gap-1.5">
+                      <Shield className="h-3.5 w-3.5 text-rose-600" />
+                      <span>{lang === 'ar' ? 'إدارة المنصة (Admin)' : 'Platform Admin'}</span>
+                    </div>
+                    <Link
+                      href="/admin"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center justify-between p-3 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 transition-all group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-xl bg-rose-500/20 text-rose-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                          <Shield className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-rose-700 dark:text-rose-300 group-hover:text-rose-600 transition-colors">
+                              {lang === 'ar' ? 'لوحة تحكم الإدارة 🛡️' : 'Admin Dashboard 🛡️'}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-black bg-rose-500/20 text-rose-700 dark:text-rose-300">
+                              ADMIN
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground line-clamp-1">
+                            {lang === 'ar' ? 'إدارة المستخدمين، المكتبات الشريكة، التقارير والإحصائيات' : 'Users, partner stores, reports & stats'}
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className={cn('h-4 w-4 text-rose-600 group-hover:translate-x-0.5 transition-transform', isRTL && 'rotate-180')} />
+                    </Link>
+                  </div>
+                )}
+
+                {/* Partner Store Tools in Mobile Drawer */}
                 {activeUser && isStorePartner && (
                   <div className="pt-2 border-t border-border/60 space-y-1">
-                    <div className="px-2 py-1 text-[11px] font-black uppercase text-emerald-600 tracking-wider">
-                      {lang === 'ar' ? 'أدوات الإدارة والشركاء' : 'Partner & Admin Tools'}
+                    <div className="px-2 py-1 text-[11px] font-black uppercase text-emerald-600 tracking-wider flex items-center gap-1.5">
+                      <Store className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>{lang === 'ar' ? 'أدوات الشركاء والمكتبات' : 'Partner Store Tools'}</span>
                     </div>
                     <Link
                       href="/stores/dashboard"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-black text-emerald-600 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors cursor-pointer"
+                      className="flex items-center justify-between p-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/25 transition-all group"
                     >
-                      <Store className="h-4 w-4 text-emerald-600" />
-                      <span>{lang === 'ar' ? 'لوحة إدارة متجري والمخزون 🏬' : 'Store Manager Dashboard'}</span>
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 rounded-xl bg-emerald-500/20 text-emerald-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                          <Store className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-emerald-700 dark:text-emerald-300 group-hover:text-emerald-600 transition-colors">
+                              {lang === 'ar' ? 'لوحة إدارة متجري والمخزون 🏬' : 'Store Manager Dashboard 🏬'}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                              STORE
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground line-clamp-1">
+                            {lang === 'ar' ? 'إدارة باقات وكتالوج الكتب، العروض والطلبات' : 'Manage books catalog, bundles & orders'}
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className={cn('h-4 w-4 text-emerald-600 group-hover:translate-x-0.5 transition-transform', isRTL && 'rotate-180')} />
                     </Link>
-                    {activeUser.profile?.role === 'ADMIN' && (
-                      <Link
-                        href="/admin"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-black text-red-600 bg-red-500/10 hover:bg-red-500/20 transition-colors cursor-pointer"
-                      >
-                        <Shield className="h-4 w-4 text-red-600" />
-                        <span>{lang === 'ar' ? 'لوحة تحكم الإدارة 🛡️' : 'Admin Dashboard'}</span>
-                      </Link>
-                    )}
                   </div>
                 )}
 
