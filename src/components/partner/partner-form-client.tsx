@@ -355,36 +355,141 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
 
   // Phone sanitization & validation helpers
   const sanitizePhoneInput = (val: string): string => {
+    // Convert Arabic-Indic numerals (٠-٩) to standard (0-9)
     const converted = val.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString())
-    return converted.replace(/[^\d+]/g, '')
+    // Keep digits and leading + (only at index 0)
+    const hasPlus = converted.trim().startsWith('+')
+    const digitsOnly = converted.replace(/[^0-9]/g, '')
+    return hasPlus ? `+${digitsOnly}` : digitsOnly
   }
 
-  const validatePhone = (val: string): { isValid: boolean; message?: string; isEgypt?: boolean } => {
-    const clean = val.replace(/[^0-9]/g, '')
-    if (!clean) {
+  const validatePhone = (
+    val: string
+  ): {
+    isValid: boolean
+    message?: string
+    isEgypt?: boolean
+    network?: string
+    cleanNumber?: string
+    label?: string
+  } => {
+    if (!val || !val.trim()) {
       return {
         isValid: false,
         message: lang === 'ar' ? 'رقم الهاتف مطلوب' : 'Phone number is required',
       }
     }
-    // Egyptian mobile: 010, 011, 012, 015 with 11 digits
-    if (/^01[0125][0-9]{8}$/.test(clean)) {
-      return { isValid: true, isEgypt: true }
+
+    // Convert Arabic-Indic numerals (٠-٩) to standard (0-9)
+    const normalized = val
+      .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString())
+      .trim()
+    const rawDigits = normalized.replace(/[^0-9]/g, '')
+    const startsWithPlus = normalized.startsWith('+') || normalized.startsWith('00')
+
+    // Case 1: Local Egyptian mobile starting with 01
+    if (normalized.startsWith('01') || (rawDigits.startsWith('01') && !startsWithPlus)) {
+      if (rawDigits.length < 11) {
+        return {
+          isValid: false,
+          message:
+            lang === 'ar'
+              ? `رقم الهاتف غير مكتمل (${rawDigits.length}/11 رقماً). أرقام المحمول في مصر تتكون من 11 رقماً`
+              : `Phone number incomplete (${rawDigits.length}/11 digits). Egyptian mobile must be 11 digits`,
+        }
+      }
+      if (rawDigits.length > 11) {
+        return {
+          isValid: false,
+          message:
+            lang === 'ar'
+              ? `رقم الهاتف يتجاوز 11 رقماً (${rawDigits.length} رقماً). يرجى التأكد من الرقم`
+              : `Phone number exceeds 11 digits (${rawDigits.length} digits)`,
+        }
+      }
+
+      // Exactly 11 digits starting with 01
+      const prefix = rawDigits.substring(0, 3)
+      const networkMap: Record<string, string> = {
+        '010': lang === 'ar' ? 'فودافون' : 'Vodafone',
+        '011': lang === 'ar' ? 'إتصالات' : 'Etisalat',
+        '012': lang === 'ar' ? 'أورنج' : 'Orange',
+        '015': lang === 'ar' ? 'وي (WE)' : 'WE',
+      }
+
+      if (networkMap[prefix]) {
+        return {
+          isValid: true,
+          isEgypt: true,
+          network: networkMap[prefix],
+          cleanNumber: rawDigits,
+          label:
+            lang === 'ar'
+              ? `رقم مصري معتمد (${networkMap[prefix]} - 11 رقماً)`
+              : `Valid Egyptian Mobile (${networkMap[prefix]} - 11 digits)`,
+        }
+      }
+
+      return {
+        isValid: false,
+        message:
+          lang === 'ar'
+            ? `كود الشبكة (${prefix}) غير صحيح. أرقام المحمول تبدأ بـ 010 أو 011 أو 012 أو 015`
+            : `Invalid network prefix (${prefix}). Must start with 010, 011, 012, or 015`,
+      }
     }
-    // Egyptian with country code 201...
-    if (/^201[0125][0-9]{8}$/.test(clean)) {
-      return { isValid: true, isEgypt: true }
+
+    // Case 2: Egyptian mobile with country code (+20 or 0020 or 20)
+    if (/^(\+?20|0020)1[0125][0-9]{8}$/.test(normalized.replace(/[\s-]/g, ''))) {
+      const cleanEgypt = '0' + rawDigits.slice(-10)
+      const prefix = cleanEgypt.substring(0, 3)
+      const networkMap: Record<string, string> = {
+        '010': lang === 'ar' ? 'فودافون' : 'Vodafone',
+        '011': lang === 'ar' ? 'إتصالات' : 'Etisalat',
+        '012': lang === 'ar' ? 'أورنج' : 'Orange',
+        '015': lang === 'ar' ? 'وي (WE)' : 'WE',
+      }
+      return {
+        isValid: true,
+        isEgypt: true,
+        network: networkMap[prefix] || (lang === 'ar' ? 'مصري' : 'Egypt'),
+        cleanNumber: cleanEgypt,
+        label:
+          lang === 'ar'
+            ? `رقم مصري معتمد (${networkMap[prefix] || ''} +20)`
+            : `Valid Egyptian Mobile (${networkMap[prefix] || ''} +20)`,
+      }
     }
-    // General international phone (10-15 digits)
-    if (clean.length >= 10 && clean.length <= 15) {
-      return { isValid: true, isEgypt: false }
+
+    // Case 3: Genuine international number (must have country code with + or 00, min 10 max 15 digits)
+    if (startsWithPlus) {
+      if (rawDigits.length >= 10 && rawDigits.length <= 15) {
+        return {
+          isValid: true,
+          isEgypt: false,
+          cleanNumber: '+' + rawDigits.replace(/^00/, ''),
+          label:
+            lang === 'ar'
+              ? `رقم اتصال دولي معتمد (${rawDigits.length} رقماً)`
+              : `Valid International Number (${rawDigits.length} digits)`,
+        }
+      }
+      return {
+        isValid: false,
+        message:
+          lang === 'ar'
+            ? 'الرقم الدولي يجب أن يتراوح بين 10 و 15 رقماً مع كود الدولة (+)'
+            : 'International number must be 10-15 digits with country code (+)',
+      }
     }
+
+    // Any other number that doesn't start with 01 or international code
     return {
       isValid: false,
       message:
         lang === 'ar'
-          ? 'يرجى إدخال رقم محمول مصري صحيح 11 رقماً (يبدأ بـ 010 أو 011 أو 012 أو 015) أو رقم دولي معتمد'
-          : 'Please enter a valid 11-digit mobile number (e.g. 01012345678) or international phone',
+          ? 'يرجى إدخال رقم محمول مصري صحيح يبدأ بـ 01 (11 رقماً) أو رقم دولي يبدأ بـ +'
+          : 'Please enter a valid 11-digit Egyptian mobile starting with 01, or international with +',
     }
   }
 
@@ -1968,7 +2073,7 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
                           </span>
                           {validatePhone(whatsapp).isValid && (
                             <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                              ✓ {validatePhone(whatsapp).isEgypt ? (lang === 'ar' ? 'رقم مصري معتمد 11 رقماً' : '11-digit Egyptian number') : (lang === 'ar' ? 'رقم معتمد' : 'Valid number')}
+                              ✓ {validatePhone(whatsapp).label}
                             </span>
                           )}
                         </div>
@@ -2025,7 +2130,7 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
                           </span>
                           {validatePhone(phone).isValid && (
                             <span className="text-[10px] font-bold text-primary flex items-center gap-1">
-                              ✓ {validatePhone(phone).isEgypt ? (lang === 'ar' ? 'رقم مصري معتمد 11 رقماً' : '11-digit Egyptian number') : (lang === 'ar' ? 'رقم معتمد' : 'Valid number')}
+                              ✓ {validatePhone(phone).label}
                             </span>
                           )}
                         </div>
