@@ -1781,22 +1781,44 @@ export async function approveStoreApplication(
 
   // 1. Resolve applicant / owner ID for store ownership & permissions
   let resolvedOwnerId = target.applicant_id
-  if (!resolvedOwnerId && target.email) {
+
+  // Check partner_requests table directly
+  if (!resolvedOwnerId) {
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('email', target.email)
+      const { data: pr } = await supabase
+        .from('partner_requests')
+        .select('submitted_by, details, phone')
+        .eq('id', applicationId)
         .maybeSingle()
-      if (profile?.id) resolvedOwnerId = profile.id
+      if (pr?.submitted_by) {
+        resolvedOwnerId = pr.submitted_by
+      } else if (pr?.details) {
+        const parsed = typeof pr.details === 'string' ? JSON.parse(pr.details) : pr.details
+        if (parsed?.applicant_id) resolvedOwnerId = parsed.applicant_id
+      }
     } catch {}
   }
+
+  // Check bookstores table
+  if (!resolvedOwnerId) {
+    try {
+      const { data: bStore } = await supabase
+        .from('bookstores')
+        .select('owner_id')
+        .eq('id', applicationId)
+        .maybeSingle()
+      if (bStore?.owner_id) resolvedOwnerId = bStore.owner_id
+    } catch {}
+  }
+
+  // Check profiles by phone
   if (!resolvedOwnerId && target.phone) {
     try {
+      const cleanPhone = target.phone.replace(/[^\d+]/g, '')
       const { data: profile } = await supabase
         .from('profiles')
         .select('id')
-        .eq('phone', target.phone)
+        .or(`phone.eq.${target.phone},phone.eq.${cleanPhone}`)
         .maybeSingle()
       if (profile?.id) resolvedOwnerId = profile.id
     } catch {}

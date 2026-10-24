@@ -880,37 +880,7 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
       console.warn('Failed submitting store application:', err)
     }
 
-    // Elevate user profile role to PARTNER (Store Owner) immediately
-    if (effectiveUserId) {
-      try {
-        const supabase = createClient()
-        await supabase
-          .from('profiles')
-          .update({ role: 'PARTNER' })
-          .eq('id', effectiveUserId)
-
-        // Send in-app notification leading directly to store dashboard
-        const notifPayload = {
-          user_id: effectiveUserId,
-          type: 'STORE_APPROVED',
-          title: '🎉 تم تسجيل متجرك بنجاح وتفعيل لوحة التحكم!',
-          title_ar: '🎉 تم تسجيل متجرك بنجاح وتفعيل لوحة التحكم!',
-          body: `مرحباً ${ownerName || 'شريكنا'}! تم تفعيل لوحة تحكم متجر (${storeNameAr || storeNameEn || 'متجرك'}). اضغط هنا للدخول وإضافة كتبك وباقات العروض.`,
-          body_ar: `مرحباً ${ownerName || 'شريكنا'}! تم تفعيل لوحة تحكم متجر (${storeNameAr || storeNameEn || 'متجرك'}). اضغط هنا للدخول وإضافة كتبك وباقات العروض.`,
-          action_url: '/stores/dashboard',
-          data: {
-            store_name: storeNameAr || storeNameEn,
-            target_url: '/stores/dashboard',
-          },
-        }
-        const { error: notifErr } = await supabase.from('notifications').insert(notifPayload as any)
-        if (notifErr) {
-          await supabase.from('notifications').insert({ ...notifPayload, type: 'TRANSACTION_COMPLETED' } as any)
-        }
-      } catch (err) {
-        console.warn('Client-side role/notification update notice:', err)
-      }
-    }
+    // Application is submitted as PENDING. Role elevation and approval notifications are triggered upon admin confirmation.
 
     // Dispatch submission receipt confirmation email
     if (effectiveEmail) {
@@ -1035,67 +1005,69 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
             <CheckCircle2 className="h-10 w-10 animate-bounce" />
           </div>
           <div className="space-y-3">
-            <span className="text-xs font-bold text-primary px-3 py-1 bg-primary/10 rounded-full">
-              {lang === 'ar' ? 'طلب شراكة متجر معتمد' : 'Store Application Received'}
+            <span className="text-xs font-bold text-amber-600 dark:text-amber-400 px-3.5 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-full inline-flex items-center gap-1.5">
+              <span>⏳</span>
+              <span>{lang === 'ar' ? 'طلب الشراكة قيد المراجعة والتدقيق' : 'Store Application Under Review'}</span>
             </span>
             <h1 className="text-2xl sm:text-3xl font-black text-foreground">
-              {lang === 'ar' ? `🎉 مرحباً بك يا ${ownerName} في شبكة ورق!` : `🎉 Welcome ${ownerName} to Waraq Network!`}
+              {lang === 'ar' ? `تم استلام طلبكم بنجاح يا ${ownerName} 📋` : `Application Received, ${ownerName} 📋`}
             </h1>
-            <p className="text-muted-foreground text-sm leading-relaxed">
+            <p className="text-muted-foreground text-sm leading-relaxed max-w-md mx-auto">
               {lang === 'ar'
-                ? `تم تسجيل بيانات مكتبة (${storeNameAr}) بنجاح وإرسال إشعار مباشر لفريق إدارة المنصة. تم ربط الطلب بحسابك (${currentUser?.email || email}) وسيتم مراجعة الروابط واعتماد شارة التوثيق وتفعيل صفحة المتجر خلال 24 ساعة.`
-                : `Store (${storeNameAr}) has been submitted for verification. Your application is linked to (${currentUser?.email || email}). Verification badge will be activated within 24 hours.`}
+                ? `شكراً لثقتكم. تم تسجيل بيانات متجر (${storeNameAr}) وربطه بحسابكم بنجاح (${currentUser?.email || email}). يقوم فريق الإدارة حالياً بمراجعة البيانات وروابط التواصل.`
+                : `Thank you. Store (${storeNameAr}) details have been registered and linked to your account (${currentUser?.email || email}). Our team is currently reviewing your application.`}
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-card border border-border w-full text-start text-xs space-y-3">
-            <p className="font-bold text-foreground flex items-center gap-2">
+          <div className="p-4 sm:p-5 rounded-2xl bg-card border border-border w-full text-start text-xs space-y-3 shadow-xs">
+            <p className="font-bold text-foreground flex items-center gap-2 text-sm">
               <ShieldCheck className="h-4 w-4 text-emerald-600" />
-              <span>{lang === 'ar' ? 'ماذا سيحدث بعد ذلك؟' : 'What happens next?'}</span>
+              <span>{lang === 'ar' ? 'خطوات التفعيل والاعتماد القادمة:' : 'Next Steps & Verification:'}</span>
             </p>
-            <ul className="text-muted-foreground space-y-1.5 list-disc list-inside">
-              <li>{lang === 'ar' ? 'تم تسجيل طلبك وربطه بحسابك بنجاح دون أي حاجة لإعادة التقديم.' : 'Application saved and linked to your account.'}</li>
-              <li>{lang === 'ar' ? 'فحص حساب فيسبوك/إنستغرام للتأكد من نشاط المتجر ومنع الحسابات الوهمية.' : 'Verify store social media activity to ensure legitimacy.'}</li>
-              <li>{lang === 'ar' ? 'تفعيل رابط المتجر العام ليتمكن القراء من تصفح كتبك وعروض الباكدجات.' : 'Public store link activated for catalog and mix & match bundles.'}</li>
-              <li>{lang === 'ar' ? 'إرسال دليل إدارة لوحة المتجر وتلقي الطلبات عبر الواتساب.' : 'Receive store dashboard guide & direct WhatsApp customer order routing.'}</li>
+            <ul className="text-muted-foreground space-y-2 list-none">
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-600 font-bold">1.</span>
+                <span>{lang === 'ar' ? 'مراجعة وتدقيق حساب المتجر والتأكد من بيانات التواصل لمنع الحسابات غير المؤهلة.' : 'Verification of store social links and contact details to ensure authenticity.'}</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-600 font-bold">2.</span>
+                <span>{lang === 'ar' ? 'اعتماد المتجر وتوثيقه رسمياً بشارة الشريك المعتمد 🟢 وترقية صلاحية حسابكم.' : 'Official store approval, partner verification badge activation, and role upgrade.'}</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-emerald-600 font-bold">3.</span>
+                <span>{lang === 'ar' ? 'إرسال إشعار فوري بحسابكم ورسالة بريد إلكتروني تحتوي على رابط مباشر للوحة تحكم المتجر لإضافة الكتب وباقات التوفير.' : 'Instant in-app notification & official email sent with direct link to your store dashboard to add inventory & deals.'}</span>
+              </li>
             </ul>
 
             <a
               href={`https://wa.me/${whatsappAdmin}?text=${encodeURIComponent(
-                `🏪 *تأكيد تقديم طلب شراكة مكتبة (${storeNameAr})*\n` +
+                `🏪 *استفسار ومتابعة طلب شراكة مكتبة (${storeNameAr})*\n` +
                 `👤 المسؤول: ${ownerName}\n` +
-                `📱 الواتساب: ${whatsapp}\n` +
+                `📱 الهاتف / الواتساب: ${whatsapp || phone}\n` +
                 `✉️ البريد: ${currentUser?.email || email}\n` +
-                `✨ تم تقديم الطلب بنجاح عبر منصة ورق كونكت.`
+                `✨ تم تقديم الطلب بنجاح عبر منصة ورق كونكت ونرغب في تسريع المراجعة.`
               )}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="block pt-1"
+              className="block pt-2"
             >
-              <Button className="w-full rounded-xl font-bold gap-2 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-sm text-xs">
+              <Button className="w-full rounded-xl font-bold gap-2 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-sm text-xs h-11">
                 <MessageCircle className="h-4 w-4" />
-                <span>{lang === 'ar' ? 'تأكيد الطلب مع فريق الدعم عبر واتساب' : 'Chat with Partner Support on WhatsApp'}</span>
+                <span>{lang === 'ar' ? 'متابعة الطلب مع فريق الدعم عبر واتساب لتسريع المراجعة' : 'Follow up with Partner Support on WhatsApp'}</span>
               </Button>
             </a>
           </div>
 
           <div className="w-full space-y-3 pt-1">
-            <Link href="/stores/dashboard" className="block w-full">
-              <Button className="w-full h-12 rounded-2xl font-black gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm shadow-md cursor-pointer transition-all hover:scale-[1.01]">
-                <span>🏪</span>
-                <span>{lang === 'ar' ? 'الانتقال إلى لوحة تحكم متجرك وإضافة الكتب 🚀' : 'Go to Store Dashboard & Add Books 🚀'}</span>
-              </Button>
-            </Link>
-
             <div className="flex flex-col sm:flex-row gap-2.5 w-full">
               <Link href="/stores" className="flex-1">
-                <Button variant="outline" className="w-full rounded-xl font-bold cursor-pointer text-xs">
-                  {lang === 'ar' ? 'تصفح دليل المكتبات' : 'Browse Bookstore Directory'}
+                <Button variant="outline" className="w-full h-11 rounded-xl font-bold cursor-pointer text-xs">
+                  {lang === 'ar' ? 'تصفح دليل المكتبات والكتب' : 'Browse Bookstore Directory'}
                 </Button>
               </Link>
               <Link href="/" className="flex-1">
-                <Button variant="ghost" className="w-full rounded-xl font-bold cursor-pointer text-xs">
-                  {lang === 'ar' ? 'العودة للرئيسية' : 'Back to Home'}
+                <Button variant="ghost" className="w-full h-11 rounded-xl font-bold cursor-pointer text-xs">
+                  {lang === 'ar' ? 'العودة للصفحة الرئيسية' : 'Back to Home'}
                 </Button>
               </Link>
             </div>

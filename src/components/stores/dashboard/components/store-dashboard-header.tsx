@@ -103,6 +103,17 @@ export function StoreDashboardHeader({
                   ? (lang === 'ar' ? 'فروع + أونلاين' : 'Physical & Online')
                   : currentStore.store_type}
               </span>
+              {currentStore.is_verified ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                  <span>✓</span>
+                  <span>{lang === 'ar' ? 'متجر موثق ومعتمد 🟢' : 'Verified Partner 🟢'}</span>
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                  <span>⏳</span>
+                  <span>{lang === 'ar' ? 'قيد المراجعة والتدقيق' : 'Under Review'}</span>
+                </span>
+              )}
             </div>
             <h1 className="text-xl sm:text-2xl font-black text-foreground mt-1">
               {lang === 'ar' && currentStore.name_ar ? currentStore.name_ar : currentStore.name}
@@ -156,6 +167,34 @@ export function StoreDashboardHeader({
           </Link>
         </div>
       </div>
+
+      {/* Under Review Notice Banner */}
+      {!currentStore.is_verified && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 text-amber-950 dark:text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+          <div className="space-y-1 text-xs">
+            <p className="font-bold text-sm text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+              <span>⏳</span>
+              <span>{lang === 'ar' ? 'طلب المتجر قيد المراجعة والتدقيق من قبل فريق الإدارة' : 'Store Application Under Review by Administration'}</span>
+            </p>
+            <p className="text-muted-foreground text-xs leading-relaxed max-w-2xl">
+              {lang === 'ar'
+                ? 'تم استلام بيانات متجرك بنجاح. يمكنك استعراض لوحة التحكم وتجهيز كتبك وعروضك الآن، وسيتم اعتماد وتفعيل المتجر رسمياً وظهوره للقراء فور انتهاء مراجعة الإدارة.'
+                : 'Your store details are under review. You can prepare your inventory and bundles now, and your store will become live upon admin approval.'}
+            </p>
+          </div>
+          <a
+            href="https://wa.me/201556252658?text=مرحباً،%20أود%20الاستفسار%20بخصوص%20مراجعة%20طلب%20توثيق%20المتجر"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0"
+          >
+            <Button size="sm" className="rounded-xl font-bold bg-amber-600 hover:bg-amber-700 text-white text-xs gap-1.5 cursor-pointer shadow-xs">
+              <span>💬</span>
+              <span>{lang === 'ar' ? 'تسريع المراجعة عبر واتساب' : 'Expedite on WhatsApp'}</span>
+            </Button>
+          </a>
+        </div>
+      )}
 
       {/* Dashboard Tab Navigation */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-border/80 scrollbar-none">

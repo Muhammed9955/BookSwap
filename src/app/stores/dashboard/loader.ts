@@ -92,7 +92,17 @@ export async function loadStoreDashboardData() {
     }
   }
 
-  // If userStore is still not present, ensure a default store instance is ready so dashboard loads cleanly
+  const isStaff = profile?.role === 'ADMIN' || profile?.role === 'MODERATOR'
+  const isPartner = profile?.role === 'PARTNER' || profile?.role === 'STORE_OWNER'
+  const hasPendingReq = partnerReqs.length > 0 && partnerReqs[0].status === 'PENDING'
+  const hasApprovedReq = partnerReqs.length > 0 && partnerReqs[0].status === 'APPROVED'
+
+  // If user has no store, no staff privileges, and no partner application -> Redirect to partner form
+  if (!userStore && !isStaff && !isPartner && !hasPendingReq && !hasApprovedReq) {
+    redirect('/partner-form?unauthorized=true')
+  }
+
+  // If userStore is not present but user is authorized (partner or applied), prepare store instance
   if (!userStore) {
     const storeDisplayName = profile?.full_name ? `مكتبة ${profile.full_name}` : (user.email ? `متجر ${user.email.split('@')[0]}` : 'متجري')
     userStore = {
@@ -108,7 +118,7 @@ export async function loadStoreDashboardData() {
       email: user.email,
       social_links: { email: user.email },
       is_active: true,
-      is_verified: true,
+      is_verified: isPartner || hasApprovedReq,
       created_at: new Date().toISOString(),
     } as Bookstore
 
@@ -117,8 +127,8 @@ export async function loadStoreDashboardData() {
     }
   }
 
-  // Ensure user profile role is elevated to PARTNER in DB
-  if (profile?.role !== 'ADMIN' && profile?.role !== 'MODERATOR' && profile?.role !== 'PARTNER' && profile?.role !== 'STORE_OWNER') {
+  // Elevate user profile role to PARTNER only when application is approved or store is verified
+  if ((hasApprovedReq || userStore.is_verified) && !isStaff && !isPartner) {
     try {
       await supabase.from('profiles').update({ role: 'PARTNER' }).eq('id', user.id)
     } catch {}
@@ -127,7 +137,6 @@ export async function loadStoreDashboardData() {
   const offers = await getAllOffers({ _client: supabase })
   const events = await getAllEvents(supabase)
 
-  const isStaff = profile?.role === 'ADMIN' || profile?.role === 'MODERATOR'
   const defaultStore = userStore || (isStaff ? stores[0] : null) || stores[0] || null
 
   return {
