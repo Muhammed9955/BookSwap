@@ -60,16 +60,10 @@ export function normalizePhone(raw: string): string {
   return cleaned
 }
 
-/**
- * Validate Egyptian or International Phone Number
- */
 export function isValidPhoneNumber(phone: string): boolean {
   const normalized = normalizePhone(phone)
-  // Egyptian mobile format: 010, 011, 012, 015 followed by 8 digits (11 total)
-  const isEgyptMobile = /^(010|011|012|015)[0-9]{8}$/.test(normalized)
-  // Also permit general international numbers (+ followed by 9-15 digits)
-  const isInternational = /^\+[1-9][0-9]{8,14}$/.test(phone.trim())
-  return isEgyptMobile || isInternational
+  // Egyptian mobile format: 010, 011, 012, 015 followed by 8 digits (exactly 11 digits total)
+  return /^(010|011|012|015)[0-9]{8}$/.test(normalized)
 }
 
 /**
@@ -268,9 +262,17 @@ export function StoreOrderForm({
           <div className="relative">
             <input
               type="tel"
+              inputMode="numeric"
+              maxLength={11}
+              pattern="[0-9]{11}"
               required
               value={formData.customerPhone}
-              onChange={e => setFormData(prev => ({ ...prev, customerPhone: e.target.value }))}
+              onChange={e => {
+                let cleaned = e.target.value.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString())
+                cleaned = cleaned.replace(/^(\+20|0020|20)(1[0125]\d*)$/, '0$2')
+                const digits = cleaned.replace(/[^0-9]/g, '').slice(0, 11)
+                setFormData(prev => ({ ...prev, customerPhone: digits }))
+              }}
               onBlur={() => handleBlur('customerPhone')}
               placeholder="01012345678"
               className={cn(
