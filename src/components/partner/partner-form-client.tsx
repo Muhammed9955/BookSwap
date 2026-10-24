@@ -48,6 +48,7 @@ import {
   Lock
 } from 'lucide-react'
 import { FastAuthModal } from '@/components/auth/fast-auth-modal'
+import { GoogleIcon } from '@/components/ui/icons'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { compressImageFile } from '@/lib/image-utils'
@@ -115,6 +116,102 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
   // Authentication State with FastAuthModal Popup Support
   const [currentUser, setCurrentUser] = useState(user)
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+
+  // Fast Inline Login Gate State & Handlers (Force Fast Login First)
+  const fastLoginRef = useRef<HTMLDivElement>(null)
+  const [fastAuthMode, setFastAuthMode] = useState<'login' | 'register'>('login')
+  const [fastAuthEmail, setFastAuthEmail] = useState('')
+  const [fastAuthPassword, setFastAuthPassword] = useState('')
+  const [fastAuthName, setFastAuthName] = useState('')
+  const [showFastPassword, setShowFastPassword] = useState(false)
+  const [fastAuthLoading, setFastAuthLoading] = useState(false)
+  const [fastAuthGoogleLoading, setFastAuthGoogleLoading] = useState(false)
+  const [fastAuthError, setFastAuthError] = useState<string | null>(null)
+
+  const handleFastGoogleLogin = async () => {
+    setFastAuthGoogleLoading(true)
+    setFastAuthError(null)
+    try {
+      const supabase = createClient()
+      const origin = typeof window !== 'undefined' ? window.location.origin : ''
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${origin}/auth/callback?next=/partner-form`,
+        },
+      })
+      if (error) throw error
+    } catch (err: any) {
+      setFastAuthError(err?.message || 'فشل تسجيل الدخول عبر Google')
+      setFastAuthGoogleLoading(false)
+    }
+  }
+
+  const handleFastEmailAuth = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!fastAuthEmail.trim() || !fastAuthPassword.trim()) {
+      setFastAuthError(lang === 'ar' ? 'يرجى إدخال البريد الإلكتروني وكلمة المرور' : 'Email and password are required')
+      return
+    }
+    if (fastAuthPassword.length < 6) {
+      setFastAuthError(lang === 'ar' ? 'كلمة المرور يجب أن لا تقل عن 6 أحرف' : 'Password must be at least 6 characters')
+      return
+    }
+
+    setFastAuthLoading(true)
+    setFastAuthError(null)
+    try {
+      const supabase = createClient()
+      const cleanEmail = fastAuthEmail.trim().toLowerCase()
+
+      if (fastAuthMode === 'login') {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: cleanEmail,
+          password: fastAuthPassword,
+        })
+        if (error) throw error
+        if (data.user) {
+          const u = {
+            id: data.user.id,
+            email: data.user.email,
+            profile: data.user.user_metadata,
+          }
+          setCurrentUser(u)
+          setEmail(data.user.email || '')
+          if (data.user.user_metadata?.full_name && !ownerName) {
+            setOwnerName(data.user.user_metadata.full_name)
+          }
+        }
+      } else {
+        const { data, error } = await supabase.auth.signUp({
+          email: cleanEmail,
+          password: fastAuthPassword,
+          options: {
+            data: {
+              full_name: fastAuthName.trim() || 'Store Partner',
+            },
+          },
+        })
+        if (error) throw error
+        if (data.user) {
+          const u = {
+            id: data.user.id,
+            email: data.user.email,
+            profile: { full_name: fastAuthName.trim() },
+          }
+          setCurrentUser(u)
+          setEmail(data.user.email || '')
+          if (fastAuthName.trim() && !ownerName) {
+            setOwnerName(fastAuthName.trim())
+          }
+        }
+      }
+    } catch (err: any) {
+      setFastAuthError(err?.message || 'فشل المصادقة، يرجى المحاولة مجدداً')
+    } finally {
+      setFastAuthLoading(false)
+    }
+  }
 
   // Seamless 1-Click Inline Account Password (No popup required if filled)
   const [accountPassword, setAccountPassword] = useState('')
@@ -536,6 +633,96 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
     return true
   }
 
+  // Social Links Validation (Facebook, Instagram, TikTok, Website)
+  const validateSocialLinks = (): Record<string, string> => {
+    const errors: Record<string, string> = {}
+
+    const isUrlLike = (s: string) =>
+      s.includes('/') ||
+      s.startsWith('http') ||
+      /\.(com|net|org|co|me|io|app|info|biz)/i.test(s)
+
+    // 1. Facebook Validation
+    if (facebookPage.trim()) {
+      const val = facebookPage.trim()
+      if (isUrlLike(val)) {
+        const isFacebookUrl = /(^https?:\/\/)?(www\.|m\.|web\.)?(facebook\.com|fb\.com|fb\.me|fb\.watch)\/.+/i.test(val)
+        if (!isFacebookUrl) {
+          errors.facebookPage =
+            lang === 'ar'
+              ? 'رابط فيسبوك غير صحيح. يرجى إدخال رابط صفحة فيسبوك يبدأ بـ facebook.com أو fb.com'
+              : 'Invalid Facebook link. Must be a facebook.com or fb.com link'
+        }
+      } else {
+        const isHandle = /^@?[a-zA-Z0-9.]{3,50}$/.test(val)
+        if (!isHandle) {
+          errors.facebookPage =
+            lang === 'ar'
+              ? 'اسم صفحة فيسبوك غير صالح. يرجى إدخال رابط أو معرف صحيح (مثال: @yourstore)'
+              : 'Invalid Facebook handle or URL'
+        }
+      }
+    }
+
+    // 2. Instagram Validation
+    if (instagramHandle.trim()) {
+      const val = instagramHandle.trim()
+      if (isUrlLike(val)) {
+        const isInstagramUrl = /(^https?:\/\/)?(www\.)?(instagram\.com|instagr\.am)\/.+/i.test(val)
+        if (!isInstagramUrl) {
+          errors.instagramHandle =
+            lang === 'ar'
+              ? 'رابط إنستغرام غير صحيح. يرجى إدخال رابط إنستغرام يبدأ بـ instagram.com (وليس منصة أخرى)'
+              : 'Invalid Instagram link. Must be an instagram.com link'
+        }
+      } else {
+        const isHandle = /^@?[a-zA-Z0-9._]{2,30}$/.test(val)
+        if (!isHandle) {
+          errors.instagramHandle =
+            lang === 'ar'
+              ? 'معرف إنستغرام غير صالح. يرجى إدخال يوزر يبدأ بـ @ أو رابط إنستغرام'
+              : 'Invalid Instagram handle. Example: @yourstore'
+        }
+      }
+    }
+
+    // 3. TikTok Validation
+    if (tiktokHandle.trim()) {
+      const val = tiktokHandle.trim()
+      if (isUrlLike(val)) {
+        const isTikTokUrl = /(^https?:\/\/)?(www\.)?tiktok\.com\/@?.+/i.test(val)
+        if (!isTikTokUrl) {
+          errors.tiktokHandle =
+            lang === 'ar'
+              ? 'رابط تيك توك غير صحيح. يرجى إدخال رابط تيك توك يبدأ بـ tiktok.com/@yourstore'
+              : 'Invalid TikTok link. Must be a tiktok.com/@yourstore link'
+        }
+      } else {
+        const isHandle = /^@?[a-zA-Z0-9._]{2,24}$/.test(val)
+        if (!isHandle) {
+          errors.tiktokHandle =
+            lang === 'ar'
+              ? 'معرف تيك توك غير صالح (مثال: @yourstore)'
+              : 'Invalid TikTok handle'
+        }
+      }
+    }
+
+    // 4. Website Validation
+    if (websiteUrl.trim()) {
+      const val = websiteUrl.trim()
+      const isWebsite = /^(https?:\/\/)?([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(\/.*)?$/i.test(val)
+      if (!isWebsite) {
+        errors.websiteUrl =
+          lang === 'ar'
+            ? 'رابط موقع غير صالح. يرجى إدخال عنوان موقع إلكتروني صحيح (مثال: https://yourstore.com)'
+            : 'Invalid website URL (e.g. https://yourstore.com)'
+      }
+    }
+
+    return errors
+  }
+
   const validateStep3 = (): boolean => {
     const errors: Record<string, string> = {}
 
@@ -557,9 +744,23 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
       errors.email = lang === 'ar' ? 'يرجى إدخال بريد إلكتروني صحيح لاستلام رابط تفعيل لوحة التحكم' : 'Please enter a valid notification and dashboard email address'
     }
 
-    // Social existence proof validation
-    if (!hasSocialProof) {
-      errors.socialProof = lang === 'ar' ? 'يرجى إضافة رابط واحد على الأقل لإثبات وجود ونشاط المكتبة (فيسبوك، إنستغرام، تيك توك، أو موقع)' : 'Please provide at least one active social presence link or website'
+    // Social existence proof & link platform validation
+    const socialErrors = validateSocialLinks()
+    if (Object.keys(socialErrors).length > 0) {
+      Object.assign(errors, socialErrors)
+    }
+
+    const hasAnyValidProof =
+      (facebookPage.trim() && !socialErrors.facebookPage) ||
+      (instagramHandle.trim() && !socialErrors.instagramHandle) ||
+      (tiktokHandle.trim() && !socialErrors.tiktokHandle) ||
+      (websiteUrl.trim() && !socialErrors.websiteUrl)
+
+    if (!hasAnyValidProof) {
+      errors.socialProof =
+        lang === 'ar'
+          ? 'يرجى إضافة رابط واحد صحيح على الأقل لإثبات وجود ونشاط المكتبة (فيسبوك، إنستغرام، تيك توك، أو موقع)'
+          : 'Please provide at least one valid social presence link or website'
     }
 
     // Contract acceptance validation
@@ -569,7 +770,7 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(prev => ({ ...prev, ...errors }))
-      setFormErrorMessage(lang === 'ar' ? 'يرجى استكمال قنوات التواصل والتحقق والتأكد من أرقام الهاتف والموافقة على العقد' : 'Please complete all required fields and accept the contract in Step 3')
+      setFormErrorMessage(lang === 'ar' ? 'يرجى استكمال قنوات التواصل والتحقق والتأكد من أرقام الهاتف وروابط التواصل والموافقة على العقد' : 'Please complete all required fields and accept the contract in Step 3')
       formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       return false
     }
@@ -578,6 +779,15 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
   }
 
   const goToStep = (step: 1 | 2 | 3) => {
+    if (!currentUser) {
+      setFormErrorMessage(
+        lang === 'ar'
+          ? 'يرجى تسجيل الدخول أولاً بالأعلى لملء بيانات المتجر والتقديم ⚡'
+          : 'Please sign in first above to complete store registration ⚡'
+      )
+      fastLoginRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      return
+    }
     if (step === 2) {
       if (!validateStep1()) return
     }
@@ -600,12 +810,12 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
   // Existence Proof Check (Must provide at least 1 verified social presence link)
   const hasSocialProof = useMemo(() => {
     return Boolean(
-      facebookPage.trim() ||
-      instagramHandle.trim() ||
-      tiktokHandle.trim() ||
-      websiteUrl.trim()
+      (facebookPage.trim() && !formErrors.facebookPage) ||
+      (instagramHandle.trim() && !formErrors.instagramHandle) ||
+      (tiktokHandle.trim() && !formErrors.tiktokHandle) ||
+      (websiteUrl.trim() && !formErrors.websiteUrl)
     )
-  }, [facebookPage, instagramHandle, tiktokHandle, websiteUrl])
+  }, [facebookPage, instagramHandle, tiktokHandle, websiteUrl, formErrors])
 
   const whatsappAdmin = '201556252658'
 
@@ -629,6 +839,39 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
       ? undefined
       : (googleMapsUrl || (latitude && longitude ? `https://www.google.com/maps?q=${latitude},${longitude}` : undefined))
 
+    const normalizeSocialUrl = (type: 'fb' | 'ig' | 'tt' | 'web', val: string): string | undefined => {
+      const trimmed = val.trim()
+      if (!trimmed) return undefined
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed
+      if (type === 'fb') {
+        const handle = trimmed.replace(/^@/, '')
+        return (trimmed.includes('facebook.com') || trimmed.includes('fb.com'))
+          ? `https://${trimmed.replace(/^https?:\/\//, '')}`
+          : `https://facebook.com/${handle}`
+      }
+      if (type === 'ig') {
+        const handle = trimmed.replace(/^@/, '')
+        return trimmed.includes('instagram.com')
+          ? `https://${trimmed.replace(/^https?:\/\//, '')}`
+          : `https://instagram.com/${handle}`
+      }
+      if (type === 'tt') {
+        const handle = trimmed.replace(/^@/, '')
+        return trimmed.includes('tiktok.com')
+          ? `https://${trimmed.replace(/^https?:\/\//, '')}`
+          : `https://tiktok.com/@${handle}`
+      }
+      if (type === 'web') {
+        return `https://${trimmed.replace(/^https?:\/\//, '')}`
+      }
+      return trimmed
+    }
+
+    const finalFb = normalizeSocialUrl('fb', facebookPage)
+    const finalIg = normalizeSocialUrl('ig', instagramHandle)
+    const finalTt = normalizeSocialUrl('tt', tiktokHandle)
+    const finalWeb = normalizeSocialUrl('web', websiteUrl)
+
     const summaryMessage =
       `🏪 *طلب تسجيل مكتبة شريكة جديد — منصة WaraqConnect (ورق كونكت)*\n\n` +
       `📌 *اسم المتجر:* ${storeNameAr} ${storeNameEn ? `(${storeNameEn})` : ''}\n` +
@@ -643,8 +886,10 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
       `🚚 *نطاق التوصيل:* ${shippingScope}\n` +
       `📱 *واتساب الطلبات:* ${whatsapp}\n` +
       `📞 *رقم الهاتف:* ${phone}\n` +
-      `🌐 *فيسبوك:* ${facebookPage || 'غير مسجل'}\n` +
-      `📸 *إنستغرام:* ${instagramHandle || 'غير مسجل'}\n` +
+      `🌐 *فيسبوك:* ${finalFb || 'غير مسجل'}\n` +
+      `📸 *إنستغرام:* ${finalIg || 'غير مسجل'}\n` +
+      `🎵 *تيك توك:* ${finalTt || 'غير مسجل'}\n` +
+      (finalWeb ? `💻 *الموقع الإلكتروني:* ${finalWeb}\n` : '') +
       `📦 *متوسط حجم الكتب شهرياً:* ${monthlyVolume}\n` +
       `📋 *عقد الشراكة:* تم قبول الشروط والأحكام (10% عمولة مبيعات، الشهر الأول مجاناً 100% يبدأ مع أول طلب)\n` +
       `📝 *نبذة عن المكتبة:*\n${description || 'متجر كتب ورقية معتمد'}\n\n` +
@@ -676,12 +921,12 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
         is_online_only: storeType === 'ONLINE',
         logo_url: logoUrl,
         cover_url: coverUrl,
-        website_url: websiteUrl || undefined,
+        website_url: finalWeb,
         social_links: {
           whatsapp,
-          facebook: facebookPage || undefined,
-          instagram: instagramHandle || undefined,
-          tiktok: tiktokHandle || undefined,
+          facebook: finalFb,
+          instagram: finalIg,
+          tiktok: finalTt,
         },
         monthly_book_estimate: monthlyVolume,
         bio: description,
@@ -1237,53 +1482,200 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           {/* Main Onboarding Form (7 cols) */}
           <div className="lg:col-span-7 space-y-6">
-            {/* Partner Authentication Banner (Login via Popup) */}
+            {/* FAST LOGIN GATE FOR STORE REGISTRATION */}
             {currentUser ? (
-              <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3 text-xs shadow-2xs">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-8 w-8 rounded-xl bg-emerald-500/20 text-emerald-600 flex items-center justify-center shrink-0">
-                    <CheckCircle2 className="h-4 w-4" />
+              <div className="p-4 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-between gap-3 text-xs shadow-xs animate-in fade-in">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="font-bold text-foreground">
-                      {lang === 'ar' ? 'مسجل الدخول بحساب شريك:' : 'Logged in as partner:'}{' '}
-                      <span className="text-emerald-600 dark:text-emerald-400 font-mono">{currentUser.email || 'شريك معتمد'}</span>
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-foreground">
+                        {lang === 'ar' ? 'تم تسجيل الدخول وتوثيق ملكية المتجر بنجاح' : 'Authenticated & Store Ownership Linked'}
+                      </p>
+                      <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                        {lang === 'ar' ? 'حساب نشط ✓' : 'Active Account ✓'}
+                      </Badge>
+                    </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {lang === 'ar'
-                        ? 'سيتم ربط المتجر تلقائياً بهذا الحساب وتفعيل صلاحيات لوحة التحكم فور الاعتماد.'
-                        : 'Store will be tied directly to this account for merchant dashboard access.'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-primary/10 to-transparent border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-2xs">
-                <div className="flex items-start gap-2.5">
-                  <div className="h-8 w-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
-                    <Sparkles className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-foreground">
-                      {lang === 'ar' ? 'هل تمتلك حساباً على منصة ورق؟' : 'Have an existing Waraq account?'}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
-                      {lang === 'ar'
-                        ? 'سجل دخولك الآن عبر النافذة المنبثقة لربط المتجر بحسابك وتفعيل لوحة التحكم فور الاعتماد دون مغادرة الصفحة.'
-                        : 'Sign in now via popup to link your store and activate merchant dashboard without leaving this page.'}
+                      <span className="font-semibold text-foreground">{(currentUser.profile as any)?.full_name || ownerName || 'شريك معتمد'}</span>{' '}
+                      (<span className="font-mono text-emerald-600 dark:text-emerald-400">{currentUser.email}</span>)
                     </p>
                   </div>
                 </div>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
-                  onClick={() => setIsAuthModalOpen(true)}
-                  className="rounded-xl font-bold text-xs gap-1.5 shrink-0 bg-background/80 hover:bg-background border-primary/40 text-primary cursor-pointer self-start sm:self-auto"
+                  onClick={async () => {
+                    const supabase = createClient()
+                    await supabase.auth.signOut()
+                    setCurrentUser(null)
+                  }}
+                  className="text-[11px] text-muted-foreground hover:text-destructive h-8 px-2.5 rounded-xl cursor-pointer"
                 >
-                  <User className="h-3.5 w-3.5" />
-                  <span>{lang === 'ar' ? 'تسجيل الدخول (نافذة منبثقة) 🔑' : 'Quick Sign In (Popup) 🔑'}</span>
+                  {lang === 'ar' ? 'تبديل الحساب' : 'Switch Account'}
                 </Button>
+              </div>
+            ) : (
+              <div
+                ref={fastLoginRef}
+                className="scroll-mt-24 p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-primary/10 via-card to-background border-2 border-primary/40 shadow-md space-y-4 animate-in fade-in"
+              >
+                <div className="flex items-start justify-between gap-3 border-b border-border/70 pb-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="p-1.5 rounded-xl bg-primary text-primary-foreground">
+                        <Lock className="h-4 w-4" />
+                      </span>
+                      <h3 className="text-sm sm:text-base font-black text-foreground">
+                        {lang === 'ar' ? 'تسجيل الدخول السريع لتوثيق المتجر ⚡ (مطلوب أولاً)' : 'Fast Sign In Required to Register Store ⚡'}
+                      </h3>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {lang === 'ar'
+                        ? 'لضمان حماية حقوق المكتبة وتفعيل صلاحيات لوحة التحكم فور الاعتماد، يرجى تسجيل الدخول أو إنشاء حسابك أولاً بنقرة واحدة:'
+                        : 'To protect store ownership and grant instant merchant dashboard access upon approval, please sign in first:'}
+                    </p>
+                  </div>
+                  <Badge className="bg-primary/15 text-primary border border-primary/30 text-[10px] font-bold shrink-0">
+                    {lang === 'ar' ? 'خطوة أولى 🔑' : 'Step 1 of 2 🔑'}
+                  </Badge>
+                </div>
+
+                {fastAuthError && (
+                  <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs font-bold flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>{fastAuthError}</span>
+                  </div>
+                )}
+
+                {/* 1-Click Google Sign In */}
+                <Button
+                  type="button"
+                  onClick={handleFastGoogleLogin}
+                  disabled={fastAuthGoogleLoading || fastAuthLoading}
+                  className="w-full h-11 rounded-2xl bg-white hover:bg-slate-50 text-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-slate-100 border-2 border-slate-200 dark:border-slate-700 font-black text-xs sm:text-sm shadow-sm gap-2.5 transition-all cursor-pointer"
+                >
+                  {fastAuthGoogleLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  ) : (
+                    <GoogleIcon className="h-5 w-5 shrink-0" />
+                  )}
+                  <span>{lang === 'ar' ? 'المتابعة بنقرة واحدة بحساب Google 🚀' : 'Continue in 1-Click with Google 🚀'}</span>
+                </Button>
+
+                <div className="relative flex items-center justify-center my-3">
+                  <div className="border-t border-border w-full" />
+                  <span className="bg-card px-3 text-[11px] font-bold text-muted-foreground shrink-0">
+                    {lang === 'ar' ? 'أو بالبريد الإلكتروني وكلمة المرور' : 'Or with Email & Password'}
+                  </span>
+                  <div className="border-t border-border w-full" />
+                </div>
+
+                {/* Mode Switcher Tabs */}
+                <div className="flex p-1 rounded-xl bg-muted/60 border border-border">
+                  <button
+                    type="button"
+                    onClick={() => { setFastAuthMode('login'); setFastAuthError(null); }}
+                    className={cn(
+                      "flex-1 py-1.5 rounded-lg text-xs font-bold transition-all text-center cursor-pointer",
+                      fastAuthMode === 'login' ? "bg-background text-foreground shadow-2xs" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {lang === 'ar' ? 'تسجيل الدخول (حساب حالي)' : 'Log In (Existing)'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setFastAuthMode('register'); setFastAuthError(null); }}
+                    className={cn(
+                      "flex-1 py-1.5 rounded-lg text-xs font-bold transition-all text-center cursor-pointer",
+                      fastAuthMode === 'register' ? "bg-background text-foreground shadow-2xs" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {lang === 'ar' ? 'إنشاء حساب جديد للمتجر' : 'Create New Account'}
+                  </button>
+                </div>
+
+                {/* Inline Fast Email & Password Form */}
+                <form onSubmit={handleFastEmailAuth} className="space-y-3 pt-1">
+                  {fastAuthMode === 'register' && (
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-bold text-foreground flex items-center gap-1.5">
+                        <User className="h-3.5 w-3.5 text-primary" />
+                        <span>{lang === 'ar' ? 'اسم صاحب المتجر / المسؤول *' : 'Manager / Owner Full Name *'}</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={fastAuthName}
+                        onChange={e => setFastAuthName(e.target.value)}
+                        placeholder={lang === 'ar' ? 'محمد خالد' : 'John Doe'}
+                        className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-foreground flex items-center gap-1.5">
+                      <Mail className="h-3.5 w-3.5 text-primary" />
+                      <span>{lang === 'ar' ? 'البريد الإلكتروني *' : 'Email Address *'}</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={fastAuthEmail}
+                      onChange={e => setFastAuthEmail(e.target.value)}
+                      placeholder="store@example.com"
+                      className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      dir="ltr"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-foreground flex items-center gap-1.5">
+                      <Lock className="h-3.5 w-3.5 text-primary" />
+                      <span>{lang === 'ar' ? 'كلمة المرور * (6 أحرف فأكثر)' : 'Password * (min 6 chars)'}</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showFastPassword ? 'text' : 'password'}
+                        required
+                        minLength={6}
+                        value={fastAuthPassword}
+                        onChange={e => setFastAuthPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full rounded-xl border border-border bg-background px-3.5 py-2 text-xs text-foreground font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        dir="ltr"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowFastPassword(!showFastPassword)}
+                        className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 cursor-pointer"
+                      >
+                        {showFastPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    disabled={fastAuthLoading || fastAuthGoogleLoading}
+                    className="w-full h-10 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs gap-2 shadow-xs cursor-pointer mt-1"
+                  >
+                    {fastAuthLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-4 w-4" />
+                    )}
+                    <span>
+                      {fastAuthMode === 'login'
+                        ? (lang === 'ar' ? 'تسجيل الدخول وفتح نموذج المتجر ⚡' : 'Log In & Unlock Form ⚡')
+                        : (lang === 'ar' ? 'إنشاء الحساب ومتابعة التسجيل 🚀' : 'Create Account & Continue 🚀')}
+                    </span>
+                  </Button>
+                </form>
               </div>
             )}
 
@@ -2260,11 +2652,23 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
                       <input
                         type="text"
                         value={facebookPage}
-                        onChange={e => setFacebookPage(e.target.value)}
-                        placeholder="https://facebook.com/your_bookstore"
-                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-mono text-foreground"
+                        onChange={e => {
+                          setFacebookPage(e.target.value)
+                          clearFieldError('facebookPage')
+                          clearFieldError('socialProof')
+                        }}
+                        placeholder="https://facebook.com/your_bookstore or @your_bookstore"
+                        className={cn(
+                          "w-full rounded-xl border bg-background px-3 py-2 text-xs font-mono text-foreground transition-all",
+                          formErrors.facebookPage
+                            ? "border-destructive bg-destructive/5 ring-1 ring-destructive/30"
+                            : "border-border"
+                        )}
                         dir="ltr"
                       />
+                      {formErrors.facebookPage && (
+                        <span className="text-[11px] font-bold text-destructive block mt-1">{formErrors.facebookPage}</span>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -2275,11 +2679,23 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
                       <input
                         type="text"
                         value={instagramHandle}
-                        onChange={e => setInstagramHandle(e.target.value)}
-                        placeholder="@your_bookstore or https://instagram.com/..."
-                        className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-mono text-foreground"
+                        onChange={e => {
+                          setInstagramHandle(e.target.value)
+                          clearFieldError('instagramHandle')
+                          clearFieldError('socialProof')
+                        }}
+                        placeholder="https://instagram.com/your_bookstore or @your_bookstore"
+                        className={cn(
+                          "w-full rounded-xl border bg-background px-3 py-2 text-xs font-mono text-foreground transition-all",
+                          formErrors.instagramHandle
+                            ? "border-destructive bg-destructive/5 ring-1 ring-destructive/30"
+                            : "border-border"
+                        )}
                         dir="ltr"
                       />
+                      {formErrors.instagramHandle && (
+                        <span className="text-[11px] font-bold text-destructive block mt-1">{formErrors.instagramHandle}</span>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -2288,22 +2704,46 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
                         <input
                           type="text"
                           value={tiktokHandle}
-                          onChange={e => setTiktokHandle(e.target.value)}
-                          placeholder="@tiktok_store"
-                          className="w-full rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-mono text-foreground"
+                          onChange={e => {
+                            setTiktokHandle(e.target.value)
+                            clearFieldError('tiktokHandle')
+                            clearFieldError('socialProof')
+                          }}
+                          placeholder="@tiktok_store or https://tiktok.com/@..."
+                          className={cn(
+                            "w-full rounded-xl border bg-background px-3 py-1.5 text-xs font-mono text-foreground transition-all",
+                            formErrors.tiktokHandle
+                              ? "border-destructive bg-destructive/5 ring-1 ring-destructive/30"
+                              : "border-border"
+                          )}
                           dir="ltr"
                         />
+                        {formErrors.tiktokHandle && (
+                          <span className="text-[11px] font-bold text-destructive block mt-1">{formErrors.tiktokHandle}</span>
+                        )}
                       </div>
                       <div className="space-y-1">
                         <label className="text-[10px] font-bold text-muted-foreground block">Website (متجر إلكتروني):</label>
                         <input
                           type="url"
                           value={websiteUrl}
-                          onChange={e => setWebsiteUrl(e.target.value)}
-                          placeholder="https://..."
-                          className="w-full rounded-xl border border-border bg-background px-3 py-1.5 text-xs font-mono text-foreground"
+                          onChange={e => {
+                            setWebsiteUrl(e.target.value)
+                            clearFieldError('websiteUrl')
+                            clearFieldError('socialProof')
+                          }}
+                          placeholder="https://yourbookstore.com"
+                          className={cn(
+                            "w-full rounded-xl border bg-background px-3 py-1.5 text-xs font-mono text-foreground transition-all",
+                            formErrors.websiteUrl
+                              ? "border-destructive bg-destructive/5 ring-1 ring-destructive/30"
+                              : "border-border"
+                          )}
                           dir="ltr"
                         />
+                        {formErrors.websiteUrl && (
+                          <span className="text-[11px] font-bold text-destructive block mt-1">{formErrors.websiteUrl}</span>
+                        )}
                       </div>
                     </div>
                   </div>
