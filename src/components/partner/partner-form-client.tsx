@@ -25,6 +25,7 @@ import {
   X,
   ImageIcon,
   Eye,
+  EyeOff,
   ShieldCheck,
   Star,
   ExternalLink,
@@ -47,6 +48,7 @@ import {
   Lock
 } from 'lucide-react'
 import { FastAuthModal } from '@/components/auth/fast-auth-modal'
+import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { compressImageFile } from '@/lib/image-utils'
 import { uploadCommunityImage } from '@/lib/storage/upload-helper'
@@ -113,6 +115,11 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
   // Authentication State with FastAuthModal Popup Support
   const [currentUser, setCurrentUser] = useState(user)
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
+
+  // Seamless 1-Click Inline Account Password (No popup required if filled)
+  const [accountPassword, setAccountPassword] = useState('')
+  const [showQuickPassword, setShowQuickPassword] = useState(false)
+  const [isSubmittingAuth, setIsSubmittingAuth] = useState(false)
 
   // Smart Device OS Detection ('android' | 'ios' | 'desktop')
   const [deviceOS, setDeviceOS] = useState<'android' | 'ios' | 'desktop'>('desktop')
@@ -572,8 +579,64 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
       return
     }
 
-    // If NOT logged in, trigger FastAuthModal popup directly without leaving page
+    // If NOT logged in:
     if (!currentUser) {
+      // 1. If user typed inline password in Step 3 (>= 6 chars), authenticate seamlessly in 1 click!
+      if (accountPassword.trim() && accountPassword.trim().length >= 6) {
+        setIsSubmittingAuth(true)
+        setSending(true)
+        try {
+          const supabase = createClient()
+          const cleanEmail = email.trim().toLowerCase()
+
+          // Attempt sign in
+          const { data: signInData } = await supabase.auth.signInWithPassword({
+            email: cleanEmail,
+            password: accountPassword.trim(),
+          })
+
+          if (signInData?.user) {
+            const formatted = {
+              id: signInData.user.id,
+              email: signInData.user.email,
+              profile: signInData.user.user_metadata,
+            }
+            setCurrentUser(formatted)
+            setIsSubmittingAuth(false)
+            await executeApplicationSubmit(formatted)
+            return
+          }
+
+          // Attempt sign up if user does not exist
+          const { data: signUpData } = await supabase.auth.signUp({
+            email: cleanEmail,
+            password: accountPassword.trim(),
+            options: {
+              data: {
+                full_name: ownerName.trim(),
+              },
+            },
+          })
+
+          if (signUpData?.user) {
+            const formatted = {
+              id: signUpData.user.id,
+              email: signUpData.user.email,
+              profile: signUpData.user.user_metadata,
+            }
+            setCurrentUser(formatted)
+            setIsSubmittingAuth(false)
+            await executeApplicationSubmit(formatted)
+            return
+          }
+        } catch (e) {
+          console.warn('Inline auth fallback to popup:', e)
+        }
+        setIsSubmittingAuth(false)
+        setSending(false)
+      }
+
+      // 2. Fallback to FastAuthModal popup pre-filled with email and name
       setIsAuthModalOpen(true)
       return
     }
@@ -1887,6 +1950,42 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
                         ? '✉️ فور اعتماد ومراجعة متجرك، ستصلك رسالة رسمية على هذا البريد برابط لوحة تحكم المتجر لإضافة الكتب، عروض التوفير، وباقات الكتب.'
                         : '✉️ Once verified, you will receive an official approval email here with direct access to your bookstore dashboard.'}
                     </p>
+
+                    {/* Seamless Inline Account Password for 1-Click Submission */}
+                    {!currentUser && (
+                      <div className="pt-3 border-t border-primary/20 space-y-2 mt-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-black text-foreground flex items-center gap-1.5">
+                            <Lock className="h-3.5 w-3.5 text-primary" />
+                            <span>{lang === 'ar' ? 'كلمة مرور حساب المتجر (اختياري للتقديم الفوري ⚡)' : 'Store Account Password (Optional for 1-Click Submit ⚡)'}</span>
+                          </label>
+                          <span className="text-[10px] text-primary font-bold">
+                            {lang === 'ar' ? 'تقديم فوري بنقرة واحدة' : 'Instant 1-Click Submit'}
+                          </span>
+                        </div>
+                        <div className="relative">
+                          <input
+                            type={showQuickPassword ? 'text' : 'password'}
+                            value={accountPassword}
+                            onChange={e => setAccountPassword(e.target.value)}
+                            placeholder={lang === 'ar' ? 'اختر كلمة مرور (6 أحرف فأكثر) للربط والإرسال المباشر' : 'Choose a password (min 6 chars) to submit in 1-click'}
+                            className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowQuickPassword(!showQuickPassword)}
+                            className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 cursor-pointer"
+                          >
+                            {showQuickPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          {lang === 'ar'
+                            ? '💡 بكتابة كلمة المرور هنا، سيتم إنشاء حسابك أو تسجيل دخولك تلقائياً وإرسال الطلب فوراً دون الحاجة لأي نوافذ منبثقة.'
+                            : '💡 Entering a password here links your store and submits the application immediately without any popup.'}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   {/* Social Media Links for Anti-Spam Check & Existence Proof */}
@@ -2118,14 +2217,9 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
                     </Button>
                     <Button
                       type="submit"
-                      loading={sending}
-                      disabled={sending || !acceptedContract || !hasSocialProof}
-                      className={cn(
-                        "flex-1 rounded-xl font-black text-xs py-3 gap-2 cursor-pointer shadow-md transition-all",
-                        acceptedContract && hasSocialProof
-                          ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
-                          : "bg-muted text-muted-foreground cursor-not-allowed border border-border"
-                      )}
+                      loading={sending || isSubmittingAuth}
+                      disabled={sending || isSubmittingAuth}
+                      className="flex-1 rounded-xl font-black text-xs py-3 gap-2 cursor-pointer shadow-md transition-all bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20"
                     >
                       <Send className="h-4 w-4" />
                       <span>{lang === 'ar' ? 'إرسال طلب تسجيل المكتبة واعتماد الشراكة' : 'Submit Store Partner Registration'}</span>
@@ -2250,6 +2344,8 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
       {/* Fast Auth Modal Popup for Quick Partner Login */}
       <FastAuthModal
         isOpen={isAuthModalOpen}
+        defaultEmail={email.trim()}
+        defaultName={ownerName.trim()}
         onClose={() => setIsAuthModalOpen(false)}
         onSuccess={async (authUser) => {
           const formattedUser = {
@@ -2264,17 +2360,16 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
           if ((authUser.user_metadata?.full_name || authUser.user_metadata?.name) && !ownerName) {
             setOwnerName(authUser.user_metadata.full_name || authUser.user_metadata.name)
           }
-          setIsAuthModalOpen(false)
 
-          // Immediately execute submission and stay on the success screen - NO redirect to home!
+          // Immediately execute submission and transition straight to success screen!
           await executeApplicationSubmit(formattedUser)
         }}
         actionType="general"
-        title={lang === 'ar' ? 'خطوة أخيرة: ربط المتجر بحسابك' : 'Final Step: Link Store to Your Account'}
+        title={lang === 'ar' ? 'ربط المتجر بحسابك وإتمام التقديم' : 'Link Store Account & Submit'}
         subtitle={
           lang === 'ar'
-            ? 'سجل دخولك أو أنشئ حساباً لإتمام إرسال الطلب واستلام إشعار الاعتماد ولوحة التحكم'
-            : 'Sign in or create account to submit your application and get your dashboard link upon approval'
+            ? 'سجل دخولك أو أنشئ حسابك لإتمام إرسال الطلب فوراً وتفعيل لوحة التحكم'
+            : 'Sign in or create account to instantly submit your application'
         }
       />
     </MainLayout>

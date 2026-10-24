@@ -42,12 +42,15 @@ export type AuthActionType =
 export interface FastAuthModalProps {
   isOpen: boolean
   onClose: () => void
-  onSuccess?: (user: SupabaseUser) => void
+  onSuccess?: (user: SupabaseUser) => Promise<void> | void
   actionType?: AuthActionType
   title?: string
   subtitle?: string
   targetName?: string
   targetTitle?: string
+  defaultEmail?: string
+  defaultName?: string
+  defaultMode?: 'login' | 'register'
 }
 
 export function FastAuthModal({
@@ -59,20 +62,30 @@ export function FastAuthModal({
   subtitle: customSubtitle,
   targetName,
   targetTitle,
+  defaultEmail,
+  defaultName,
+  defaultMode,
 }: FastAuthModalProps) {
   const { lang, isRTL } = useLanguage()
   const supabase = createClient()
   const target = targetTitle || targetName || ''
 
-  const [mode, setMode] = useState<'login' | 'register'>('login')
-  const [email, setEmail] = useState('')
+  const [mode, setMode] = useState<'login' | 'register'>(defaultMode || 'login')
+  const [email, setEmail] = useState(defaultEmail || '')
   const [password, setPassword] = useState('')
-  const [fullName, setFullName] = useState('')
+  const [fullName, setFullName] = useState(defaultName || '')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [isFinishingSuccess, setIsFinishingSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
+
+  React.useEffect(() => {
+    if (defaultEmail && !email) setEmail(defaultEmail)
+    if (defaultName && !fullName) setFullName(defaultName)
+    if (defaultMode) setMode(defaultMode)
+  }, [defaultEmail, defaultName, defaultMode, isOpen])
 
   if (!isOpen) return null
 
@@ -226,15 +239,18 @@ export function FastAuthModal({
         }
 
         if (data.user) {
-          setSuccessMsg(lang === 'ar' ? 'تم تسجيل الدخول بنجاح! جاري المتابعة...' : 'Signed in! Continuing...')
+          setIsFinishingSuccess(true)
+          setSuccessMsg(lang === 'ar' ? 'تم تأكيد الحساب بنجاح! جاري إرسال الطلب...' : 'Signed in! Submitting application...')
           try {
-            onSuccess?.(data.user)
-          } catch (e) {
+            await onSuccess?.(data.user)
+          } catch (e: any) {
             console.error('FastAuthModal onSuccess error:', e)
+            setError(e?.message || (lang === 'ar' ? 'حدث خطأ أثناء المتابعة' : 'Error continuing after sign in'))
+            setIsFinishingSuccess(false)
+            return
           }
-          setTimeout(() => {
-            onClose()
-          }, 300)
+          setIsFinishingSuccess(false)
+          onClose()
         }
       } else {
         // Register mode
@@ -269,15 +285,18 @@ export function FastAuthModal({
 
         if (data.user) {
           const registeredUser = data.user
-          setSuccessMsg(lang === 'ar' ? 'تم إنشاء الحساب بنجاح! جاري المتابعة...' : 'Account created! Continuing...')
+          setIsFinishingSuccess(true)
+          setSuccessMsg(lang === 'ar' ? 'تم إنشاء الحساب بنجاح! جاري إرسال الطلب...' : 'Account created! Submitting application...')
           try {
-            onSuccess?.(registeredUser)
-          } catch (e) {
+            await onSuccess?.(registeredUser)
+          } catch (e: any) {
             console.error('FastAuthModal onSuccess error:', e)
+            setError(e?.message || (lang === 'ar' ? 'حدث خطأ أثناء المتابعة' : 'Error continuing after sign up'))
+            setIsFinishingSuccess(false)
+            return
           }
-          setTimeout(() => {
-            onClose()
-          }, 300)
+          setIsFinishingSuccess(false)
+          onClose()
         }
       }
     } catch (err: any) {
@@ -290,9 +309,24 @@ export function FastAuthModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border-2 border-border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 text-foreground flex flex-col max-h-[92vh]"
+        className="relative w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border-2 border-border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 text-foreground flex flex-col max-h-[92vh]"
         onClick={e => e.stopPropagation()}
       >
+        {/* Full Finishing Overlay */}
+        {isFinishingSuccess && (
+          <div className="absolute inset-0 z-50 bg-background/95 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-center space-y-3 animate-in fade-in">
+            <div className="h-14 w-14 rounded-2xl bg-emerald-500/15 text-emerald-600 flex items-center justify-center shadow-xs">
+              <Loader2 className="h-7 w-7 animate-spin" />
+            </div>
+            <p className="font-black text-sm text-foreground">
+              {lang === 'ar' ? '✓ تم تأكيد الحساب بنجاح!' : '✓ Account Verified!'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {lang === 'ar' ? 'جاري إرسال طلب الشراكة واعتماد المتجر...' : 'Submitting your bookstore application...'}
+            </p>
+          </div>
+        )}
+
         {/* Header Strip */}
         <div className="relative p-5 sm:p-6 pb-4 border-b border-border/80 bg-muted/30 shrink-0">
           <button
