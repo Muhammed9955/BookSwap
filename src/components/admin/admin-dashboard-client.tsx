@@ -9,7 +9,7 @@ import {
   Smartphone, Download, ExternalLink, Activity, Calendar, ArrowUpRight,
   Store, Globe, Menu, MessageCircle, CheckCheck, Mail,
   ShieldCheck, Video, BadgeCheck, FileText, CheckSquare, Sparkles, Share2,
-  ChevronLeft, ChevronRight, MoreHorizontal, MoreVertical, Copy
+  ChevronLeft, ChevronRight, MoreHorizontal, MoreVertical, Copy, Loader2
 } from 'lucide-react'
 import type { DashboardStats, Community, CommunityOrgType } from '@/types'
 import type { StoreApplication, StoreApplicationStatus, Bookstore, StoreType } from '@/types/store'
@@ -30,7 +30,8 @@ import { cn, formatRelativeTime } from '@/lib/utils'
 import { updateCommunityDetails, deleteCommunity } from '@/lib/communities/community-service'
 import {
   getStoreApplications, approveStoreApplication, rejectStoreApplication, getBookstores,
-  toggleStoreActive, toggleStoreVerified, deleteBookstore, updateBookstore, deleteStoreApplication
+  toggleStoreActive, toggleStoreVerified, deleteBookstore, updateBookstore, deleteStoreApplication,
+  deleteBookstoresBatch, deleteAllBookstores, deleteStoreApplicationsBatch, deleteAllStoreApplications
 } from '@/lib/stores/store-service'
 import { WaraqLogo } from '@/components/ui/waraq-logo'
 
@@ -287,6 +288,94 @@ export function AdminDashboardClient({
     setStoreActionLoading(null)
   }
 
+  // Multi-select & Bulk Delete Stores
+  const [selectedStoreIds, setSelectedStoreIds] = useState<string[]>([])
+  const [bulkStoreLoading, setBulkStoreLoading] = useState(false)
+
+  const handleToggleSelectStore = (storeId: string) => {
+    setSelectedStoreIds(prev =>
+      prev.includes(storeId) ? prev.filter(id => id !== storeId) : [...prev, storeId]
+    )
+  }
+
+  const handleToggleSelectAllStores = () => {
+    const visibleIds = filteredActiveStores.map(s => s.id)
+    const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedStoreIds.includes(id))
+    if (allSelected) {
+      const visibleSet = new Set(visibleIds)
+      setSelectedStoreIds(prev => prev.filter(id => !visibleSet.has(id)))
+    } else {
+      setSelectedStoreIds(prev => Array.from(new Set([...prev, ...visibleIds])))
+    }
+  }
+
+  const handleDeleteSelectedStores = async () => {
+    if (selectedStoreIds.length === 0) return
+    const count = selectedStoreIds.length
+    const confirmed = window.confirm(
+      lang === 'ar'
+        ? `⚠️ تحذير نهائي:\nهل أنت متأكد من حذف ${count} متجر/مكتبة محددة نهائياً من قاعدة البيانات والمنصة؟\n\nهذا الإجراء لا يمكن التراجع عنه وسيتم إزالة كافة بيانات المتاجر المحددة بالكامل.`
+        : `⚠️ Danger:\nPermanently delete ${count} selected bookstore(s) from database and platform?\nThis action cannot be undone.`
+    )
+    if (!confirmed) return
+
+    setBulkStoreLoading(true)
+    try {
+      const res = await deleteBookstoresBatch(selectedStoreIds)
+      if (res.success) {
+        setActiveStores(prev => prev.filter(s => !selectedStoreIds.includes(s.id)))
+        if (inspectingStore && selectedStoreIds.includes(inspectingStore.id)) {
+          setInspectingStore(null)
+        }
+        setSelectedStoreIds([])
+        setApprovalFeedback(
+          lang === 'ar'
+            ? `🗑️ تم حذف ${count} متجر محدد نهائياً بنجاح`
+            : `🗑️ Successfully deleted ${count} selected bookstore(s)`
+        )
+        setTimeout(() => setApprovalFeedback(null), 5000)
+      } else {
+        alert(lang === 'ar' ? 'فشل حذف المتاجر المحددة' : 'Failed to delete selected stores')
+      }
+    } finally {
+      setBulkStoreLoading(false)
+    }
+  }
+
+  const handleDeleteAllStores = async () => {
+    if (activeStores.length === 0) {
+      alert(lang === 'ar' ? 'لا توجد أي متاجر حالياً لحذفها' : 'No stores found to delete')
+      return
+    }
+    const count = activeStores.length
+    const confirmed = window.confirm(
+      lang === 'ar'
+        ? `🚨 تحذير خطير للغاية (حذف جميع المتاجر):\nهل أنت متأكد تماماً من رغبتك في حذف جميع المتاجر (${count} متجر) نهائياً من قاعدة البيانات بالكامل؟\n\nهذا الإجراء سيقوم بمسح كافة المتاجر ولن تتمكن من استرجاعها أبداً!`
+        : `🚨 Critical Warning (Delete ALL Stores):\nAre you sure you want to permanently delete ALL bookstores (${count} stores) from the database?\nThis action cannot be undone!`
+    )
+    if (!confirmed) return
+
+    setBulkStoreLoading(true)
+    try {
+      const res = await deleteAllBookstores()
+      if (res.success) {
+        setActiveStores([])
+        setInspectingStore(null)
+        setSelectedStoreIds([])
+        setApprovalFeedback(
+          lang === 'ar'
+            ? `🗑️ تم مسح وحذف جميع المتاجر (${count}) نهائياً بنجاح`
+            : `🗑️ All bookstores (${count}) have been permanently deleted`
+        )
+        setTimeout(() => setApprovalFeedback(null), 5000)
+      } else {
+        alert(lang === 'ar' ? 'فشل حذف جميع المتاجر' : 'Failed to delete all stores')
+      }
+    } finally {
+      setBulkStoreLoading(false)
+    }
+  }
+
   // Edit Bookstore Modal State
   const [editingStore, setEditingStore] = useState<Bookstore | null>(null)
   const [editStoreForm, setEditStoreForm] = useState<{
@@ -487,6 +576,94 @@ export function AdminDashboardClient({
         lang === 'ar' ? `🗑️ تم حذف طلب "${title}" نهائياً بنجاح` : `🗑️ Application "${title}" deleted permanently`
       )
       setTimeout(() => setApprovalFeedback(null), 4000)
+    }
+  }
+
+  // Multi-select & Bulk Delete Applications
+  const [selectedAppIds, setSelectedAppIds] = useState<string[]>([])
+  const [bulkAppLoading, setBulkAppLoading] = useState(false)
+
+  const handleToggleSelectApp = (appId: string) => {
+    setSelectedAppIds(prev =>
+      prev.includes(appId) ? prev.filter(id => id !== appId) : [...prev, appId]
+    )
+  }
+
+  const handleToggleSelectAllApps = () => {
+    const visibleIds = filteredStoreApps.map(a => a.id)
+    const allSelected = visibleIds.length > 0 && visibleIds.every(id => selectedAppIds.includes(id))
+    if (allSelected) {
+      const visibleSet = new Set(visibleIds)
+      setSelectedAppIds(prev => prev.filter(id => !visibleSet.has(id)))
+    } else {
+      setSelectedAppIds(prev => Array.from(new Set([...prev, ...visibleIds])))
+    }
+  }
+
+  const handleDeleteSelectedApps = async () => {
+    if (selectedAppIds.length === 0) return
+    const count = selectedAppIds.length
+    const confirmed = window.confirm(
+      lang === 'ar'
+        ? `⚠️ تحذير نهائي:\nهل أنت متأكد من حذف ${count} طلب انضمام محدد نهائياً من قاعدة البيانات؟\n\nهذا الإجراء لا يمكن التراجع عنه.`
+        : `⚠️ Danger:\nPermanently delete ${count} selected partner application(s) from database?\nThis action cannot be undone.`
+    )
+    if (!confirmed) return
+
+    setBulkAppLoading(true)
+    try {
+      const res = await deleteStoreApplicationsBatch(selectedAppIds)
+      if (res.success) {
+        setStoreApps(prev => prev.filter(a => !selectedAppIds.includes(a.id)))
+        if (inspectingApp && selectedAppIds.includes(inspectingApp.id)) {
+          setInspectingApp(null)
+        }
+        setSelectedAppIds([])
+        setApprovalFeedback(
+          lang === 'ar'
+            ? `🗑️ تم حذف ${count} طلب محدد نهائياً بنجاح`
+            : `🗑️ Successfully deleted ${count} selected application(s)`
+        )
+        setTimeout(() => setApprovalFeedback(null), 5000)
+      } else {
+        alert(lang === 'ar' ? 'فشل حذف الطلبات المحددة' : 'Failed to delete selected applications')
+      }
+    } finally {
+      setBulkAppLoading(false)
+    }
+  }
+
+  const handleDeleteAllApps = async () => {
+    if (storeApps.length === 0) {
+      alert(lang === 'ar' ? 'لا توجد طلبات لحذفها' : 'No applications found to delete')
+      return
+    }
+    const count = storeApps.length
+    const confirmed = window.confirm(
+      lang === 'ar'
+        ? `🚨 تحذير خطير (حذف جميع الطلبات):\nهل أنت متأكد من مسح وحذف كافة طلبات الانضمام (${count} طلب) نهائياً من قاعدة البيانات؟\n\nلن يمكن استرجاع هذه الطلبات بعد الحذف!`
+        : `🚨 Critical Warning (Delete ALL Applications):\nAre you sure you want to permanently delete ALL partner applications (${count} applications) from the database?`
+    )
+    if (!confirmed) return
+
+    setBulkAppLoading(true)
+    try {
+      const res = await deleteAllStoreApplications()
+      if (res.success) {
+        setStoreApps([])
+        setInspectingApp(null)
+        setSelectedAppIds([])
+        setApprovalFeedback(
+          lang === 'ar'
+            ? `🗑️ تم مسح وحذف جميع طلبات الانضمام (${count}) نهائياً`
+            : `🗑️ All partner applications (${count}) have been permanently deleted`
+        )
+        setTimeout(() => setApprovalFeedback(null), 5000)
+      } else {
+        alert(lang === 'ar' ? 'فشل حذف جميع الطلبات' : 'Failed to delete all applications')
+      }
+    } finally {
+      setBulkAppLoading(false)
     }
   }
 
@@ -1487,8 +1664,59 @@ export function AdminDashboardClient({
                           </span>
                         </button>
                       ))}
+
+                      {/* Delete All Requests Button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDeleteAllApps}
+                        disabled={bulkAppLoading || storeApps.length === 0}
+                        className="h-8 px-2.5 text-xs font-bold rounded-xl gap-1.5 border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/50 cursor-pointer shrink-0"
+                        title={lang === 'ar' ? 'حذف جميع طلبات الانضمام نهائياً' : 'Delete all requests permanently'}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>{lang === 'ar' ? 'حذف جميع الطلبات' : 'Delete All Requests'}</span>
+                      </Button>
                     </div>
                   </div>
+
+                  {/* Bulk Selected Requests Banner */}
+                  {selectedAppIds.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-rose-700 dark:text-rose-300">
+                      <div className="flex items-center gap-2">
+                        <CheckSquare className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                        <span className="font-bold text-xs sm:text-sm">
+                          {lang === 'ar'
+                            ? `تم تحديد ${selectedAppIds.length} من أصل ${filteredStoreApps.length} طلب معروض`
+                            : `${selectedAppIds.length} of ${filteredStoreApps.length} visible request(s) selected`}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedAppIds([])}
+                          className="h-8 text-xs font-semibold rounded-xl text-muted-foreground hover:text-foreground cursor-pointer"
+                        >
+                          {lang === 'ar' ? 'إلغاء التحديد' : 'Deselect all'}
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleDeleteSelectedApps}
+                          disabled={bulkAppLoading}
+                          className="h-8 text-xs font-bold rounded-xl gap-1.5 shadow-sm cursor-pointer"
+                        >
+                          {bulkAppLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                          <span>
+                            {lang === 'ar'
+                              ? `حذف الطلبات المحددة (${selectedAppIds.length})`
+                              : `Delete Selected (${selectedAppIds.length})`}
+                          </span>
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* UI Table for Requests */}
                   <div className="rounded-2xl border border-border overflow-hidden bg-card shadow-xs">
@@ -1496,6 +1724,15 @@ export function AdminDashboardClient({
                       <table className="w-full text-sm">
                         <thead className="bg-muted/50 border-b border-border">
                           <tr>
+                            <th className="p-3.5 w-10 text-center">
+                              <input
+                                type="checkbox"
+                                checked={filteredStoreApps.length > 0 && filteredStoreApps.every(a => selectedAppIds.includes(a.id))}
+                                onChange={handleToggleSelectAllApps}
+                                className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer align-middle"
+                                title={lang === 'ar' ? 'تحديد كل الطلبات المعروضة' : 'Select all visible requests'}
+                              />
+                            </th>
                             <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'المكتبة والمالك' : 'Store & Owner'}</th>
                             <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'طبيعة التواجد' : 'Format'}</th>
                             <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'المقر / التغطية' : 'Location / Scope'}</th>
@@ -1508,13 +1745,13 @@ export function AdminDashboardClient({
                         <tbody className="divide-y divide-border">
                           {appsLoading ? (
                             <tr>
-                              <td colSpan={7} className="text-center py-10 text-xs text-muted-foreground whitespace-nowrap">
+                              <td colSpan={8} className="text-center py-10 text-xs text-muted-foreground whitespace-nowrap">
                                 {lang === 'ar' ? 'جارٍ تحميل طلبات المكتبات...' : 'Loading applications...'}
                               </td>
                             </tr>
                           ) : filteredStoreApps.length === 0 ? (
                             <tr>
-                              <td colSpan={7} className="text-center py-12 text-xs text-muted-foreground">
+                              <td colSpan={8} className="text-center py-12 text-xs text-muted-foreground">
                                 <div className="h-10 w-10 rounded-2xl bg-muted text-muted-foreground mx-auto flex items-center justify-center mb-2">
                                   <Store className="h-5 w-5" />
                                 </div>
@@ -1538,7 +1775,16 @@ export function AdminDashboardClient({
                               ].filter(Boolean).length
 
                               return (
-                                <tr key={app.id} className="hover:bg-muted/20 transition-colors">
+                                <tr key={app.id} className={cn("hover:bg-muted/20 transition-colors", selectedAppIds.includes(app.id) && "bg-primary/5")}>
+                                  <td className="p-3.5 w-10 text-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedAppIds.includes(app.id)}
+                                      onChange={() => handleToggleSelectApp(app.id)}
+                                      className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer align-middle"
+                                      title={lang === 'ar' ? 'تحديد هذا الطلب' : 'Select this request'}
+                                    />
+                                  </td>
                                   {/* 1. Store & Owner */}
                                   <td className="p-3.5 whitespace-nowrap">
                                     <div className="flex items-center gap-3">
@@ -1810,8 +2056,8 @@ export function AdminDashboardClient({
                       />
                     </div>
 
-                    {/* Store Active/Hidden Filter Chips */}
-                    <div className="flex items-center gap-1.5 self-center">
+                    {/* Store Active/Hidden Filter Chips & Delete All Button */}
+                    <div className="flex items-center gap-2 self-center flex-wrap">
                       {[
                         { id: 'ALL', labelAr: 'الكل', labelEn: 'All', count: activeStores.length },
                         { id: 'ACTIVE', labelAr: 'نشط وظاهر', labelEn: 'Active', count: activeStores.filter(s => s.is_active !== false).length },
@@ -1839,8 +2085,59 @@ export function AdminDashboardClient({
                           </span>
                         </button>
                       ))}
+
+                      {/* Delete All Stores Button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDeleteAllStores}
+                        disabled={bulkStoreLoading || activeStores.length === 0}
+                        className="h-8 px-2.5 text-xs font-bold rounded-xl gap-1.5 border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/50 cursor-pointer shrink-0"
+                        title={lang === 'ar' ? 'حذف جميع المتاجر نهائياً من قاعدة البيانات' : 'Delete all bookstores permanently'}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>{lang === 'ar' ? 'حذف جميع المتاجر' : 'Delete All Stores'}</span>
+                      </Button>
                     </div>
                   </div>
+
+                  {/* Bulk Selected Stores Banner */}
+                  {selectedStoreIds.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-rose-700 dark:text-rose-300">
+                      <div className="flex items-center gap-2">
+                        <CheckSquare className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                        <span className="font-bold text-xs sm:text-sm">
+                          {lang === 'ar'
+                            ? `تم تحديد ${selectedStoreIds.length} من أصل ${filteredActiveStores.length} متجر معروض`
+                            : `${selectedStoreIds.length} of ${filteredActiveStores.length} visible store(s) selected`}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedStoreIds([])}
+                          className="h-8 text-xs font-semibold rounded-xl text-muted-foreground hover:text-foreground cursor-pointer"
+                        >
+                          {lang === 'ar' ? 'إلغاء التحديد' : 'Deselect all'}
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleDeleteSelectedStores}
+                          disabled={bulkStoreLoading}
+                          className="h-8 text-xs font-bold rounded-xl gap-1.5 shadow-sm cursor-pointer"
+                        >
+                          {bulkStoreLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                          <span>
+                            {lang === 'ar'
+                              ? `حذف المتاجر المحددة (${selectedStoreIds.length})`
+                              : `Delete Selected (${selectedStoreIds.length})`}
+                          </span>
+                        </Button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Active Stores Table */}
                   <div className="rounded-2xl border border-border overflow-hidden bg-card shadow-xs">
@@ -1848,6 +2145,15 @@ export function AdminDashboardClient({
                       <table className="w-full text-sm">
                         <thead className="bg-muted/50 border-b border-border">
                           <tr>
+                            <th className="p-3.5 w-10 text-center">
+                              <input
+                                type="checkbox"
+                                checked={filteredActiveStores.length > 0 && filteredActiveStores.every(s => selectedStoreIds.includes(s.id))}
+                                onChange={handleToggleSelectAllStores}
+                                className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer align-middle"
+                                title={lang === 'ar' ? 'تحديد كل المتاجر المعروضة' : 'Select all visible stores'}
+                              />
+                            </th>
                             <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'المكتبة الشريكة' : 'Bookstore'}</th>
                             <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'طبيعة التواجد' : 'Format'}</th>
                             <th className="text-start p-3.5 font-bold text-xs whitespace-nowrap">{lang === 'ar' ? 'المقر / التغطية' : 'Location / Scope'}</th>
@@ -1860,19 +2166,28 @@ export function AdminDashboardClient({
                         <tbody className="divide-y divide-border">
                           {storesLoading ? (
                             <tr>
-                              <td colSpan={7} className="text-center py-10 text-xs text-muted-foreground whitespace-nowrap">
+                              <td colSpan={8} className="text-center py-10 text-xs text-muted-foreground whitespace-nowrap">
                                 {lang === 'ar' ? 'جارٍ تحميل المكتبات المعتمدة...' : 'Loading bookstores...'}
                               </td>
                             </tr>
                           ) : filteredActiveStores.length === 0 ? (
                             <tr>
-                              <td colSpan={7} className="text-center py-10 text-xs text-muted-foreground">
+                              <td colSpan={8} className="text-center py-10 text-xs text-muted-foreground">
                                 {lang === 'ar' ? 'لا توجد مكتبات مطابقة' : 'No matching stores'}
                               </td>
                             </tr>
                           ) : (
                             filteredActiveStores.map(store => (
-                              <tr key={store.id} className="hover:bg-muted/20 transition-colors">
+                              <tr key={store.id} className={cn("hover:bg-muted/20 transition-colors", selectedStoreIds.includes(store.id) && "bg-primary/5")}>
+                                <td className="p-3.5 w-10 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedStoreIds.includes(store.id)}
+                                    onChange={() => handleToggleSelectStore(store.id)}
+                                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer align-middle"
+                                    title={lang === 'ar' ? 'تحديد هذا المتجر' : 'Select this store'}
+                                  />
+                                </td>
                                 <td className="p-3.5 whitespace-nowrap">
                                   <div className="flex items-center gap-3">
                                     <div className="h-10 w-10 rounded-xl overflow-hidden bg-muted border border-border shrink-0 flex items-center justify-center font-bold text-xs">

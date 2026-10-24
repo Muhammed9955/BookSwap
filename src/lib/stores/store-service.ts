@@ -491,6 +491,140 @@ export async function deleteStoreApplication(applicationId: string): Promise<{ s
   }
 }
 
+/**
+ * Delete a batch of selected bookstores permanently (Admin only)
+ */
+export async function deleteBookstoresBatch(storeIds: string[]): Promise<{ success: boolean; count: number }> {
+  if (!storeIds || storeIds.length === 0) return { success: true, count: 0 }
+  try {
+    const supabase = createClient()
+    await supabase.from('bookstores').delete().in('id', storeIds)
+    await supabase.from('partner_requests').delete().in('id', storeIds)
+
+    try {
+      await fetch(`/api/stores?ids=${encodeURIComponent(storeIds.join(','))}`, {
+        method: 'DELETE',
+      })
+      await fetch(`/api/partner-requests?ids=${encodeURIComponent(storeIds.join(','))}`, {
+        method: 'DELETE',
+      })
+    } catch {}
+
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(STORES_STORAGE_KEY)
+        if (stored) {
+          const map = JSON.parse(stored)
+          for (const k of Object.keys(map)) {
+            const item = map[k]
+            if (storeIds.includes(k) || storeIds.includes(item?.id) || storeIds.includes(item?.slug)) {
+              delete map[k]
+            }
+          }
+          localStorage.setItem(STORES_STORAGE_KEY, JSON.stringify(map))
+        }
+      } catch {}
+      try {
+        const appStored = localStorage.getItem(APPLICATIONS_STORAGE_KEY)
+        if (appStored) {
+          const apps: StoreApplication[] = JSON.parse(appStored)
+          const remaining = apps.filter(a => !storeIds.includes(a.id) && !storeIds.includes(a.approved_store_id || ''))
+          localStorage.setItem(APPLICATIONS_STORAGE_KEY, JSON.stringify(remaining))
+        }
+      } catch {}
+    }
+    return { success: true, count: storeIds.length }
+  } catch (err) {
+    console.error('deleteBookstoresBatch error:', err)
+    return { success: false, count: 0 }
+  }
+}
+
+/**
+ * Delete ALL bookstores permanently (Admin only)
+ */
+export async function deleteAllBookstores(): Promise<{ success: boolean; count: number }> {
+  try {
+    const supabase = createClient()
+    await supabase.from('bookstores').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    await supabase.from('partner_requests').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+
+    try {
+      await fetch('/api/stores?all=true', { method: 'DELETE' })
+      await fetch('/api/partner-requests?all=true', { method: 'DELETE' })
+    } catch {}
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(STORES_STORAGE_KEY)
+        localStorage.removeItem(APPLICATIONS_STORAGE_KEY)
+      } catch {}
+    }
+    return { success: true, count: 0 }
+  } catch (err) {
+    console.error('deleteAllBookstores error:', err)
+    return { success: false, count: 0 }
+  }
+}
+
+/**
+ * Delete a batch of selected store applications permanently (Admin only)
+ */
+export async function deleteStoreApplicationsBatch(appIds: string[]): Promise<{ success: boolean; count: number }> {
+  if (!appIds || appIds.length === 0) return { success: true, count: 0 }
+  try {
+    const supabase = createClient()
+    await supabase.from('partner_requests').delete().in('id', appIds)
+    await supabase.from('bookstores').delete().in('id', appIds)
+
+    try {
+      await fetch(`/api/partner-requests?ids=${encodeURIComponent(appIds.join(','))}`, {
+        method: 'DELETE',
+      })
+    } catch {}
+
+    if (typeof window !== 'undefined') {
+      try {
+        const appStored = localStorage.getItem(APPLICATIONS_STORAGE_KEY)
+        if (appStored) {
+          const apps: StoreApplication[] = JSON.parse(appStored)
+          const remaining = apps.filter(a => !appIds.includes(a.id))
+          localStorage.setItem(APPLICATIONS_STORAGE_KEY, JSON.stringify(remaining))
+        }
+      } catch {}
+    }
+    return { success: true, count: appIds.length }
+  } catch (err) {
+    console.error('deleteStoreApplicationsBatch error:', err)
+    return { success: false, count: 0 }
+  }
+}
+
+/**
+ * Delete ALL store applications permanently (Admin only)
+ */
+export async function deleteAllStoreApplications(): Promise<{ success: boolean; count: number }> {
+  try {
+    const supabase = createClient()
+    await supabase.from('partner_requests').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    await supabase.from('bookstores').delete().eq('is_verified', false)
+
+    try {
+      await fetch('/api/partner-requests?all=true', { method: 'DELETE' })
+    } catch {}
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(APPLICATIONS_STORAGE_KEY)
+      } catch {}
+    }
+    return { success: true, count: 0 }
+  } catch (err) {
+    console.error('deleteAllStoreApplications error:', err)
+    return { success: false, count: 0 }
+  }
+}
+
 
 export const STORE_SLUG_ALIASES: Record<string, string> = {
   'diwan-zamalek': 'diwan-bookstore',

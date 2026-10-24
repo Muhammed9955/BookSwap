@@ -316,18 +316,27 @@ export async function DELETE(req: NextRequest) {
 
     const { searchParams } = new URL(req.url)
     const requestId = searchParams.get('id')
+    const idsParam = searchParams.get('ids')
+    const all = searchParams.get('all') === 'true'
 
-    if (!requestId) {
-      return NextResponse.json({ success: false, error: 'Request ID is required' }, { status: 400 })
+    if (all) {
+      await supabase.from('partner_requests').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+      await supabase.from('bookstores').delete().eq('is_verified', false)
+      return NextResponse.json({ success: true, message: 'All partner requests deleted successfully' })
+    }
+
+    const targetIds = idsParam ? idsParam.split(',').filter(Boolean) : (requestId ? [requestId] : [])
+    if (targetIds.length === 0) {
+      return NextResponse.json({ success: false, error: 'Request ID or IDs required' }, { status: 400 })
     }
 
     // Delete from partner_requests
-    await supabase.from('partner_requests').delete().eq('id', requestId)
+    await supabase.from('partner_requests').delete().in('id', targetIds)
 
     // Delete from bookstores if it exists by id
-    await supabase.from('bookstores').delete().eq('id', requestId)
+    await supabase.from('bookstores').delete().in('id', targetIds)
 
-    return NextResponse.json({ success: true, message: 'Partner request deleted successfully' })
+    return NextResponse.json({ success: true, count: targetIds.length, message: 'Partner requests deleted successfully' })
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err?.message }, { status: 500 })
   }

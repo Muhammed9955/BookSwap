@@ -303,21 +303,47 @@ export async function DELETE(req: NextRequest) {
 
     const { searchParams } = new URL(req.url)
     const storeId = searchParams.get('id')
+    const idsParam = searchParams.get('ids')
+    const all = searchParams.get('all') === 'true'
 
-    if (!storeId) {
-      return NextResponse.json({ success: false, error: 'Store ID is required' }, { status: 400 })
+    if (all) {
+      // Delete all stores from bookstores table
+      const { error } = await supabase
+        .from('bookstores')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000')
+
+      // Also clean up all partner requests
+      await supabase
+        .from('partner_requests')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000')
+
+      if (error) {
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+      }
+
+      return NextResponse.json({ success: true, message: 'All stores deleted successfully' })
+    }
+
+    const targetIds = idsParam ? idsParam.split(',').filter(Boolean) : (storeId ? [storeId] : [])
+    if (targetIds.length === 0) {
+      return NextResponse.json({ success: false, error: 'Store ID or IDs required' }, { status: 400 })
     }
 
     const { error } = await supabase
       .from('bookstores')
       .delete()
-      .eq('id', storeId)
+      .in('id', targetIds)
+
+    // Also clean up any matching partner requests
+    await supabase.from('partner_requests').delete().in('id', targetIds)
 
     if (error) {
       return NextResponse.json({ success: false, error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ success: true, message: 'Store deleted successfully' })
+    return NextResponse.json({ success: true, count: targetIds.length, message: 'Stores deleted successfully' })
   } catch (err: any) {
     return NextResponse.json({ success: false, error: err?.message }, { status: 500 })
   }
