@@ -1,6 +1,6 @@
 // Core TypeScript types for BookSwap Egypt
 
-export type UserRole = 'USER' | 'MODERATOR' | 'ADMIN'
+export type UserRole = 'USER' | 'MODERATOR' | 'ADMIN' | 'PARTNER' | 'STORE_OWNER'
 export type ListingType = 'SELL' | 'SWAP' | 'SELL_OR_SWAP' | 'GIVEAWAY'
 export type BookCondition = 'NEW' | 'LIKE_NEW' | 'VERY_GOOD' | 'GOOD' | 'ACCEPTABLE'
 export type TransactionStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'CANCELLED' | 'COMPLETED'

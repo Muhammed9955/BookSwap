@@ -80,7 +80,7 @@ export async function loadStoreDashboardData() {
 
   const isStaff = profile?.role === 'ADMIN' || profile?.role === 'MODERATOR'
   const hasPartnerReq = Boolean(partnerReqs && partnerReqs.length > 0)
-  const isPartner = Boolean(userStore) || profile?.role === 'PARTNER' || hasPartnerReq
+  const isPartner = Boolean(userStore) || profile?.role === 'PARTNER' || profile?.role === 'STORE_OWNER' || hasPartnerReq
 
   // Normal users who are neither staff, store owners, nor applicants are blocked
   if (!isStaff && !isPartner) {

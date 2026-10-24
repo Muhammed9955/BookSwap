@@ -271,6 +271,41 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 3. Elevate user profile role to PARTNER (Store Owner)
+    if (resolvedUserId) {
+      try {
+        await supabase
+          .from('profiles')
+          .update({ role: 'PARTNER' })
+          .eq('id', resolvedUserId)
+      } catch (e) {
+        console.warn('Failed to elevate profile role to PARTNER:', e)
+      }
+
+      // 4. Send in-app notification directing user to store dashboard
+      try {
+        const notifPayload = {
+          user_id: resolvedUserId,
+          type: 'STORE_APPROVED',
+          title: '🎉 تم تسجيل متجرك بنجاح وتفعيل لوحة التحكم!',
+          title_ar: '🎉 تم تسجيل متجرك بنجاح وتفعيل لوحة التحكم!',
+          body: `مرحباً ${applicant}! تم تسجيل متجر (${bName}) بنجاح وتفعيل لوحة التحكم الخاصة بك. اضغط هنا للدخول وإضافة كتبك وإدارة العروض.`,
+          body_ar: `مرحباً ${applicant}! تم تسجيل متجر (${bName}) بنجاح وتفعيل لوحة التحكم الخاصة بك. اضغط هنا للدخول وإدارة كتبك وإدارة العروض.`,
+          action_url: '/stores/dashboard',
+          data: {
+            store_name: bName,
+            target_url: '/stores/dashboard',
+          },
+        }
+        const { error: notifErr } = await supabase.from('notifications').insert(notifPayload as any)
+        if (notifErr) {
+          await supabase.from('notifications').insert({ ...notifPayload, type: 'TRANSACTION_COMPLETED' } as any)
+        }
+      } catch (e) {
+        console.warn('Failed to insert in-app notification:', e)
+      }
+    }
+
     return NextResponse.json({
       success: true,
       application: savedApp,

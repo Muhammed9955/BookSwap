@@ -880,6 +880,34 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
       console.warn('Failed submitting store application:', err)
     }
 
+    // Elevate user profile role to PARTNER (Store Owner) immediately
+    if (effectiveUserId) {
+      try {
+        const supabase = createClient()
+        await supabase
+          .from('profiles')
+          .update({ role: 'PARTNER' })
+          .eq('id', effectiveUserId)
+
+        // Send in-app notification leading directly to store dashboard
+        await supabase.from('notifications').insert({
+          user_id: effectiveUserId,
+          type: 'STORE_APPROVED',
+          title: '🎉 تم تسجيل متجرك بنجاح وتفعيل لوحة التحكم!',
+          title_ar: '🎉 تم تسجيل متجرك بنجاح وتفعيل لوحة التحكم!',
+          body: `مرحباً ${ownerName || 'شريكنا'}! تم تفعيل لوحة تحكم متجر (${storeNameAr || storeNameEn || 'متجرك'}). اضغط هنا للدخول وإضافة كتبك وباقات العروض.`,
+          body_ar: `مرحباً ${ownerName || 'شريكنا'}! تم تفعيل لوحة تحكم متجر (${storeNameAr || storeNameEn || 'متجرك'}). اضغط هنا للدخول وإضافة كتبك وباقات العروض.`,
+          action_url: '/stores/dashboard',
+          data: {
+            store_name: storeNameAr || storeNameEn,
+            target_url: '/stores/dashboard',
+          },
+        } as any)
+      } catch (err) {
+        console.warn('Client-side role/notification update notice:', err)
+      }
+    }
+
     // Dispatch submission receipt confirmation email
     if (effectiveEmail) {
       try {
@@ -1047,17 +1075,26 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
             </a>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 w-full">
-            <Link href="/stores" className="flex-1">
-              <Button variant="outline" className="w-full rounded-xl font-bold cursor-pointer">
-                {lang === 'ar' ? 'تصفح دليل المكتبات' : 'Browse Bookstore Directory'}
+          <div className="w-full space-y-3 pt-1">
+            <Link href="/stores/dashboard" className="block w-full">
+              <Button className="w-full h-12 rounded-2xl font-black gap-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm shadow-md cursor-pointer transition-all hover:scale-[1.01]">
+                <span>🏪</span>
+                <span>{lang === 'ar' ? 'الانتقال إلى لوحة تحكم متجرك وإضافة الكتب 🚀' : 'Go to Store Dashboard & Add Books 🚀'}</span>
               </Button>
             </Link>
-            <Link href="/" className="flex-1">
-              <Button className="w-full rounded-xl font-bold cursor-pointer bg-primary text-primary-foreground">
-                {lang === 'ar' ? 'العودة للرئيسية' : 'Back to Home'}
-              </Button>
-            </Link>
+
+            <div className="flex flex-col sm:flex-row gap-2.5 w-full">
+              <Link href="/stores" className="flex-1">
+                <Button variant="outline" className="w-full rounded-xl font-bold cursor-pointer text-xs">
+                  {lang === 'ar' ? 'تصفح دليل المكتبات' : 'Browse Bookstore Directory'}
+                </Button>
+              </Link>
+              <Link href="/" className="flex-1">
+                <Button variant="ghost" className="w-full rounded-xl font-bold cursor-pointer text-xs">
+                  {lang === 'ar' ? 'العودة للرئيسية' : 'Back to Home'}
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </MainLayout>
