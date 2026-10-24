@@ -8,6 +8,7 @@ import { useLanguage } from '@/i18n/language-context'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatRelativeTime } from '@/lib/utils'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   isPushNotificationSupported,
   getNotificationPermission,
@@ -52,6 +53,7 @@ interface NotificationsClientProps {
 }
 
 export function NotificationsClient({ userId, notifications: initial }: NotificationsClientProps) {
+  const router = useRouter()
   const { lang } = useLanguage()
   const supabase = createClient()
   const [notifications, setNotifications] = useState(initial)
@@ -324,15 +326,36 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
 
             const destinationUrl = isStoreVerification ? '/stores/dashboard' : notif.action_url
 
-            const cardInner = (
+            const handleCardClick = (e: React.MouseEvent) => {
+              if ((e.target as HTMLElement).closest('button, a')) {
+                return
+              }
+              if (!notif.is_read) {
+                markRead(notif.id)
+              }
+              if (destinationUrl) {
+                router.push(destinationUrl)
+              }
+            }
+
+            return (
               <div
+                key={notif.id}
+                role="button"
+                tabIndex={0}
+                onClick={handleCardClick}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    handleCardClick(e as any)
+                  }
+                }}
                 className={cn(
-                  'group relative flex items-start gap-3 p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer',
+                  'group relative flex items-start gap-3 p-3.5 sm:p-4 rounded-2xl border transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40',
                   !notif.is_read
                     ? 'bg-primary/5 border-primary/30 shadow-xs hover:border-primary/50'
                     : 'bg-card border-border hover:bg-muted/30 hover:border-border/80'
                 )}
-                onClick={() => !notif.is_read && markRead(notif.id)}
               >
                 {/* Notification Emoji Icon */}
                 <div className="h-10 w-10 rounded-xl bg-muted/60 dark:bg-slate-800 flex items-center justify-center text-xl shrink-0 border border-border/40">
@@ -371,17 +394,18 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
                           </span>
                         )}
                         {orderRef && (
-                          <Link
-                            href={`/orders/${orderRef}`}
+                          <button
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation()
                               if (!notif.is_read) markRead(notif.id)
+                              router.push(`/orders/${orderRef}`)
                             }}
-                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25 text-[11px] font-bold hover:bg-emerald-500/20 transition-colors"
+                            className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/25 text-[11px] font-bold hover:bg-emerald-500/20 transition-colors cursor-pointer"
                           >
                             <Truck className="h-3 w-3 text-emerald-600" />
                             <span>{lang === 'ar' ? 'صفحة ومتابعة الطلب 📦' : 'Order Tracking Page 📦'}</span>
-                          </Link>
+                          </button>
                         )}
                       </div>
                     )
@@ -390,17 +414,18 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
                   {/* STORE_APPROVED / Store Verification Quick Action Button */}
                   {isStoreVerification && (
                     <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                      <Link
-                        href="/stores/dashboard"
+                      <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation()
                           if (!notif.is_read) markRead(notif.id)
+                          router.push('/stores/dashboard')
                         }}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-black hover:bg-primary/90 transition-all shadow-xs"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-black hover:bg-primary/90 transition-all shadow-xs cursor-pointer"
                       >
                         <span>🏪</span>
                         <span>{lang === 'ar' ? 'الانتقال إلى لوحة تحكم المتجر وإدارة الكتب 🚀' : 'Go to Store Dashboard 🚀'}</span>
-                      </Link>
+                      </button>
                     </div>
                   )}
 
@@ -410,11 +435,19 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
                         {formatRelativeTime(notif.created_at, lang)}
                       </span>
                       {destinationUrl && (
-                        <span className="text-[10px] font-bold text-primary group-hover:underline">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (!notif.is_read) markRead(notif.id)
+                            router.push(destinationUrl)
+                          }}
+                          className="text-[10px] font-bold text-primary hover:underline cursor-pointer bg-transparent border-0 p-0"
+                        >
                           {isStoreVerification
                             ? (lang === 'ar' ? 'الانتقال للوحة تحكم المتجر ←' : 'Go to Store Dashboard →')
                             : (lang === 'ar' ? 'عرض في لوحة الإدارة ←' : 'View in Dashboard →')}
-                        </span>
+                        </button>
                       )}
                     </div>
 
@@ -441,22 +474,6 @@ export function NotificationsClient({ userId, notifications: initial }: Notifica
                 </div>
               </div>
             )
-
-            // Wrap in Link if notification has a destination URL
-            if (destinationUrl) {
-              return (
-                <Link
-                  key={notif.id}
-                  href={destinationUrl}
-                  onClick={() => !notif.is_read && markRead(notif.id)}
-                  className="block focus:outline-none"
-                >
-                  {cardInner}
-                </Link>
-              )
-            }
-
-            return <div key={notif.id}>{cardInner}</div>
           })}
         </div>
       )}

@@ -880,6 +880,25 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
       console.warn('Failed submitting store application:', err)
     }
 
+    // Dispatch submission receipt confirmation email
+    if (effectiveEmail) {
+      try {
+        fetch('/api/stores/notify-submitted', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: effectiveEmail,
+            ownerName: ownerName || 'شريكنا العزيز',
+            storeName: storeNameAr || storeNameEn || 'المتجر الجديد',
+            phone,
+            whatsapp,
+            city,
+            storeType,
+          }),
+        }).catch(err => console.warn('Failed to send store submission email:', err))
+      } catch {}
+    }
+
     try {
       const whatsappUrl = `https://wa.me/${whatsappAdmin}?text=${encodeURIComponent(summaryMessage)}`
       window.open(whatsappUrl, '_blank')

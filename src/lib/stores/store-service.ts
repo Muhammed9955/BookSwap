@@ -1824,11 +1824,13 @@ export async function approveStoreApplication(
     latitude: target.latitude ?? (resolvedStoreType === 'ONLINE' ? undefined : 30.0444),
     longitude: target.longitude ?? (resolvedStoreType === 'ONLINE' ? undefined : 31.2357),
     website_url: target.website_url,
+    email: target.email || (target.social_links as any)?.email,
     social_links: {
       whatsapp: target.phone,
       facebook: target.social_links?.facebook,
       instagram: target.social_links?.instagram,
       tiktok: target.social_links?.tiktok,
+      email: target.email || (target.social_links as any)?.email,
     },
     is_verified: true,
     verified_at: new Date().toISOString(),
@@ -1916,6 +1918,25 @@ export async function approveStoreApplication(
     try {
       const { data: prof } = await supabase.from('profiles').select('*').eq('id', resolvedOwnerId).maybeSingle()
       if ((prof as any)?.email) destinationEmail = (prof as any).email
+    } catch {}
+  }
+  if (!destinationEmail) {
+    try {
+      const { data: prData } = await supabase
+        .from('partner_requests')
+        .select('details')
+        .eq('id', applicationId)
+        .maybeSingle()
+      if (prData?.details) {
+        const parsed = typeof prData.details === 'string' ? JSON.parse(prData.details) : prData.details
+        if (parsed?.email) destinationEmail = parsed.email
+      }
+    } catch {}
+  }
+  if (!destinationEmail && typeof window !== 'undefined') {
+    try {
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      if (currentUser?.email) destinationEmail = currentUser.email
     } catch {}
   }
 
