@@ -1590,6 +1590,63 @@ export async function getStoreApplications(): Promise<StoreApplication[]> {
       console.warn('Failed to fetch partner requests from API:', e)
     }
 
+    // 2. Direct Supabase query to bookstores table for is_verified === false
+    try {
+      const supabase = createClient()
+      const { data: pendingStores } = await supabase
+        .from('bookstores')
+        .select('*')
+        .eq('is_verified', false)
+        .order('created_at', { ascending: false })
+
+      if (Array.isArray(pendingStores)) {
+        for (const st of pendingStores) {
+          const alreadyIn = dbApps.some(
+            a =>
+              a.id === st.id ||
+              (a.business_name &&
+                a.business_name.trim().toLowerCase() === (st.name || '').trim().toLowerCase())
+          )
+          if (!alreadyIn) {
+            dbApps.push({
+              id: st.id,
+              applicant_id: st.owner_id,
+              applicant_name: st.name_ar || st.name,
+              owner_name: st.name_ar || st.name,
+              business_name: st.name_ar || st.name,
+              store_name: st.name,
+              store_name_ar: st.name_ar || st.name,
+              phone: st.social_links?.whatsapp || '',
+              email: '',
+              city: st.address || 'القاهرة',
+              district: st.district,
+              address: st.address,
+              latitude: st.latitude,
+              longitude: st.longitude,
+              store_type: st.store_type || 'ONLINE',
+              is_online_only: st.store_type === 'ONLINE',
+              social_links: st.social_links || {},
+              working_hours: st.opening_hours?.['مواعيد العمل'] || '',
+              shipping_scope: st.shipping_scope || 'شحن لجميع المحافظات',
+              slogan: st.slogan,
+              logo_url: st.logo_url,
+              cover_url: st.cover_url,
+              bio: st.description || '',
+              bio_ar: st.description_ar || '',
+              details: st.description || '',
+              partner_type: st.store_type === 'EVENT_ORGANIZER' ? 'EVENT_ORGANIZER' : 'BOOKSTORE',
+              contract_accepted: true,
+              status: 'PENDING',
+              created_at: st.created_at,
+              approved_store_id: st.id,
+            })
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Direct bookstores fetch fallback in getStoreApplications:', e)
+    }
+
     try {
       const stored = localStorage.getItem(APPLICATIONS_STORAGE_KEY)
       const localApps: StoreApplication[] = stored ? JSON.parse(stored) : []
@@ -1616,9 +1673,17 @@ export async function submitStoreApplication(
   }
 
   if (typeof window !== 'undefined') {
-    // 1. Submit to /api/partner-requests to save in DB partner_requests table
+    // 0. Cache locally in browser immediately so the user/admin never misses it
     try {
-      await fetch('/api/partner-requests', {
+      const stored = localStorage.getItem(APPLICATIONS_STORAGE_KEY)
+      const currentList: StoreApplication[] = stored ? JSON.parse(stored) : []
+      const updated = [newApp, ...currentList.filter(a => a.id !== newApp.id)]
+      localStorage.setItem(APPLICATIONS_STORAGE_KEY, JSON.stringify(updated))
+    } catch {}
+
+    // 1. Submit to /api/partner-requests to save in DB partner_requests table & bookstores table
+    try {
+      const res = await fetch('/api/partner-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1634,11 +1699,17 @@ export async function submitStoreApplication(
           details: JSON.stringify(newApp),
         }),
       })
+      if (res.ok) {
+        const json = await res.json()
+        if (json.application?.id) {
+          newApp.id = json.application.id
+        }
+      }
     } catch (e) {
       console.warn('API /api/partner-requests fallback:', e)
     }
 
-    // 2. Pre-save bookstore in Supabase bookstores table
+    // 2. Pre-save bookstore in Supabase bookstores table with is_verified: false
     try {
       const cleanSlug = (newApp.store_name || newApp.business_name)
         .toLowerCase()
@@ -1675,10 +1746,11 @@ export async function submitStoreApplication(
       console.warn('Failed to pre-save store to DB:', e)
     }
 
-    // 3. Cache locally in browser
+    // 3. Re-sync updated local cache
     try {
-      const current = await getStoreApplications()
-      const updated = [newApp, ...current.filter(a => a.id !== newApp.id)]
+      const stored = localStorage.getItem(APPLICATIONS_STORAGE_KEY)
+      const currentList: StoreApplication[] = stored ? JSON.parse(stored) : []
+      const updated = [newApp, ...currentList.filter(a => a.id !== newApp.id)]
       localStorage.setItem(APPLICATIONS_STORAGE_KEY, JSON.stringify(updated))
     } catch {}
   }
@@ -1791,7 +1863,7 @@ export async function approveStoreApplication(
     }
   }
 
-  // 4. Update status in DB partner_requests table
+  // 4. Update status in DB partner_requests table and bookstores table
   try {
     await supabase
       .from('partner_requests')
@@ -1799,6 +1871,15 @@ export async function approveStoreApplication(
       .eq('id', applicationId)
   } catch (e) {
     console.warn('Failed to update partner_requests in DB:', e)
+  }
+
+  try {
+    await supabase
+      .from('bookstores')
+      .update({ is_verified: true, verified_at: new Date().toISOString() })
+      .or(`id.eq.${applicationId},id.eq.${newStore.id}`)
+  } catch (e) {
+    console.warn('Failed to update bookstore is_verified in DB:', e)
   }
 
   target.status = 'APPROVED'

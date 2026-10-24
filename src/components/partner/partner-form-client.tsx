@@ -353,6 +353,41 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
     setFormErrorMessage(null)
   }
 
+  // Phone sanitization & validation helpers
+  const sanitizePhoneInput = (val: string): string => {
+    const converted = val.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d).toString())
+    return converted.replace(/[^\d+]/g, '')
+  }
+
+  const validatePhone = (val: string): { isValid: boolean; message?: string; isEgypt?: boolean } => {
+    const clean = val.replace(/[^0-9]/g, '')
+    if (!clean) {
+      return {
+        isValid: false,
+        message: lang === 'ar' ? 'رقم الهاتف مطلوب' : 'Phone number is required',
+      }
+    }
+    // Egyptian mobile: 010, 011, 012, 015 with 11 digits
+    if (/^01[0125][0-9]{8}$/.test(clean)) {
+      return { isValid: true, isEgypt: true }
+    }
+    // Egyptian with country code 201...
+    if (/^201[0125][0-9]{8}$/.test(clean)) {
+      return { isValid: true, isEgypt: true }
+    }
+    // General international phone (10-15 digits)
+    if (clean.length >= 10 && clean.length <= 15) {
+      return { isValid: true, isEgypt: false }
+    }
+    return {
+      isValid: false,
+      message:
+        lang === 'ar'
+          ? 'يرجى إدخال رقم محمول مصري صحيح 11 رقماً (يبدأ بـ 010 أو 011 أو 012 أو 015) أو رقم دولي معتمد'
+          : 'Please enter a valid 11-digit mobile number (e.g. 01012345678) or international phone',
+    }
+  }
+
   const validateStep1 = (): boolean => {
     const errors: Record<string, string> = {}
     if (!storeNameAr.trim() || storeNameAr.trim().length < 2) {
@@ -361,10 +396,16 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
     if (!ownerName.trim() || ownerName.trim().length < 2) {
       errors.ownerName = lang === 'ar' ? 'يرجى إدخال اسم المالك أو المسؤول المعتمد' : 'Please enter owner or manager name'
     }
+    const cleanDesc = description.trim()
+    if (!cleanDesc || cleanDesc.length < 15) {
+      errors.description = lang === 'ar'
+        ? 'يرجى كتابة نبذة تعريفية لا تقل عن 15 حرفاً عن المكتبة وتخصصاتها وأقسام الكتب'
+        : 'Please enter a store description of at least 15 characters'
+    }
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(prev => ({ ...prev, ...errors }))
-      setFormErrorMessage(lang === 'ar' ? 'يرجى استكمال الحقول الإلزامية بالخطوة 1 للمتابعة' : 'Please fill all required fields in Step 1')
+      setFormErrorMessage(lang === 'ar' ? 'يرجى استكمال الحقول الإلزامية بالخطوة 1 (اسم المكتبة، المالك، ونبذة 15 حرفاً)' : 'Please fill all required fields in Step 1')
       formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       return false
     }
@@ -393,16 +434,16 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
   const validateStep3 = (): boolean => {
     const errors: Record<string, string> = {}
 
-    // WhatsApp validation (minimum 10 digits)
-    const cleanWa = whatsapp.replace(/[^0-9]/g, '')
-    if (!cleanWa || cleanWa.length < 10) {
-      errors.whatsapp = lang === 'ar' ? 'يرجى إدخال رقم واتساب صحيح لاستقبال طلبات الكتب (10-11 رقماً)' : 'Please enter a valid WhatsApp phone number (10-11 digits)'
+    // WhatsApp validation
+    const waCheck = validatePhone(whatsapp)
+    if (!waCheck.isValid) {
+      errors.whatsapp = waCheck.message || (lang === 'ar' ? 'يرجى إدخال رقم واتساب صحيح لاستقبال طلبات الكتب' : 'Please enter a valid WhatsApp number')
     }
 
-    // Direct Phone validation (minimum 10 digits)
-    const cleanPh = phone.replace(/[^0-9]/g, '')
-    if (!cleanPh || cleanPh.length < 10) {
-      errors.phone = lang === 'ar' ? 'يرجى إدخال رقم هاتف اتصال مباشر صحيح (10-11 رقماً)' : 'Please enter a valid direct contact phone number (10-11 digits)'
+    // Direct Phone validation
+    const phCheck = validatePhone(phone)
+    if (!phCheck.isValid) {
+      errors.phone = phCheck.message || (lang === 'ar' ? 'يرجى إدخال رقم هاتف اتصال مباشر صحيح' : 'Please enter a valid direct contact phone number')
     }
 
     // Email validation
@@ -423,7 +464,7 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(prev => ({ ...prev, ...errors }))
-      setFormErrorMessage(lang === 'ar' ? 'يرجى استكمال قنوات التواصل والتحقق والموافقة على العقد' : 'Please complete all required fields and accept the contract in Step 3')
+      setFormErrorMessage(lang === 'ar' ? 'يرجى استكمال قنوات التواصل والتحقق والتأكد من أرقام الهاتف والموافقة على العقد' : 'Please complete all required fields and accept the contract in Step 3')
       formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
       return false
     }
@@ -1320,19 +1361,50 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
 
                   {/* Description / Bio */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-black text-foreground">
-                      {lang === 'ar' ? 'نبذة عن المكتبة ونوعية الكتب المتخصصة بها *' : 'Store Bio & Curated Categories *'}
-                    </label>
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-black text-foreground flex items-center gap-1.5">
+                        <FileText className="h-4 w-4 text-primary" />
+                        <span>{lang === 'ar' ? 'نبذة عن المكتبة وتخصصاتها ونوعية الكتب *' : 'Store Bio & Curated Categories *'}</span>
+                      </label>
+                      <span
+                        className={cn(
+                          "text-[11px] font-bold transition-colors",
+                          description.trim().length >= 15
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : formErrors.description
+                            ? "text-destructive"
+                            : "text-muted-foreground"
+                        )}
+                      >
+                        {description.trim().length} / 15 {lang === 'ar' ? 'حرف كحد أدنى' : 'chars min'}
+                        {description.trim().length >= 15 ? ' ✓' : ''}
+                      </span>
+                    </div>
                     <textarea
                       required
                       value={description}
-                      onChange={e => setDescription(e.target.value)}
+                      onChange={e => {
+                        setDescription(e.target.value)
+                        if (e.target.value.trim().length >= 15) {
+                          clearFieldError('description')
+                        }
+                      }}
                       placeholder={lang === 'ar'
                         ? 'أخبر القراء عن متجرك: تاريخ التأسيس، نوعية الكتب (روايات، كتب دينية، تطوير ذات، كتب مستعملة نادرة، كتب أطفال)، وخدمات التوصيل...'
                         : 'Describe your store specialty: genres (fiction, spiritual, self-help, rare used editions, university books), dispatch times...'}
                       rows={3}
-                      className="w-full rounded-xl border border-border bg-background p-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none leading-relaxed"
+                      className={cn(
+                        "w-full rounded-xl border p-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 resize-none leading-relaxed transition-all",
+                        formErrors.description
+                          ? "border-destructive bg-destructive/5 focus:ring-destructive/30 ring-1 ring-destructive/30"
+                          : "border-border bg-background focus:ring-primary/30"
+                      )}
                     />
+                    {formErrors.description && (
+                      <span className="text-[11px] font-bold text-destructive block mt-1">
+                        {formErrors.description}
+                      </span>
+                    )}
                   </div>
 
                   {/* Square & Catchy Visual Identity Upload Cards */}
@@ -1857,59 +1929,106 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
                   </div>
 
                   {/* Primary WhatsApp & Phone */}
+                  {/* Primary WhatsApp & Phone */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* WhatsApp */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black text-foreground flex items-center gap-1.5">
-                        <MessageCircle className="h-4 w-4 text-emerald-600" />
-                        <span>{lang === 'ar' ? 'رقم واتساب الأعمال لاستقبال الطلبات *' : 'WhatsApp Business (Orders) *'}</span>
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-black text-foreground flex items-center gap-1.5">
+                          <MessageCircle className="h-4 w-4 text-emerald-600" />
+                          <span>{lang === 'ar' ? 'رقم واتساب الأعمال لاستقبال الطلبات *' : 'WhatsApp Business (Orders) *'}</span>
+                        </label>
+                      </div>
                       <input
                         type="tel"
                         required
                         value={whatsapp}
                         onChange={e => {
-                          setWhatsapp(e.target.value)
-                          clearFieldError('whatsapp')
+                          const cleaned = sanitizePhoneInput(e.target.value)
+                          setWhatsapp(cleaned)
+                          if (validatePhone(cleaned).isValid) {
+                            clearFieldError('whatsapp')
+                          }
                         }}
                         placeholder="01012345678"
                         className={cn(
-                          "w-full rounded-xl border px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 font-mono",
+                          "w-full rounded-xl border px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 font-mono transition-all",
                           formErrors.whatsapp
                             ? "border-destructive bg-destructive/5 focus:ring-destructive/30 ring-1 ring-destructive/30"
                             : "border-border bg-background focus:ring-emerald-500/30"
                         )}
                         dir="ltr"
                       />
-                      {formErrors.whatsapp && (
+                      {formErrors.whatsapp ? (
                         <span className="text-[11px] font-bold text-destructive block mt-1">{formErrors.whatsapp}</span>
+                      ) : (
+                        <div className="flex items-center justify-between pt-0.5">
+                          <span className="text-[10px] text-muted-foreground">
+                            {lang === 'ar' ? 'يتم تحويل طلبات القراء عليه مباشرة' : 'Customer orders routed here'}
+                          </span>
+                          {validatePhone(whatsapp).isValid && (
+                            <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                              ✓ {validatePhone(whatsapp).isEgypt ? (lang === 'ar' ? 'رقم مصري معتمد 11 رقماً' : '11-digit Egyptian number') : (lang === 'ar' ? 'رقم معتمد' : 'Valid number')}
+                            </span>
+                          )}
+                        </div>
                       )}
-                      <span className="text-[10px] text-muted-foreground">{lang === 'ar' ? 'يتم تحويل طلبات القراء عليه مباشرة' : 'Customer orders routed here'}</span>
                     </div>
 
+                    {/* Direct Phone */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-black text-foreground flex items-center gap-1.5">
-                        <Phone className="h-4 w-4 text-primary" />
-                        <span>{lang === 'ar' ? 'رقم هاتف الاتصال المباشر *' : 'Direct Phone Number *'}</span>
-                      </label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-black text-foreground flex items-center gap-1.5">
+                          <Phone className="h-4 w-4 text-primary" />
+                          <span>{lang === 'ar' ? 'رقم هاتف الاتصال المباشر *' : 'Direct Phone Number *'}</span>
+                        </label>
+                        {whatsapp && whatsapp !== phone && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPhone(whatsapp)
+                              clearFieldError('phone')
+                            }}
+                            className="text-[10px] font-bold text-primary hover:underline flex items-center gap-0.5 cursor-pointer"
+                          >
+                            <Copy className="h-3 w-3" />
+                            {lang === 'ar' ? 'نفس رقم الواتساب' : 'Same as WhatsApp'}
+                          </button>
+                        )}
+                      </div>
                       <input
                         type="tel"
                         required
                         value={phone}
                         onChange={e => {
-                          setPhone(e.target.value)
-                          clearFieldError('phone')
+                          const cleaned = sanitizePhoneInput(e.target.value)
+                          setPhone(cleaned)
+                          if (validatePhone(cleaned).isValid) {
+                            clearFieldError('phone')
+                          }
                         }}
                         placeholder="01099887766"
                         className={cn(
-                          "w-full rounded-xl border px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 font-mono",
+                          "w-full rounded-xl border px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 font-mono transition-all",
                           formErrors.phone
                             ? "border-destructive bg-destructive/5 focus:ring-destructive/30 ring-1 ring-destructive/30"
                             : "border-border bg-background focus:ring-primary/30"
                         )}
                         dir="ltr"
                       />
-                      {formErrors.phone && (
+                      {formErrors.phone ? (
                         <span className="text-[11px] font-bold text-destructive block mt-1">{formErrors.phone}</span>
+                      ) : (
+                        <div className="flex items-center justify-between pt-0.5">
+                          <span className="text-[10px] text-muted-foreground">
+                            {lang === 'ar' ? 'للتواصل الفوري من إدارة المنصة' : 'For admin direct contact'}
+                          </span>
+                          {validatePhone(phone).isValid && (
+                            <span className="text-[10px] font-bold text-primary flex items-center gap-1">
+                              ✓ {validatePhone(phone).isEgypt ? (lang === 'ar' ? 'رقم مصري معتمد 11 رقماً' : '11-digit Egyptian number') : (lang === 'ar' ? 'رقم معتمد' : 'Valid number')}
+                            </span>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
