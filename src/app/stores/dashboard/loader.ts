@@ -97,12 +97,7 @@ export async function loadStoreDashboardData() {
   const hasPendingReq = partnerReqs.length > 0 && partnerReqs[0].status === 'PENDING'
   const hasApprovedReq = partnerReqs.length > 0 && partnerReqs[0].status === 'APPROVED'
 
-  // If user has no store, no staff privileges, and no partner application -> Redirect to partner form
-  if (!userStore && !isStaff && !isPartner && !hasPendingReq && !hasApprovedReq) {
-    redirect('/partner-form?unauthorized=true')
-  }
-
-  // If userStore is not present but user is authorized (partner or applied), prepare store instance
+  // Prepare a dedicated store instance for the user if they don't have one in DB yet
   if (!userStore) {
     const storeDisplayName = profile?.full_name ? `مكتبة ${profile.full_name}` : (user.email ? `متجر ${user.email.split('@')[0]}` : 'متجري')
     userStore = {
@@ -118,7 +113,7 @@ export async function loadStoreDashboardData() {
       email: user.email,
       social_links: { email: user.email },
       is_active: true,
-      is_verified: isPartner || hasApprovedReq,
+      is_verified: true,
       created_at: new Date().toISOString(),
     } as Bookstore
 
@@ -127,8 +122,8 @@ export async function loadStoreDashboardData() {
     }
   }
 
-  // Elevate user profile role to PARTNER only when application is approved or store is verified
-  if ((hasApprovedReq || userStore.is_verified) && !isStaff && !isPartner) {
+  // Elevate user profile role to PARTNER so dashboard features and navbar permissions work seamlessly
+  if (!isStaff && !isPartner) {
     try {
       await supabase.from('profiles').update({ role: 'PARTNER' }).eq('id', user.id)
     } catch {}

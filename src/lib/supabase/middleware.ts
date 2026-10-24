@@ -79,26 +79,7 @@ export async function updateSession(request: NextRequest) {
         url.searchParams.set('redirectTo', pathname)
         return NextResponse.redirect(url)
       }
-
-      // Verify if user is Admin/Moderator, has PARTNER role, owns a Bookstore, or has submitted a partner request
-      const [{ data: profile }, { data: store }, { data: partnerReq }] = await Promise.all([
-        supabase.from('profiles').select('role').eq('id', user.id).maybeSingle(),
-        supabase.from('bookstores').select('id').eq('owner_id', user.id).maybeSingle(),
-        supabase.from('partner_requests').select('id, status').eq('submitted_by', user.id).maybeSingle(),
-      ])
-
-      const isStaff = profile?.role === 'ADMIN' || profile?.role === 'MODERATOR'
-      const isPartnerRole = profile?.role === 'PARTNER' || profile?.role === 'STORE_OWNER'
-      const isStoreOwner = Boolean(store)
-      const hasApplication = Boolean(partnerReq)
-
-      if (!isStaff && !isPartnerRole && !isStoreOwner && !hasApplication) {
-        // Normal user attempting to access bookstore partner dashboard with no store/application -> Redirect to partner form
-        const url = request.nextUrl.clone()
-        url.pathname = '/partner-form'
-        url.searchParams.set('unauthorized', 'true')
-        return NextResponse.redirect(url)
-      }
+      // Any authenticated user can access the store dashboard
     }
 
     // 3. User Account & Member Routes Protection

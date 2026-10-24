@@ -2008,6 +2008,19 @@ export async function approveStoreApplication(
     } catch {}
   }
 
+  // Check profiles by email
+  if (!resolvedOwnerId && target.email) {
+    try {
+      const cleanEmail = target.email.toLowerCase().trim()
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('email', cleanEmail)
+        .maybeSingle()
+      if (profile?.id) resolvedOwnerId = profile.id
+    } catch {}
+  }
+
   const finalOwnerId = resolvedOwnerId || `user-${Date.now()}`
 
   // Create new active verified Bookstore

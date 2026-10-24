@@ -815,7 +815,7 @@ export function TopNav({
                         </Link>
 
                         {/* Store Manager Dashboard — Matched to store partner / staff roles */}
-                        {(activeUser.profile?.role === 'ADMIN' || activeUser.profile?.role === 'MODERATOR' || (activeUser.profile as any)?.role === 'STORE_OWNER') && (
+                        {(activeUser.profile?.role === 'ADMIN' || activeUser.profile?.role === 'MODERATOR' || activeUser.profile?.role === 'PARTNER' || (activeUser.profile as any)?.role === 'STORE_OWNER') && (
                           <Link
                             href="/stores/dashboard"
                             onClick={() => setDropdownOpen(false)}
@@ -1249,7 +1249,7 @@ export function TopNav({
                 </Link>
 
                 {/* Role Matched Store/Admin Management in Mobile Drawer */}
-                {activeUser && (activeUser.profile?.role === 'ADMIN' || activeUser.profile?.role === 'MODERATOR' || (activeUser.profile as any)?.role === 'STORE_OWNER') && (
+                {activeUser && (activeUser.profile?.role === 'ADMIN' || activeUser.profile?.role === 'MODERATOR' || activeUser.profile?.role === 'PARTNER' || (activeUser.profile as any)?.role === 'STORE_OWNER') && (
                   <div className="pt-2 border-t border-border/60 space-y-1">
                     <div className="px-2 py-1 text-[11px] font-black uppercase text-emerald-600 tracking-wider">
                       {lang === 'ar' ? 'أدوات الإدارة والشركاء' : 'Partner & Admin Tools'}

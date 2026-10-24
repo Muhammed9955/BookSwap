@@ -1120,18 +1120,27 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
 
       <div className="page-container py-10 max-w-6xl mx-auto space-y-6">
         {isUnauthorized && (
-          <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 text-amber-950 dark:text-amber-200 flex items-start gap-3.5 shadow-sm">
-            <AlertCircle className="h-6 w-6 text-amber-500 shrink-0 mt-0.5" />
-            <div className="space-y-1 text-sm">
-              <h4 className="font-bold text-base">
-                {lang === 'ar' ? 'لوحة إدارة المتاجر مخصصة فقط للمكتبات المعتمدة' : 'Store Dashboard Access Restricted'}
-              </h4>
-              <p className="leading-relaxed opacity-90 text-xs sm:text-sm">
-                {lang === 'ar'
-                  ? 'عفواً، لا يمتلك حسابك صلاحية شريك مكتبة للوصول إلى لوحة الإدارة. إذا كنت تدير مكتبة أو دار نشر أو متجر كتب، يرجى ملء طلب الشراكة التالي لاعتماد متجرك وتفعيل لوحة التحكم.'
-                  : 'Your account does not have bookstore partner privileges. If you operate a bookstore or publisher, please fill out the partner application below to verify your store and activate your dashboard.'}
-              </p>
+          <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border-2 border-amber-500/30 text-amber-950 dark:text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+            <div className="flex items-start gap-3.5">
+              <AlertCircle className="h-6 w-6 text-amber-500 shrink-0 mt-0.5" />
+              <div className="space-y-1 text-sm">
+                <h4 className="font-bold text-base">
+                  {lang === 'ar' ? 'تسجيل وتفعيل متجر جديد في لوحة الإدارة' : 'Register & Activate Your Bookstore'}
+                </h4>
+                <p className="leading-relaxed opacity-90 text-xs sm:text-sm">
+                  {lang === 'ar'
+                    ? 'يمكنك تسجيل متجرك الجديد عبر النموذج أدناه أو الدخول المباشر إلى لوحة إدارة متجرك.'
+                    : 'You can submit your bookstore registration below or go directly to your store manager dashboard.'}
+                </p>
+              </div>
             </div>
+            <Link
+              href="/stores/dashboard"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition-colors shrink-0 shadow-sm"
+            >
+              <Store className="h-4 w-4" />
+              <span>{lang === 'ar' ? 'الدخول للوحة المتجر مباشرة 🏬' : 'Go to Store Dashboard 🏬'}</span>
+            </Link>
           </div>
         )}
         {/* ======================================================== */}
