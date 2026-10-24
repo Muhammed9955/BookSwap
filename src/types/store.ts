@@ -56,6 +56,7 @@ export interface Bookstore {
     instagram?: string
     whatsapp?: string
     tiktok?: string
+    email?: string
   }
   logo_url?: string
   cover_url?: string

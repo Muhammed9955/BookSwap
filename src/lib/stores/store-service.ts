@@ -1617,7 +1617,7 @@ export async function getStoreApplications(): Promise<StoreApplication[]> {
               store_name: st.name,
               store_name_ar: st.name_ar || st.name,
               phone: st.social_links?.whatsapp || '',
-              email: '',
+              email: (st.social_links as any)?.email || (st as any).email || '',
               city: st.address || 'القاهرة',
               district: st.district,
               address: st.address,
@@ -1737,6 +1737,7 @@ export async function submitStoreApplication(
         website_url: newApp.website_url,
         social_links: {
           whatsapp: newApp.phone,
+          email: newApp.email,
           ...(newApp.social_links || {}),
         },
         is_verified: false,
@@ -1910,11 +1911,11 @@ export async function approveStoreApplication(
   }
 
   // 6. Trigger transactional approval email via Resend API
-  let destinationEmail = target.email
+  let destinationEmail = target.email || (target.social_links as any)?.email
   if (!destinationEmail && resolvedOwnerId) {
     try {
-      const { data: prof } = await supabase.from('profiles').select('email').eq('id', resolvedOwnerId).maybeSingle()
-      if (prof?.email) destinationEmail = prof.email
+      const { data: prof } = await supabase.from('profiles').select('*').eq('id', resolvedOwnerId).maybeSingle()
+      if ((prof as any)?.email) destinationEmail = (prof as any).email
     } catch {}
   }
 

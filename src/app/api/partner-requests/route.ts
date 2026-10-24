@@ -69,6 +69,7 @@ export async function GET() {
             applicant_id: st.owner_id,
             owner_name: st.name_ar || st.name,
             phone: st.social_links?.whatsapp || '',
+            email: st.social_links?.email || '',
             city: st.address || 'القاهرة',
             district: st.district,
             address: st.address,
@@ -221,6 +222,7 @@ export async function POST(req: NextRequest) {
           longitude: parsedDetailsObj.longitude || null,
           social_links: {
             whatsapp: phone,
+            email: parsedDetailsObj.email || undefined,
             ...(parsedDetailsObj.social_links || {}),
           },
           opening_hours: parsedDetailsObj.working_hours

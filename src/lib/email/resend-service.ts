@@ -12,6 +12,28 @@ export interface StoreApprovedEmailParams {
   dashboardUrl?: string
 }
 
+function getResendApiKey(): string | undefined {
+  if (process.env.RESEND_API_KEY) return process.env.RESEND_API_KEY
+  try {
+    // Dynamic read from .env.local to ensure newly added keys are picked up without server restart
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require('fs')
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require('path')
+    const envPath = path.resolve(process.cwd(), '.env.local')
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, 'utf8')
+      const match = content.match(/^RESEND_API_KEY=(.*)$/m)
+      if (match && match[1]) {
+        const val = match[1].trim()
+        process.env.RESEND_API_KEY = val
+        return val
+      }
+    }
+  } catch {}
+  return undefined
+}
+
 export async function sendStoreApprovedEmail({
   to,
   ownerName,
@@ -26,7 +48,7 @@ export async function sendStoreApprovedEmail({
   const effectiveDashboardUrl = dashboardUrl || `${origin}/stores/dashboard`
 
   const storefrontUrl = `${origin}/stores/${storeSlug}`
-  const apiKey = process.env.RESEND_API_KEY
+  const apiKey = getResendApiKey()
 
   const htmlContent = `
 <!DOCTYPE html>
@@ -118,7 +140,7 @@ export async function sendStoreApprovedEmail({
   }
 
   try {
-    const fromAddress = process.env.RESEND_FROM_EMAIL || 'WaraqConnect <onboarding@resend.dev>'
+    const fromAddress = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
 
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -137,6 +159,9 @@ export async function sendStoreApprovedEmail({
     const data = await res.json()
     if (!res.ok) {
       console.warn('[Resend Error]', data)
+      if (res.status === 403 && data.message?.includes('testing emails to your own email address')) {
+        console.warn(`[Resend Notice] ${data.message}`)
+      }
       return { success: false, error: data.message || 'Failed to send email via Resend' }
     }
 
