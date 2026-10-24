@@ -1039,23 +1039,29 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
               </li>
             </ul>
 
-            <a
-              href={`https://wa.me/${whatsappAdmin}?text=${encodeURIComponent(
-                `🏪 *استفسار ومتابعة طلب شراكة مكتبة (${storeNameAr})*\n` +
-                `👤 المسؤول: ${ownerName}\n` +
-                `📱 الهاتف / الواتساب: ${whatsapp || phone}\n` +
-                `✉️ البريد: ${currentUser?.email || email}\n` +
-                `✨ تم تقديم الطلب بنجاح عبر منصة ورق كونكت ونرغب في تسريع المراجعة.`
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block pt-2"
-            >
-              <Button className="w-full rounded-xl font-bold gap-2 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-sm text-xs h-11">
-                <MessageCircle className="h-4 w-4" />
-                <span>{lang === 'ar' ? 'متابعة الطلب مع فريق الدعم عبر واتساب لتسريع المراجعة' : 'Follow up with Partner Support on WhatsApp'}</span>
-              </Button>
-            </a>
+            <div className="pt-2">
+              <Link href="/stores/dashboard" className="block">
+                <Button className="w-full rounded-xl font-black gap-2 bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer shadow-md text-xs sm:text-sm h-12 hover:scale-[1.01] active:scale-[0.99] transition-all">
+                  <Store className="h-4 w-4 shrink-0" />
+                  <span>{lang === 'ar' ? 'الدخول للوحة التحكم وتجهيز كتب المتجر الآن 🏬' : 'Go to Store Dashboard & Prepare Books 🏬'}</span>
+                </Button>
+              </Link>
+            </div>
+
+            <p className="text-center text-[11px] text-muted-foreground pt-1">
+              <span>{lang === 'ar' ? 'هل لديك أي استفسار حول الشراكة؟ ' : 'Have questions about partnership? '}</span>
+              <a
+                href={`https://wa.me/${whatsappAdmin}?text=${encodeURIComponent(
+                  `مرحباً، لدي استفسار بخصوص طلب شراكة مكتبة (${storeNameAr})`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-emerald-600 hover:underline font-bold inline-flex items-center gap-1"
+              >
+                <MessageCircle className="h-3 w-3 inline" />
+                <span>{lang === 'ar' ? 'تواصل مع الدعم الفني' : 'Contact Support'}</span>
+              </a>
+            </p>
           </div>
 
           <div className="w-full space-y-3 pt-1">
