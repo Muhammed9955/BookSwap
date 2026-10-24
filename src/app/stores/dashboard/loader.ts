@@ -97,6 +97,17 @@ export async function loadStoreDashboardData() {
   const hasPendingReq = partnerReqs.length > 0 && partnerReqs[0].status === 'PENDING'
   const hasApprovedReq = partnerReqs.length > 0 && partnerReqs[0].status === 'APPROVED'
 
+  // If user application is approved or user has partner/staff role, ensure store is verified
+  if (userStore && !userStore.is_verified && (hasApprovedReq || isPartner || isStaff)) {
+    userStore.is_verified = true
+    try {
+      await supabase
+        .from('bookstores')
+        .update({ is_verified: true, verified_at: new Date().toISOString() })
+        .eq('id', userStore.id)
+    } catch {}
+  }
+
   // Prepare a dedicated store instance for the user if they don't have one in DB yet
   if (!userStore) {
     const storeDisplayName = profile?.full_name ? `مكتبة ${profile.full_name}` : (user.email ? `متجر ${user.email.split('@')[0]}` : 'متجري')

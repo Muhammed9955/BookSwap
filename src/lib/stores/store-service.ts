@@ -2065,7 +2065,7 @@ export async function approveStoreApplication(
 
   // 2. Persist directly to Supabase DB bookstores table
   try {
-    const dbRes = await saveStoreToDatabase(newStore)
+    const dbRes = await saveStoreToDatabase(newStore, resolvedOwnerId, supabase)
     if (dbRes.store) {
       newStore.id = dbRes.store.id
     }
@@ -2096,10 +2096,19 @@ export async function approveStoreApplication(
   }
 
   try {
+    const filterConditions = [`id.eq.${applicationId}`, `id.eq.${newStore.id}`]
+    if (cleanSlug) filterConditions.push(`slug.eq.${cleanSlug}`)
+    if (resolvedOwnerId && resolvedOwnerId.includes('-')) filterConditions.push(`owner_id.eq.${resolvedOwnerId}`)
+    
     await supabase
       .from('bookstores')
-      .update({ is_verified: true, verified_at: new Date().toISOString() })
-      .or(`id.eq.${applicationId},id.eq.${newStore.id}`)
+      .update({
+        is_verified: true,
+        verified_at: new Date().toISOString(),
+        is_active: true,
+        ...(resolvedOwnerId ? { owner_id: resolvedOwnerId } : {})
+      })
+      .or(filterConditions.join(','))
   } catch (e) {
     console.warn('Failed to update bookstore is_verified in DB:', e)
   }
