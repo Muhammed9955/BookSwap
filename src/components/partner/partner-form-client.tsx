@@ -890,7 +890,7 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
           .eq('id', effectiveUserId)
 
         // Send in-app notification leading directly to store dashboard
-        await supabase.from('notifications').insert({
+        const notifPayload = {
           user_id: effectiveUserId,
           type: 'STORE_APPROVED',
           title: '🎉 تم تسجيل متجرك بنجاح وتفعيل لوحة التحكم!',
@@ -902,7 +902,11 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
             store_name: storeNameAr || storeNameEn,
             target_url: '/stores/dashboard',
           },
-        } as any)
+        }
+        const { error: notifErr } = await supabase.from('notifications').insert(notifPayload as any)
+        if (notifErr) {
+          await supabase.from('notifications').insert({ ...notifPayload, type: 'TRANSACTION_COMPLETED' } as any)
+        }
       } catch (err) {
         console.warn('Client-side role/notification update notice:', err)
       }

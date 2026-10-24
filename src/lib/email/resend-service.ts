@@ -34,6 +34,25 @@ function getResendApiKey(): string | undefined {
   return undefined
 }
 
+export function getSiteBaseUrl(): string {
+  // 1. Explicit production URLs (ignoring localhost so emails always work on phones & real inboxes)
+  if (process.env.NEXT_PUBLIC_SITE_URL && !process.env.NEXT_PUBLIC_SITE_URL.includes('localhost')) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
+  }
+  if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes('localhost')) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, '')
+  }
+  // 2. Vercel deployment variables
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+  }
+  if (process.env.VERCEL_URL && !process.env.VERCEL_URL.includes('localhost')) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+  // 3. Official deployed Vercel production domain
+  return 'https://waraqconnect.vercel.app'
+}
+
 export async function sendStoreApprovedEmail({
   to,
   ownerName,
@@ -41,11 +60,11 @@ export async function sendStoreApprovedEmail({
   storeSlug,
   dashboardUrl,
 }: StoreApprovedEmailParams): Promise<{ success: boolean; id?: string; error?: string }> {
-  const origin = typeof window !== 'undefined' 
-    ? window.location.origin 
-    : (process.env.NEXT_PUBLIC_SITE_URL || 'https://waraqconnect.com')
+  const origin = getSiteBaseUrl()
+  const effectiveDashboardUrl = (dashboardUrl && !dashboardUrl.includes('localhost'))
+    ? dashboardUrl
+    : `${origin}/stores/dashboard`
 
-  const effectiveDashboardUrl = dashboardUrl || `${origin}/stores/dashboard`
   const storefrontUrl = `${origin}/stores/${storeSlug}`
   const apiKey = getResendApiKey()
 
@@ -234,10 +253,7 @@ export async function sendStoreSubmittedEmail({
   city,
   storeType,
 }: StoreSubmittedEmailParams): Promise<{ success: boolean; id?: string; error?: string }> {
-  const origin = typeof window !== 'undefined'
-    ? window.location.origin
-    : (process.env.NEXT_PUBLIC_SITE_URL || 'https://waraqconnect.com')
-
+  const origin = getSiteBaseUrl()
   const dashboardUrl = `${origin}/stores/dashboard`
   const apiKey = getResendApiKey()
 

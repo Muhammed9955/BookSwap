@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { sendStoreApprovedEmail } from '@/lib/email/resend-service'
+import { sendStoreApprovedEmail, getSiteBaseUrl } from '@/lib/email/resend-service'
 
 export async function POST(req: Request) {
   try {
@@ -10,10 +10,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required email or store details' }, { status: 400 })
     }
 
-    const host = req.headers.get('host') || 'localhost:3000'
-    const protocol = host.includes('localhost') ? 'http' : 'https'
-    const dashboardUrl = `${protocol}://${host}/stores/dashboard`
-
+    const baseUrl = getSiteBaseUrl()
+    const dashboardUrl = `${baseUrl}/stores/dashboard`
 
     const res = await sendStoreApprovedEmail({
       to,
