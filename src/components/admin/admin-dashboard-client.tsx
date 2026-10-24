@@ -9,13 +9,21 @@ import {
   Smartphone, Download, ExternalLink, Activity, Calendar, ArrowUpRight,
   Store, Globe, Menu, MessageCircle, CheckCheck, Mail,
   ShieldCheck, Video, BadgeCheck, FileText, CheckSquare, Sparkles, Share2,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, MoreHorizontal, MoreVertical
 } from 'lucide-react'
 import type { DashboardStats, Community, CommunityOrgType } from '@/types'
 import type { StoreApplication, StoreApplicationStatus, Bookstore, StoreType } from '@/types/store'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from '@/components/ui/dropdown-menu'
 import { useLanguage } from '@/i18n/language-context'
 import { createClient } from '@/lib/supabase/client'
 import { cn, formatRelativeTime } from '@/lib/utils'
@@ -1557,100 +1565,112 @@ export function AdminDashboardClient({
                                   </td>
 
                                   {/* 7. Actions */}
-                                  <td className="p-3.5 whitespace-nowrap">
-                                    <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                      {/* WhatsApp Chat */}
-                                      <a
-                                        href={`https://wa.me/${intlPhone}?text=${encodeURIComponent(
-                                          lang === 'ar'
-                                            ? `مرحباً أستاذ ${app.owner_name || app.applicant_name}، نتواصل معك من إدارة منصة ورق كونكت بخصوص اعتماد متجر (${app.store_name_ar || app.store_name || app.business_name}).`
-                                            : `Hello ${app.owner_name || app.applicant_name}, contacting you from WaraqConnect regarding (${app.store_name || app.business_name}).`
-                                        )}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="p-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 transition-colors shrink-0"
-                                        title={lang === 'ar' ? 'محادثة واتساب' : 'WhatsApp Chat'}
-                                      >
-                                        <MessageCircle className="h-4 w-4" />
-                                      </a>
+                                   <td className="p-3.5 whitespace-nowrap">
+                                     <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                       {/* Primary Action Button */}
+                                       {app.status === 'PENDING' ? (
+                                         <Button
+                                           size="sm"
+                                           onClick={() => handleApproveStore(app.id)}
+                                           loading={approvingId === app.id}
+                                           className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-8 px-3 rounded-xl gap-1.5 cursor-pointer shadow-xs"
+                                         >
+                                           <CheckCheck className="h-3.5 w-3.5" />
+                                           <span>{lang === 'ar' ? 'اعتماد' : 'Approve'}</span>
+                                         </Button>
+                                       ) : (
+                                         <Button
+                                           variant="outline"
+                                           size="sm"
+                                           onClick={() => setInspectingApp(app)}
+                                           className="h-8 text-xs font-bold rounded-xl gap-1.5 cursor-pointer px-2.5"
+                                         >
+                                           <Eye className="h-3.5 w-3.5 text-primary" />
+                                           <span>{lang === 'ar' ? 'التفاصيل' : 'Details'}</span>
+                                         </Button>
+                                       )}
 
-                                      {/* Inspect Checklist */}
-                                      <button
-                                        onClick={() => setInspectingApp(app)}
-                                        className="p-1.5 rounded-lg border border-border bg-card text-foreground hover:bg-accent transition-colors cursor-pointer"
-                                        title={lang === 'ar' ? 'فحص المصداقية ومكافحة السبام' : 'Verify Authenticity'}
-                                      >
-                                        <Eye className="h-4 w-4 text-muted-foreground" />
-                                      </button>
+                                       {/* 3-Dots Dropdown Menu for All Secondary Actions */}
+                                       <DropdownMenu>
+                                         <DropdownMenuTrigger asChild>
+                                           <Button
+                                             variant="ghost"
+                                             size="sm"
+                                             className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+                                             title={lang === 'ar' ? 'المزيد من الإجراءات' : 'More actions'}
+                                           >
+                                             <MoreHorizontal className="h-4 w-4" />
+                                             <span className="sr-only">Actions</span>
+                                           </Button>
+                                         </DropdownMenuTrigger>
+                                         <DropdownMenuContent align={isRTL ? "start" : "end"} className="w-56">
+                                           <DropdownMenuLabel>
+                                             {lang === 'ar' ? 'إجراءات الطلب' : 'Request Actions'}
+                                           </DropdownMenuLabel>
 
-                                      {/* Approved Partner Quick Notifications (WhatsApp & Email) */}
-                                      {app.status === 'APPROVED' && (
-                                        <div className="flex items-center gap-1">
-                                          {app.phone && (
-                                            <a
-                                              href={`https://wa.me/${app.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                                                `🎉 مرحباً بك يا ${app.owner_name || app.applicant_name}! تم توثيق واعتماد متجرك (${app.store_name_ar || app.business_name}) بنجاح على منصة WaraqConnect.\n\n📚 يمكنك الآن الدخول للوحة التحكم لإضافة كتبك وباقات عروض التوفير:\n${typeof window !== 'undefined' ? window.location.origin : ''}/stores/dashboard`
-                                              )}`}
-                                              target="_blank"
-                                              rel="noreferrer"
-                                              className="p-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 transition-colors"
-                                              title={lang === 'ar' ? 'إرسال إشعار التفعيل عبر واتساب' : 'Notify via WhatsApp'}
-                                            >
-                                              <MessageCircle className="h-4 w-4" />
-                                            </a>
-                                          )}
-                                          {app.email && (
-                                            <a
-                                              href={`mailto:${app.email}?subject=${encodeURIComponent(
-                                                `🎉 تم اعتماد وتفعيل متجركم (${app.store_name_ar || app.business_name}) على منصة WaraqConnect`
-                                              )}&body=${encodeURIComponent(
-                                                `مرحباً ${app.owner_name || app.applicant_name}،\n\nيسعدنا إعلامك بأنه تم اعتماد وتوثيق متجركم رسمياً كشريك في منصة WaraqConnect!\n\nيمكنك الآن البدء بإضافة كتبك وإنشاء باقات عروض التوفير (Mix & Match) عبر لوحة التحكم:\n${typeof window !== 'undefined' ? window.location.origin : ''}/stores/dashboard\n\nمع تحيات فريق WaraqConnect.`
-                                              )}`}
-                                              className="p-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-colors"
-                                              title={lang === 'ar' ? 'إرسال إيميل التفعيل' : 'Send Activation Email'}
-                                            >
-                                              <Mail className="h-4 w-4" />
-                                            </a>
-                                          )}
-                                        </div>
-                                      )}
+                                           <DropdownMenuItem
+                                             onClick={() => setInspectingApp(app)}
+                                             className="gap-2 font-semibold"
+                                           >
+                                             <ShieldCheck className="h-4 w-4 text-primary" />
+                                             <span>{lang === 'ar' ? 'فحص المصداقية والتفاصيل' : 'Verify Authenticity & Details'}</span>
+                                           </DropdownMenuItem>
 
-                                      {/* Approve Button */}
-                                      {app.status === 'PENDING' && (
-                                        <Button
-                                          size="sm"
-                                          onClick={() => handleApproveStore(app.id)}
-                                          loading={approvingId === app.id}
-                                          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs h-7 px-2.5 rounded-lg gap-1 cursor-pointer"
-                                        >
-                                          <CheckCheck className="h-3.5 w-3.5" />
-                                          <span className="hidden lg:inline">{lang === 'ar' ? 'اعتماد' : 'Approve'}</span>
-                                        </Button>
-                                      )}
+                                           <DropdownMenuItem asChild className="gap-2 font-semibold">
+                                             <a
+                                               href={`https://wa.me/${intlPhone}?text=${encodeURIComponent(
+                                                 lang === 'ar'
+                                                   ? `مرحباً أستاذ ${app.owner_name || app.applicant_name}، نتواصل معك من إدارة منصة ورق كونكت بخصوص اعتماد متجر (${app.store_name_ar || app.store_name || app.business_name}).`
+                                                   : `Hello ${app.owner_name || app.applicant_name}, contacting you from WaraqConnect regarding (${app.store_name || app.business_name}).`
+                                               )}`}
+                                               target="_blank"
+                                               rel="noopener noreferrer"
+                                               className="flex items-center gap-2 cursor-pointer"
+                                             >
+                                               <MessageCircle className="h-4 w-4 text-emerald-600" />
+                                               <span>{lang === 'ar' ? 'محادثة واتساب المالك' : 'WhatsApp Owner'}</span>
+                                             </a>
+                                           </DropdownMenuItem>
 
-                                      {/* Reject Button */}
-                                      {app.status === 'PENDING' && (
-                                        <Button
-                                          size="sm"
-                                          variant="ghost"
-                                          onClick={() => handleRejectStore(app.id)}
-                                          className="text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 font-bold text-xs h-7 px-2 rounded-lg cursor-pointer"
-                                          title={lang === 'ar' ? 'رفض الطلب' : 'Reject'}
-                                        >
-                                          <X className="h-3.5 w-3.5" />
-                                        </Button>
-                                      )}
+                                           {app.email && (
+                                             <DropdownMenuItem asChild className="gap-2 font-semibold">
+                                               <a
+                                                 href={`mailto:${app.email}?subject=${encodeURIComponent(
+                                                   `بخصوص طلب انضمام متجركم (${app.store_name_ar || app.business_name}) على منصة WaraqConnect`
+                                                 )}`}
+                                                 className="flex items-center gap-2 cursor-pointer"
+                                               >
+                                                 <Mail className="h-4 w-4 text-blue-600" />
+                                                 <span>{lang === 'ar' ? 'إرسال بريد إلكتروني' : 'Send Email'}</span>
+                                               </a>
+                                             </DropdownMenuItem>
+                                           )}
 
-                                      {app.status === 'APPROVED' && (
-                                        <Link href="/stores" target="_blank">
-                                          <Button variant="outline" size="sm" className="h-7 text-xs font-bold gap-1 rounded-lg">
-                                            <ExternalLink className="h-3 w-3 text-primary" />
-                                            <span className="hidden lg:inline">{lang === 'ar' ? 'الدليل' : 'Live'}</span>
-                                          </Button>
-                                        </Link>
-                                      )}
-                                    </div>
-                                  </td>
+                                           {app.status === 'APPROVED' && (
+                                             <DropdownMenuItem asChild className="gap-2 font-semibold">
+                                               <Link href="/stores" target="_blank" className="flex items-center gap-2 cursor-pointer">
+                                                 <ExternalLink className="h-4 w-4 text-primary" />
+                                                 <span>{lang === 'ar' ? 'عرض في دليل المكتبات' : 'View in Directory'}</span>
+                                               </Link>
+                                             </DropdownMenuItem>
+                                           )}
+
+                                           {app.status === 'PENDING' && (
+                                             <>
+                                               <DropdownMenuSeparator />
+                                               <DropdownMenuItem
+                                                 onClick={() => handleRejectStore(app.id)}
+                                                 className="gap-2 font-semibold text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/30"
+                                               >
+                                                 <X className="h-4 w-4" />
+                                                 <span>{lang === 'ar' ? 'رفض الطلب' : 'Reject Application'}</span>
+                                               </DropdownMenuItem>
+                                             </>
+                                           )}
+                                         </DropdownMenuContent>
+                                       </DropdownMenu>
+                                     </div>
+                                   </td>
                                 </tr>
                               )
                             })
@@ -1866,74 +1886,102 @@ export function AdminDashboardClient({
                                 </td>
 
                                 <td className="p-3.5 whitespace-nowrap">
-                                  <div className="flex items-center gap-1.5 whitespace-nowrap">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => setInspectingStore(store)}
-                                      className="h-7 text-xs font-bold rounded-lg gap-1 cursor-pointer px-2"
-                                      title={lang === 'ar' ? 'عرض التفاصيل الكاملة وكافة القنوات' : 'View full details & all channels'}
-                                    >
-                                      <Eye className="h-3.5 w-3.5 text-primary" />
-                                      <span>{lang === 'ar' ? 'التفاصيل' : 'Details'}</span>
-                                    </Button>
-
-                                    {/* Edit Store */}
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleOpenEditStore(store)}
-                                      className="h-7 text-xs font-bold rounded-lg gap-1 cursor-pointer px-2 text-blue-600 border-blue-500/30 hover:bg-blue-500/10"
-                                      title={lang === 'ar' ? 'تعديل بيانات المتجر' : 'Edit store details'}
-                                    >
-                                      <Edit3 className="h-3.5 w-3.5" />
-                                      <span>{lang === 'ar' ? 'تعديل' : 'Edit'}</span>
-                                    </Button>
-
-                                    {/* Hide / Unhide Store */}
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleToggleStoreActive(store.id, store.is_active !== false)}
-                                      disabled={storeActionLoading === store.id}
-                                      className={cn(
-                                        "h-7 text-xs font-bold rounded-lg gap-1 cursor-pointer px-2",
-                                        store.is_active === false
-                                          ? "text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/10"
-                                          : "text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
-                                      )}
-                                      title={store.is_active === false ? (lang === 'ar' ? 'إظهار المتجر في الدليل العام' : 'Unhide in directory') : (lang === 'ar' ? 'إخفاء المتجر من الدليل العام للجمهور' : 'Hide from public directory')}
-                                    >
-                                      {store.is_active === false ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
-                                      <span>{store.is_active === false ? (lang === 'ar' ? 'إظهار' : 'Unhide') : (lang === 'ar' ? 'إخفاء' : 'Hide')}</span>
-                                    </Button>
-
-                                    {/* Delete Store */}
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => handleDeleteStore(store.id, store.name_ar || store.name)}
-                                      disabled={storeActionLoading === store.id}
-                                      className="h-7 text-xs font-bold rounded-lg gap-1 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer px-2"
-                                      title={lang === 'ar' ? 'حذف المتجر نهائياً من قاعدة البيانات' : 'Delete store permanently'}
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                      <span className="hidden sm:inline">{lang === 'ar' ? 'حذف' : 'Delete'}</span>
-                                    </Button>
-
-                                    <Link href={`/stores/${store.slug}`} target="_blank">
-                                      <Button variant="ghost" size="sm" className="h-7 text-xs font-bold rounded-lg gap-1 text-muted-foreground hover:text-foreground px-2">
-                                        <ExternalLink className="h-3 w-3" />
-                                        <span className="hidden lg:inline">{lang === 'ar' ? 'المتجر' : 'Live'}</span>
+                                    <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                      {/* Quick Primary Details Button */}
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setInspectingStore(store)}
+                                        className="h-8 text-xs font-bold rounded-xl gap-1.5 cursor-pointer px-2.5"
+                                        title={lang === 'ar' ? 'عرض التفاصيل الكاملة' : 'View full details'}
+                                      >
+                                        <Eye className="h-3.5 w-3.5 text-primary" />
+                                        <span>{lang === 'ar' ? 'التفاصيل' : 'Details'}</span>
                                       </Button>
-                                    </Link>
-                                    <Link href={`/stores/dashboard?store=${store.id}`} target="_blank">
-                                      <Button variant="ghost" size="sm" className="h-7 text-xs font-bold rounded-lg text-primary px-2">
-                                        {lang === 'ar' ? 'لوحة التاجر' : 'Merchant'}
-                                      </Button>
-                                    </Link>
-                                  </div>
-                                </td>
+
+                                      {/* 3-Dots Dropdown Menu for All Management Actions */}
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-8 w-8 p-0 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
+                                            title={lang === 'ar' ? 'إجراءات المتجر' : 'Store actions'}
+                                          >
+                                            <MoreHorizontal className="h-4 w-4" />
+                                            <span className="sr-only">Actions</span>
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align={isRTL ? "start" : "end"} className="w-56">
+                                          <DropdownMenuLabel>
+                                            {lang === 'ar' ? 'إدارة المتجر' : 'Store Management'}
+                                          </DropdownMenuLabel>
+
+                                          {/* Edit Store Details */}
+                                          <DropdownMenuItem
+                                            onClick={() => handleOpenEditStore(store)}
+                                            className="gap-2 font-semibold text-blue-600 focus:text-blue-600 focus:bg-blue-50 dark:focus:bg-blue-950/30"
+                                          >
+                                            <Edit3 className="h-4 w-4" />
+                                            <span>{lang === 'ar' ? 'تعديل بيانات المتجر' : 'Edit Store Details'}</span>
+                                          </DropdownMenuItem>
+
+                                          {/* Toggle Verified Badge */}
+                                          <DropdownMenuItem
+                                            onClick={() => handleToggleStoreVerified(store.id, store.is_verified)}
+                                            disabled={storeActionLoading === store.id}
+                                            className="gap-2 font-semibold"
+                                          >
+                                            <CheckCircle2 className={cn("h-4 w-4", store.is_verified ? "text-emerald-600" : "text-muted-foreground")} />
+                                            <span>{store.is_verified ? (lang === 'ar' ? 'إلغاء شارة التوثيق' : 'Revoke Verification') : (lang === 'ar' ? 'منح شارة التوثيق 🟢' : 'Grant Verification 🟢')}</span>
+                                          </DropdownMenuItem>
+
+                                          {/* Hide / Unhide Store */}
+                                          <DropdownMenuItem
+                                            onClick={() => handleToggleStoreActive(store.id, store.is_active !== false)}
+                                            disabled={storeActionLoading === store.id}
+                                            className={cn(
+                                              "gap-2 font-semibold",
+                                              store.is_active === false ? "text-emerald-600 focus:text-emerald-600" : "text-amber-600 focus:text-amber-600"
+                                            )}
+                                          >
+                                            {store.is_active === false ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                                            <span>{store.is_active === false ? (lang === 'ar' ? 'إظهار في الدليل العام' : 'Unhide in Directory') : (lang === 'ar' ? 'إخفاء من الدليل العام' : 'Hide from Directory')}</span>
+                                          </DropdownMenuItem>
+
+                                          <DropdownMenuSeparator />
+
+                                          {/* Public Storefront Link */}
+                                          <DropdownMenuItem asChild className="gap-2 font-semibold">
+                                            <Link href={`/stores/${store.slug}`} target="_blank" className="flex items-center gap-2 cursor-pointer">
+                                              <ExternalLink className="h-4 w-4 text-primary" />
+                                              <span>{lang === 'ar' ? 'فتح صفحة المتجر' : 'Public Storefront'}</span>
+                                            </Link>
+                                          </DropdownMenuItem>
+
+                                          {/* Merchant Dashboard */}
+                                          <DropdownMenuItem asChild className="gap-2 font-semibold">
+                                            <Link href={`/stores/dashboard?store=${store.id}`} target="_blank" className="flex items-center gap-2 cursor-pointer">
+                                              <Store className="h-4 w-4 text-emerald-600" />
+                                              <span>{lang === 'ar' ? 'لوحة تحكم التاجر' : 'Merchant Dashboard'}</span>
+                                            </Link>
+                                          </DropdownMenuItem>
+
+                                          <DropdownMenuSeparator />
+
+                                          {/* Delete Store */}
+                                          <DropdownMenuItem
+                                            onClick={() => handleDeleteStore(store.id, store.name_ar || store.name)}
+                                            disabled={storeActionLoading === store.id}
+                                            className="gap-2 font-semibold text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/30"
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                            <span>{lang === 'ar' ? 'حذف المتجر نهائياً' : 'Delete Store Permanently'}</span>
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </div>
+                                  </td>
                               </tr>
                             ))
                           )}

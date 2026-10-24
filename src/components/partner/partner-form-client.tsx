@@ -311,52 +311,7 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
 
   const whatsappAdmin = '201556252658'
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!ownerName || !storeNameAr || !phone || !whatsapp) {
-      alert(lang === 'ar' ? 'يرجى استكمال البيانات الإلزامية (اسم المالك، اسم المتجر، الهاتف، والواتساب)' : 'Please fill all required fields')
-      return
-    }
-
-    if (!hasSocialProof) {
-      alert(
-        lang === 'ar'
-          ? 'يرجى إضافة رابط واحد على الأقل لإثبات وجود ونشاط المكتبة (فيسبوك، إنستغرام، تيك توك، أو موقع إلكتروني) لحماية القراء من الحسابات غير المؤكدة.'
-          : 'Please provide at least one active social presence link (Facebook, Instagram, TikTok, or Website) as proof of store existence.'
-      )
-      return
-    }
-
-    if (!acceptedContract) {
-      alert(
-        lang === 'ar'
-          ? 'يرجى الموافقة على الشروط والأحكام وعقد الشراكة (نسبة عمولة 10% من المبيعات، مع شهر أول مجاناً 100%) لمتابعة تقديم الطلب.'
-          : 'Please accept the partner contract terms (10% sales commission, first month free).'
-      )
-      return
-    }
-
-    if (!email || !email.includes('@')) {
-      alert(
-        lang === 'ar'
-          ? 'يرجى إدخال بريد إلكتروني صحيح لاستلام إشعار تفعيل المتجر ورابط لوحة التحكم.'
-          : 'Please enter a valid email to receive activation notifications and dashboard access.'
-      )
-      return
-    }
-
-    if (!currentUser) {
-      const shouldLogin = window.confirm(
-        lang === 'ar'
-          ? '💡 لربط المتجر بحسابك واستلام إشعار تفعيل لوحة التحكم فور الاعتماد، يفضل تسجيل الدخول أولاً.\n\nهل ترغب في تسجيل الدخول الآن عبر نافذة سريعة دون فقدان أي بيانات كتبتها؟'
-          : 'It is recommended to sign in first so your store is linked to your account.\n\nOpen sign-in popup now without losing any entered data?'
-      )
-      if (shouldLogin) {
-        setIsAuthModalOpen(true)
-        return
-      }
-    }
-
+  const executeApplicationSubmit = async (userToAttach?: { id: string; email?: string }) => {
     setSending(true)
 
     const formatLabel =
@@ -397,15 +352,18 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
       `📝 *نبذة عن المكتبة:*\n${description || 'متجر كتب ورقية معتمد'}\n\n` +
       `✨ تم إرسال الطلب عبر نموذج الشركاء بمنصة ورق كونكت.`
 
+    const effectiveUserId = userToAttach?.id || currentUser?.id
+    const effectiveEmail = email.trim() || userToAttach?.email || currentUser?.email || (currentUser?.profile as { email?: string } | undefined)?.email
+
     try {
       await submitStoreApplication({
-        applicant_id: currentUser?.id,
+        applicant_id: effectiveUserId,
         applicant_name: ownerName,
         owner_name: ownerName,
         business_name: storeNameAr,
         store_name: storeNameEn || storeNameAr,
         store_name_ar: storeNameAr,
-        email: email.trim() || currentUser?.email || (currentUser?.profile as { email?: string } | undefined)?.email,
+        email: effectiveEmail,
         slogan,
         phone,
         city,
@@ -438,13 +396,59 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
       console.warn('Failed submitting store application:', err)
     }
 
-    const whatsappUrl = `https://wa.me/${whatsappAdmin}?text=${encodeURIComponent(summaryMessage)}`
-    window.open(whatsappUrl, '_blank')
+    try {
+      const whatsappUrl = `https://wa.me/${whatsappAdmin}?text=${encodeURIComponent(summaryMessage)}`
+      window.open(whatsappUrl, '_blank')
+    } catch {}
 
-    setTimeout(() => {
-      setSending(false)
-      setSubmitted(true)
-    }, 800)
+    setSending(false)
+    setSubmitted(true)
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!ownerName || !storeNameAr || !phone || !whatsapp) {
+      alert(lang === 'ar' ? 'يرجى استكمال البيانات الإلزامية (اسم المالك، اسم المتجر، الهاتف، والواتساب)' : 'Please fill all required fields')
+      return
+    }
+
+    if (!hasSocialProof) {
+      alert(
+        lang === 'ar'
+          ? 'يرجى إضافة رابط واحد على الأقل لإثبات وجود ونشاط المكتبة (فيسبوك، إنستغرام، تيك توك، أو موقع إلكتروني) لحماية القراء من الحسابات غير المؤكدة.'
+          : 'Please provide at least one active social presence link (Facebook, Instagram, TikTok, or Website) as proof of store existence.'
+      )
+      return
+    }
+
+    if (!acceptedContract) {
+      alert(
+        lang === 'ar'
+          ? 'يرجى الموافقة على الشروط والأحكام وعقد الشراكة (نسبة عمولة 10% من المبيعات، مع شهر أول مجاناً 100%) لمتابعة تقديم الطلب.'
+          : 'Please accept the partner contract terms (10% sales commission, first month free).'
+      )
+      return
+    }
+
+    if (!email || !email.includes('@')) {
+      alert(
+        lang === 'ar'
+          ? 'يرجى إدخال بريد إلكتروني صحيح لاستلام إشعار تفعيل المتجر ورابط لوحة التحكم.'
+          : 'Please enter a valid email to receive activation notifications and dashboard access.'
+      )
+      return
+    }
+
+    // If NOT logged in, trigger FastAuthModal popup directly without page redirect
+    if (!currentUser) {
+      setIsAuthModalOpen(true)
+      return
+    }
+
+    await executeApplicationSubmit(currentUser)
   }
 
   if (submitted) {
@@ -1850,12 +1854,13 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
       <FastAuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
-        onSuccess={(authUser) => {
-          setCurrentUser({
+        onSuccess={async (authUser) => {
+          const formattedUser = {
             id: authUser.id,
             email: authUser.email,
             profile: authUser.user_metadata,
-          })
+          }
+          setCurrentUser(formattedUser)
           if (authUser.email && !email) {
             setEmail(authUser.email)
           }
@@ -1863,13 +1868,16 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
             setOwnerName(authUser.user_metadata.full_name || authUser.user_metadata.name)
           }
           setIsAuthModalOpen(false)
+
+          // Immediately execute submission and stay on the success screen - NO redirect to home!
+          await executeApplicationSubmit(formattedUser)
         }}
         actionType="general"
-        title={lang === 'ar' ? 'تسجيل الدخول كشريك مكتبة' : 'Sign in as Bookstore Partner'}
+        title={lang === 'ar' ? 'خطوة أخيرة: ربط المتجر بحسابك' : 'Final Step: Link Store to Your Account'}
         subtitle={
           lang === 'ar'
-            ? 'سجل دخولك لربط المتجر ببريدك واستلام إشعارات التفعيل ولوحة التحكم فوراً'
-            : 'Sign in to link store to your account and activate dashboard upon verification'
+            ? 'سجل دخولك أو أنشئ حساباً لإتمام إرسال الطلب واستلام إشعار الاعتماد ولوحة التحكم'
+            : 'Sign in or create account to submit your application and get your dashboard link upon approval'
         }
       />
     </MainLayout>
