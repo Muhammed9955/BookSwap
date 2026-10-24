@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { MainLayout } from '@/components/layout/main-layout'
@@ -38,6 +38,10 @@ import {
   FileText,
   AlertCircle,
   BookOpen,
+  Smartphone,
+  Download,
+  Copy,
+  Share2,
   Mail,
   User,
   Lock
@@ -110,11 +114,47 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
   const [currentUser, setCurrentUser] = useState(user)
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
 
+  // Smart Device OS Detection ('android' | 'ios' | 'desktop')
+  const [deviceOS, setDeviceOS] = useState<'android' | 'ios' | 'desktop'>('desktop')
+  const [invitedStoreParam, setInvitedStoreParam] = useState<string | null>(null)
+
   // Form State - Focused 100% on Bookstore/Store Partners
   const [storeType, setStoreType] = useState<StoreType>('ONLINE')
   const [ownerName, setOwnerName] = useState('')
   const [storeNameAr, setStoreNameAr] = useState('')
   const [storeNameEn, setStoreNameEn] = useState('')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const ua = navigator.userAgent || ''
+      if (/android/i.test(ua)) {
+        setDeviceOS('android')
+      } else if (/iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+        setDeviceOS('ios')
+      } else {
+        setDeviceOS('desktop')
+      }
+
+      // Check URL invitation query params (?store=...&name=...&phone=...)
+      try {
+        const params = new URLSearchParams(window.location.search)
+        const invStore = params.get('store')
+        const invName = params.get('name')
+        const invPhone = params.get('phone')
+        if (invStore) {
+          setInvitedStoreParam(invStore)
+          setStoreNameAr(prev => prev || invStore)
+        }
+        if (invName) {
+          setOwnerName(prev => prev || invName)
+        }
+        if (invPhone) {
+          setWhatsapp(prev => prev || invPhone)
+          setPhone(prev => prev || invPhone)
+        }
+      } catch {}
+    }
+  }, [])
   const [slogan, setSlogan] = useState('')
   const [description, setDescription] = useState('')
   const [city, setCity] = useState(EGYPT_GOVERNORATES[0])
@@ -292,7 +332,112 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
   // Top of Form Ref for auto-scroll on Next/Back
   const formTopRef = useRef<HTMLDivElement>(null)
 
+  // Granular Field Validation State & Top Banner
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({})
+  const [formErrorMessage, setFormErrorMessage] = useState<string | null>(null)
+
+  const clearFieldError = (fieldName: string) => {
+    setFormErrors(prev => {
+      if (!prev[fieldName]) return prev
+      const next = { ...prev }
+      delete next[fieldName]
+      return next
+    })
+    setFormErrorMessage(null)
+  }
+
+  const validateStep1 = (): boolean => {
+    const errors: Record<string, string> = {}
+    if (!storeNameAr.trim() || storeNameAr.trim().length < 2) {
+      errors.storeNameAr = lang === 'ar' ? 'يرجى إدخال اسم المكتبة بالعربية (حرفين على الأقل)' : 'Please enter bookstore name in Arabic (at least 2 chars)'
+    }
+    if (!ownerName.trim() || ownerName.trim().length < 2) {
+      errors.ownerName = lang === 'ar' ? 'يرجى إدخال اسم المالك أو المسؤول المعتمد' : 'Please enter owner or manager name'
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(prev => ({ ...prev, ...errors }))
+      setFormErrorMessage(lang === 'ar' ? 'يرجى استكمال الحقول الإلزامية بالخطوة 1 للمتابعة' : 'Please fill all required fields in Step 1')
+      formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      return false
+    }
+    setFormErrorMessage(null)
+    return true
+  }
+
+  const validateStep2 = (): boolean => {
+    const errors: Record<string, string> = {}
+    if (storeType !== 'ONLINE') {
+      if (!district.trim() && !address.trim()) {
+        errors.district = lang === 'ar' ? 'يرجى تحديد الحي أو كتابة عنوان المقر الفعلي للمكتبة' : 'Please specify the district or street address for physical store'
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(prev => ({ ...prev, ...errors }))
+      setFormErrorMessage(lang === 'ar' ? 'يرجى تحديد تفاصيل مقر المكتبة الفعلي للمتابعة' : 'Please complete physical store address in Step 2')
+      formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      return false
+    }
+    setFormErrorMessage(null)
+    return true
+  }
+
+  const validateStep3 = (): boolean => {
+    const errors: Record<string, string> = {}
+
+    // WhatsApp validation (minimum 10 digits)
+    const cleanWa = whatsapp.replace(/[^0-9]/g, '')
+    if (!cleanWa || cleanWa.length < 10) {
+      errors.whatsapp = lang === 'ar' ? 'يرجى إدخال رقم واتساب صحيح لاستقبال طلبات الكتب (10-11 رقماً)' : 'Please enter a valid WhatsApp phone number (10-11 digits)'
+    }
+
+    // Direct Phone validation (minimum 10 digits)
+    const cleanPh = phone.replace(/[^0-9]/g, '')
+    if (!cleanPh || cleanPh.length < 10) {
+      errors.phone = lang === 'ar' ? 'يرجى إدخال رقم هاتف اتصال مباشر صحيح (10-11 رقماً)' : 'Please enter a valid direct contact phone number (10-11 digits)'
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!email.trim() || !emailRegex.test(email.trim())) {
+      errors.email = lang === 'ar' ? 'يرجى إدخال بريد إلكتروني صحيح لاستلام رابط تفعيل لوحة التحكم' : 'Please enter a valid notification and dashboard email address'
+    }
+
+    // Social existence proof validation
+    if (!hasSocialProof) {
+      errors.socialProof = lang === 'ar' ? 'يرجى إضافة رابط واحد على الأقل لإثبات وجود ونشاط المكتبة (فيسبوك، إنستغرام، تيك توك، أو موقع)' : 'Please provide at least one active social presence link or website'
+    }
+
+    // Contract acceptance validation
+    if (!acceptedContract) {
+      errors.acceptedContract = lang === 'ar' ? 'يرجى الموافقة على شروط عقد الشراكة (عمولة 10%، والشهر الأول مجاناً 100%)' : 'Please accept the partnership contract terms'
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(prev => ({ ...prev, ...errors }))
+      setFormErrorMessage(lang === 'ar' ? 'يرجى استكمال قنوات التواصل والتحقق والموافقة على العقد' : 'Please complete all required fields and accept the contract in Step 3')
+      formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      return false
+    }
+    setFormErrorMessage(null)
+    return true
+  }
+
   const goToStep = (step: 1 | 2 | 3) => {
+    if (step === 2) {
+      if (!validateStep1()) return
+    }
+    if (step === 3) {
+      if (!validateStep1()) {
+        setActiveStep(1)
+        return
+      }
+      if (!validateStep2()) {
+        setActiveStep(2)
+        return
+      }
+    }
     setActiveStep(step)
     setTimeout(() => {
       formTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -410,39 +555,24 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!ownerName || !storeNameAr || !phone || !whatsapp) {
-      alert(lang === 'ar' ? 'يرجى استكمال البيانات الإلزامية (اسم المالك، اسم المتجر، الهاتف، والواتساب)' : 'Please fill all required fields')
+
+    // Enforce step-by-step validations with automatic transition to the step with errors
+    if (!validateStep1()) {
+      setActiveStep(1)
       return
     }
 
-    if (!hasSocialProof) {
-      alert(
-        lang === 'ar'
-          ? 'يرجى إضافة رابط واحد على الأقل لإثبات وجود ونشاط المكتبة (فيسبوك، إنستغرام، تيك توك، أو موقع إلكتروني) لحماية القراء من الحسابات غير المؤكدة.'
-          : 'Please provide at least one active social presence link (Facebook, Instagram, TikTok, or Website) as proof of store existence.'
-      )
+    if (!validateStep2()) {
+      setActiveStep(2)
       return
     }
 
-    if (!acceptedContract) {
-      alert(
-        lang === 'ar'
-          ? 'يرجى الموافقة على الشروط والأحكام وعقد الشراكة (نسبة عمولة 10% من المبيعات، مع شهر أول مجاناً 100%) لمتابعة تقديم الطلب.'
-          : 'Please accept the partner contract terms (10% sales commission, first month free).'
-      )
+    if (!validateStep3()) {
+      setActiveStep(3)
       return
     }
 
-    if (!email || !email.includes('@')) {
-      alert(
-        lang === 'ar'
-          ? 'يرجى إدخال بريد إلكتروني صحيح لاستلام إشعار تفعيل المتجر ورابط لوحة التحكم.'
-          : 'Please enter a valid email to receive activation notifications and dashboard access.'
-      )
-      return
-    }
-
-    // If NOT logged in, trigger FastAuthModal popup directly without page redirect
+    // If NOT logged in, trigger FastAuthModal popup directly without leaving page
     if (!currentUser) {
       setIsAuthModalOpen(true)
       return
@@ -558,6 +688,171 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
             </div>
           </div>
         )}
+        {/* ======================================================== */}
+        {/* SMART INVITATION & DEVICE-AWARE ONBOARDING CARD */}
+        {/* ======================================================== */}
+        <section className="rounded-3xl border-2 border-primary/25 bg-card/95 backdrop-blur-md p-5 sm:p-7 shadow-sm space-y-4">
+          {/* 1. If invited specifically */}
+          {invitedStoreParam && (
+            <div className="p-3.5 rounded-2xl bg-primary/10 border border-primary/20 flex items-center gap-3">
+              <span className="p-2 rounded-xl bg-primary text-primary-foreground text-sm font-black">
+                ✨
+              </span>
+              <div>
+                <p className="font-bold text-sm text-foreground">
+                  {lang === 'ar' ? `دعوة شراكة خاصة: مرحباً بفريق ${invitedStoreParam} 🤝` : `Special Partnership Invite: Welcome ${invitedStoreParam}! 🤝`}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {lang === 'ar'
+                    ? 'يسعدنا انضمامكم لشبكة المكتبات المعتمدة. تم تعبئة بعض بياناتكم مسبقاً لتسهيل التسجيل.'
+                    : 'We are delighted to invite your store. Some details have been pre-filled for your convenience.'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* 2. Device Guidance (Android vs iOS vs Desktop) */}
+          {deviceOS === 'android' && (
+            <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-xl bg-emerald-500/20 text-emerald-600 flex items-center justify-center shrink-0">
+                  <Smartphone className="h-5 w-5" />
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-foreground">
+                      {lang === 'ar' ? '📱 متاح الآن للأندرويد: تطبيق ورق كونكت' : '📱 Available on Android: WaraqConnect App'}
+                    </span>
+                    <Badge className="bg-emerald-600 text-white text-[10px] font-bold">Android App</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {lang === 'ar'
+                      ? 'حمّل التطبيق على هاتفك لتلقي إشعارات طلبات الكتب وإدارة متجرك، أو يمكنك إكمال نموذج الشراكة مباشرة هنا عبر المتصفح.'
+                      : 'Install our app for real-time order alerts, or complete your bookstore onboarding directly here via browser.'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                <Link href="/download" className="flex-1 sm:flex-none">
+                  <Button size="sm" className="w-full sm:w-auto rounded-xl font-bold text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-xs">
+                    <Download className="h-3.5 w-3.5" />
+                    <span>{lang === 'ar' ? 'تثبيت التطبيق للأندرويد' : 'Install Android App'}</span>
+                  </Button>
+                </Link>
+                {!currentUser && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="flex-1 sm:flex-none rounded-xl font-bold text-xs gap-1.5 cursor-pointer text-primary border-primary/30 hover:bg-primary/10"
+                  >
+                    <span>{lang === 'ar' ? 'تسجيل الدخول' : 'Sign In'}</span>
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {deviceOS === 'ios' && (
+            <div className="p-4 rounded-2xl bg-blue-500/10 border border-blue-500/25 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="h-10 w-10 rounded-xl bg-blue-500/20 text-blue-600 flex items-center justify-center shrink-0">
+                  <Smartphone className="h-5 w-5" />
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-foreground">
+                      {lang === 'ar' ? '🍎 مستخدمي أجهزة Apple / iOS (آيفون وآيباد)' : '🍎 Apple iOS (iPhone & iPad) Notice'}
+                    </span>
+                    <Badge variant="outline" className="text-blue-600 border-blue-500/30 text-[10px] font-bold">App Store Soon</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {lang === 'ar'
+                      ? 'تطبيق App Store قيد المراجعة الرسمية وقريباً على المتجر 🚀 — يمكنك إكمال طلب الشراكة واستخدام لوحة التحكم بالكامل وبكل كفاءة وسرعة عبر متصفح الويب (Safari / Chrome) بدون أي قيود.'
+                      : 'Our iOS native app is currently under App Store review and coming soon 🚀 — you can complete onboarding and manage your store seamlessly right now via Safari Web App.'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                {!currentUser ? (
+                  <Button
+                    size="sm"
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="w-full sm:w-auto rounded-xl font-bold text-xs gap-1.5 bg-primary text-primary-foreground cursor-pointer shadow-xs"
+                  >
+                    <span>{lang === 'ar' ? 'تسجيل الدخول ومتابعة النموذج' : 'Sign In & Continue'}</span>
+                  </Button>
+                ) : (
+                  <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 gap-1.5 font-bold text-xs py-1.5 px-3">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>{lang === 'ar' ? 'حسابك مسجل الدخول' : 'Account Connected'}</span>
+                  </Badge>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* 3. Three-Step Onboarding Guidance Bar */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <div className={cn(
+              "p-3.5 rounded-2xl border transition-all flex items-center gap-3",
+              currentUser ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-300" : "bg-muted/40 border-border"
+            )}>
+              <div className={cn(
+                "h-8 w-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0",
+                currentUser ? "bg-emerald-600 text-white" : "bg-primary/10 text-primary"
+              )}>
+                {currentUser ? <Check className="h-4 w-4" /> : '1'}
+              </div>
+              <div className="min-w-0">
+                <span className="font-bold text-xs block">
+                  {lang === 'ar' ? '1. تسجيل الدخول' : '1. Sign In / Account'}
+                </span>
+                <span className="text-[11px] text-muted-foreground block truncate">
+                  {currentUser ? (String((currentUser.profile as any)?.full_name || currentUser.email || '')) : (lang === 'ar' ? 'لربط المتجر بحسابك' : 'Links store to your email')}
+                </span>
+              </div>
+              {!currentUser && (
+                <button
+                  type="button"
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="ms-auto text-xs font-bold text-primary hover:underline cursor-pointer shrink-0"
+                >
+                  {lang === 'ar' ? 'دخول' : 'Login'}
+                </button>
+              )}
+            </div>
+
+            <div className="p-3.5 rounded-2xl border border-border bg-muted/40 flex items-center gap-3">
+              <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-xs shrink-0">
+                2
+              </div>
+              <div className="min-w-0">
+                <span className="font-bold text-xs block">
+                  {lang === 'ar' ? '2. بيانات المتجر' : '2. Store Details'}
+                </span>
+                <span className="text-[11px] text-muted-foreground block truncate">
+                  {lang === 'ar' ? 'الاسم، العنوان، والواتساب' : 'Name, address & WhatsApp'}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-2xl border border-border bg-muted/40 flex items-center gap-3">
+              <div className="h-8 w-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-xs shrink-0">
+                3
+              </div>
+              <div className="min-w-0">
+                <span className="font-bold text-xs block">
+                  {lang === 'ar' ? '3. الاعتماد وبدء البيع' : '3. Live Store & Sales'}
+                </span>
+                <span className="text-[11px] text-muted-foreground block truncate">
+                  {lang === 'ar' ? 'تفعيل اللوحة وتلقي الطلبات' : 'Dashboard & orders live'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* ======================================================== */}
         {/* INTERACTIVE FEATURE SHOWCASE: "كل ما تحتاجه لإدارة مكتبتك" */}
         {/* ======================================================== */}
@@ -788,6 +1083,17 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 sm:p-8 rounded-3xl bg-card border-2 border-border/80 shadow-sm space-y-6">
+              {formErrorMessage && (
+                <div className="p-4 rounded-2xl bg-destructive/10 border-2 border-destructive/30 text-destructive flex items-center gap-3 animate-in fade-in">
+                  <AlertCircle className="h-5 w-5 shrink-0" />
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-black">{formErrorMessage}</p>
+                    <p className="text-[11px] opacity-80">
+                      {lang === 'ar' ? 'يرجى مراجعة الحقول المميزة باللون الأحمر وإكمالها للمتابعة.' : 'Please review and fill the highlighted fields in red below.'}
+                    </p>
+                  </div>
+                </div>
+              )}
               {/* STEP 1: STORE IDENTITY & BRANDING */}
               {activeStep === 1 && (
                 <div className="space-y-5 animate-in fade-in">
@@ -858,10 +1164,21 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
                         type="text"
                         required
                         value={storeNameAr}
-                        onChange={e => setStoreNameAr(e.target.value)}
+                        onChange={e => {
+                          setStoreNameAr(e.target.value)
+                          clearFieldError('storeNameAr')
+                        }}
                         placeholder={lang === 'ar' ? 'مثال: مكتبة الحكمة، بوكستور القراء...' : 'e.g. Al-Hikma Bookstore'}
-                        className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        className={cn(
+                          "w-full rounded-xl border px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2",
+                          formErrors.storeNameAr
+                            ? "border-destructive bg-destructive/5 focus:ring-destructive/30 ring-1 ring-destructive/30"
+                            : "border-border bg-background focus:ring-primary/30"
+                        )}
                       />
+                      {formErrors.storeNameAr && (
+                        <span className="text-[11px] font-bold text-destructive block mt-1">{formErrors.storeNameAr}</span>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
@@ -888,10 +1205,21 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
                         type="text"
                         required
                         value={ownerName}
-                        onChange={e => setOwnerName(e.target.value)}
+                        onChange={e => {
+                          setOwnerName(e.target.value)
+                          clearFieldError('ownerName')
+                        }}
                         placeholder={lang === 'ar' ? 'مثال: عمر خالد المنشاوي' : 'e.g. Omar Khaled'}
-                        className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        className={cn(
+                          "w-full rounded-xl border px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2",
+                          formErrors.ownerName
+                            ? "border-destructive bg-destructive/5 focus:ring-destructive/30 ring-1 ring-destructive/30"
+                            : "border-border bg-background focus:ring-primary/30"
+                        )}
                       />
+                      {formErrors.ownerName && (
+                        <span className="text-[11px] font-bold text-destructive block mt-1">{formErrors.ownerName}</span>
+                      )}
                     </div>
 
                     <div className="space-y-1.5">
@@ -983,13 +1311,7 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
 
                   <Button
                     type="button"
-                    onClick={() => {
-                      if (!storeNameAr || !ownerName) {
-                        alert(lang === 'ar' ? 'يرجى إدخال اسم المتجر واسم المالك' : 'Please provide store name and owner name')
-                        return
-                      }
-                      goToStep(2)
-                    }}
+                    onClick={() => goToStep(2)}
                     className="w-full rounded-xl font-black text-xs py-3 gap-2 cursor-pointer bg-primary text-primary-foreground"
                   >
                     <span>{lang === 'ar' ? 'المتابعة للخطوة 2: الفروع والموقع والمواعيد' : 'Next: Location & Working Hours'}</span>
@@ -1083,10 +1405,21 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
                             type="text"
                             list="districts-autocomplete-list"
                             value={district}
-                            onChange={e => setDistrict(e.target.value)}
+                            onChange={e => {
+                              setDistrict(e.target.value)
+                              clearFieldError('district')
+                            }}
                             placeholder={lang === 'ar' ? 'اختر من الاقتراحات أو اكتب الحي (المعادي، سموحة، الدقي...)' : 'Pick from list or type (Maadi, Smouha, Dokki...)'}
-                            className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            className={cn(
+                              "w-full rounded-xl border px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2",
+                              formErrors.district
+                                ? "border-destructive bg-destructive/5 focus:ring-destructive/30 ring-1 ring-destructive/30"
+                                : "border-border bg-background focus:ring-primary/30"
+                            )}
                           />
+                          {formErrors.district && (
+                            <span className="text-[11px] font-bold text-destructive block mt-1">{formErrors.district}</span>
+                          )}
                           <datalist id="districts-autocomplete-list">
                             {availableDistricts.map(dist => (
                               <option key={dist} value={dist} />
@@ -1452,11 +1785,22 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
                         type="tel"
                         required
                         value={whatsapp}
-                        onChange={e => setWhatsapp(e.target.value)}
+                        onChange={e => {
+                          setWhatsapp(e.target.value)
+                          clearFieldError('whatsapp')
+                        }}
                         placeholder="01012345678"
-                        className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/30 font-mono"
+                        className={cn(
+                          "w-full rounded-xl border px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 font-mono",
+                          formErrors.whatsapp
+                            ? "border-destructive bg-destructive/5 focus:ring-destructive/30 ring-1 ring-destructive/30"
+                            : "border-border bg-background focus:ring-emerald-500/30"
+                        )}
                         dir="ltr"
                       />
+                      {formErrors.whatsapp && (
+                        <span className="text-[11px] font-bold text-destructive block mt-1">{formErrors.whatsapp}</span>
+                      )}
                       <span className="text-[10px] text-muted-foreground">{lang === 'ar' ? 'يتم تحويل طلبات القراء عليه مباشرة' : 'Customer orders routed here'}</span>
                     </div>
 
@@ -1469,11 +1813,22 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
                         type="tel"
                         required
                         value={phone}
-                        onChange={e => setPhone(e.target.value)}
+                        onChange={e => {
+                          setPhone(e.target.value)
+                          clearFieldError('phone')
+                        }}
                         placeholder="01099887766"
-                        className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono"
+                        className={cn(
+                          "w-full rounded-xl border px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 font-mono",
+                          formErrors.phone
+                            ? "border-destructive bg-destructive/5 focus:ring-destructive/30 ring-1 ring-destructive/30"
+                            : "border-border bg-background focus:ring-primary/30"
+                        )}
                         dir="ltr"
                       />
+                      {formErrors.phone && (
+                        <span className="text-[11px] font-bold text-destructive block mt-1">{formErrors.phone}</span>
+                      )}
                     </div>
                   </div>
 
@@ -1492,11 +1847,22 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
                       type="email"
                       required
                       value={email}
-                      onChange={e => setEmail(e.target.value)}
+                      onChange={e => {
+                        setEmail(e.target.value)
+                        clearFieldError('email')
+                      }}
                       placeholder={lang === 'ar' ? 'store@example.com (ستصلك عليه رسالة الاعتماد الرسمية فور المراجعة)' : 'store@example.com'}
-                      className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 font-mono"
+                      className={cn(
+                        "w-full rounded-xl border px-4 py-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 font-mono",
+                        formErrors.email
+                          ? "border-destructive bg-destructive/5 focus:ring-destructive/30 ring-1 ring-destructive/30"
+                          : "border-border bg-background focus:ring-primary/30"
+                      )}
                       dir="ltr"
                     />
+                    {formErrors.email && (
+                      <span className="text-[11px] font-bold text-destructive block mt-1">{formErrors.email}</span>
+                    )}
                     <p className="text-[11px] text-muted-foreground leading-relaxed">
                       {lang === 'ar'
                         ? '✉️ فور اعتماد ومراجعة متجرك، ستصلك رسالة رسمية على هذا البريد برابط لوحة تحكم المتجر لإضافة الكتب، عروض التوفير، وباقات الكتب.'
@@ -1514,6 +1880,12 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
                       <span className="text-[10px] text-primary font-bold">{lang === 'ar' ? 'إثبات التواجد' : 'Existence Proof'}</span>
                     </div>
 
+                    {formErrors.socialProof && (
+                      <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-destructive text-xs font-bold flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 shrink-0" />
+                        <span>{formErrors.socialProof}</span>
+                      </div>
+                    )}
                     {/* Existence Proof Notification Banner */}
                     <div className={cn(
                       "p-3.5 rounded-2xl border text-xs flex items-center justify-between gap-3 transition-colors",
@@ -1692,7 +2064,10 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
                         type="checkbox"
                         required
                         checked={acceptedContract}
-                        onChange={e => setAcceptedContract(e.target.checked)}
+                        onChange={e => {
+                          setAcceptedContract(e.target.checked)
+                          clearFieldError('acceptedContract')
+                        }}
                         className="mt-0.5 h-4 w-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                       />
                       <div className="text-xs space-y-0.5">
@@ -1708,6 +2083,9 @@ export function PartnerFormClient({ user, isUnauthorized }: PartnerFormClientPro
                         </span>
                       </div>
                     </label>
+                    {formErrors.acceptedContract && (
+                      <span className="text-[11px] font-bold text-destructive block mt-1">{formErrors.acceptedContract}</span>
+                    )}
                   </div>
 
                   <div className="flex gap-2 pt-2">

@@ -9,7 +9,7 @@ import {
   Smartphone, Download, ExternalLink, Activity, Calendar, ArrowUpRight,
   Store, Globe, Menu, MessageCircle, CheckCheck, Mail,
   ShieldCheck, Video, BadgeCheck, FileText, CheckSquare, Sparkles, Share2,
-  ChevronLeft, ChevronRight, MoreHorizontal, MoreVertical
+  ChevronLeft, ChevronRight, MoreHorizontal, MoreVertical, Copy
 } from 'lucide-react'
 import type { DashboardStats, Community, CommunityOrgType } from '@/types'
 import type { StoreApplication, StoreApplicationStatus, Bookstore, StoreType } from '@/types/store'
@@ -317,6 +317,72 @@ export function AdminDashboardClient({
     is_verified: false,
   })
   const [isSavingStore, setIsSavingStore] = useState(false)
+
+  // Store Partnership Invitation Generator State
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
+  const [inviteStoreName, setInviteStoreName] = useState('')
+  const [inviteOwnerName, setInviteOwnerName] = useState('')
+  const [invitePhone, setInvitePhone] = useState('')
+  const [copiedInvite, setCopiedInvite] = useState(false)
+  const [copiedInviteLink, setCopiedInviteLink] = useState(false)
+
+  const getGeneratedInviteUrl = () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://waraqconnect.com'
+    const params = new URLSearchParams()
+    params.set('invite', 'partner')
+    if (inviteStoreName.trim()) params.set('store', inviteStoreName.trim())
+    if (inviteOwnerName.trim()) params.set('name', inviteOwnerName.trim())
+    if (invitePhone.trim()) params.set('phone', invitePhone.trim())
+    return `${origin}/partner-form?${params.toString()}`
+  }
+
+  const getGeneratedInviteMessage = () => {
+    const cleanStore = inviteStoreName.trim()
+    const cleanOwner = inviteOwnerName.trim()
+    const inviteUrl = getGeneratedInviteUrl()
+
+    return lang === 'ar'
+      ? `مرحباً ${cleanOwner ? `أستاذ ${cleanOwner}` : 'فريق'} ${cleanStore ? `(${cleanStore})` : ''} 👋\n\n` +
+        `نتواصل معكم من إدارة منصة WaraqConnect (ورق كونكت) — كبرى منصات مجتمع القراء والكتب في مصر 📚.\n\n` +
+        `يسعدنا دعوتكم للانضمام كشريك معتمد في شبكة المكتبات الشريكة:\n` +
+        `✨ صفحة متجر مخصصة لعرض كتالوج كتبكم وباقات التوفير (Mix & Match).\n` +
+        `✨ توجيه مباشر لطلبات القراء بنقرة واحدة إلى واتساب مكتبتكم فوراً.\n` +
+        `✨ شهر أول مجاناً 100% بدون أي رسوم.\n\n` +
+        `📲 للبدء وتوثيق متجركم، تفضل بزيارة الرابط التالي (يدعم أندرويد والويب):\n` +
+        `${inviteUrl}\n\n` +
+        `(ملاحظة لمستخدمي آيفون: تطبيق iOS قريباً على App Store، والتسجيل متاح وفوري الآن عبر المتصفح).\n\n` +
+        `أهلاً بكم في مجتمع ورق! 🤝`
+      : `Hello ${cleanOwner ? cleanOwner : 'team'} ${cleanStore ? `(${cleanStore})` : ''} 👋\n\n` +
+        `We are contacting you from WaraqConnect — Egypt's leading reader community & bookstore marketplace 📚.\n\n` +
+        `We would love to invite your bookstore to join as a verified partner:\n` +
+        `✨ Dedicated store profile showcasing your catalog & Mix & Match bundles.\n` +
+        `✨ 1-Click direct customer orders sent straight to your WhatsApp.\n` +
+        `✨ First month 100% free with 0% fees.\n\n` +
+        `📲 To onboard your store, open this link (Android & Web supported):\n` +
+        `${inviteUrl}\n\n` +
+        `(iOS users: App Store release coming soon, onboarding available right now via browser).\n\n` +
+        `Welcome to Waraq! 🤝`
+  }
+
+  const handleSendInviteWhatsApp = () => {
+    const cleanPhone = invitePhone.replace(/[^0-9]/g, '')
+    const intlPhone = cleanPhone ? (cleanPhone.startsWith('0') ? '20' + cleanPhone.slice(1) : cleanPhone) : ''
+    const msg = getGeneratedInviteMessage()
+    const url = intlPhone ? `https://wa.me/${intlPhone}?text=${encodeURIComponent(msg)}` : `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`
+    window.open(url, '_blank')
+  }
+
+  const handleCopyInviteMessage = () => {
+    navigator.clipboard.writeText(getGeneratedInviteMessage())
+    setCopiedInvite(true)
+    setTimeout(() => setCopiedInvite(false), 2500)
+  }
+
+  const handleCopyInviteLink = () => {
+    navigator.clipboard.writeText(getGeneratedInviteUrl())
+    setCopiedInviteLink(true)
+    setTimeout(() => setCopiedInviteLink(false), 2500)
+  }
 
   const handleOpenEditStore = (store: Bookstore) => {
     setEditingStore(store)
@@ -1295,7 +1361,17 @@ export function AdminDashboardClient({
                   </button>
                 </div>
 
-                {/* Store Type Filter Pills (Online vs Offline vs Both) */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => setIsInviteModalOpen(true)}
+                    className="rounded-xl font-bold text-xs gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white cursor-pointer shadow-xs shrink-0"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    <span>{lang === 'ar' ? 'دعوة متجر للشراكة (WhatsApp)' : 'Invite Bookstore'}</span>
+                  </Button>
+
+                  {/* Store Type Filter Pills (Online vs Offline vs Both) */}
                 {storeSubTab !== 'VERIFICATION_GUIDE' && (
                   <div className="flex items-center gap-1 overflow-x-auto">
                     {[
@@ -1319,6 +1395,7 @@ export function AdminDashboardClient({
                     ))}
                   </div>
                 )}
+                </div>
               </div>
 
               {/* Sub-Tab 1: Requests Table */}
@@ -3811,6 +3888,120 @@ export function AdminDashboardClient({
                   className="text-xs cursor-pointer"
                 >
                   {lang === 'ar' ? 'إغلاق' : 'Close'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Store Partnership Invitation Generator Modal */}
+      {isInviteModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in">
+          <div className="w-full max-w-xl rounded-3xl bg-card border-2 border-border p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto text-foreground">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600">
+                  <MessageCircle className="h-4 w-4" />
+                </span>
+                <h3 className="font-black text-sm text-foreground">
+                  {lang === 'ar' ? 'إنشاء دعوة شراكة لمكتبة (WhatsApp Outreach)' : 'Bookstore Partnership Invitation'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsInviteModalOpen(false)}
+                className="p-1 rounded-full text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {lang === 'ar'
+                ? 'أدخل بيانات المتجر المستهدف لتوليد رسالة دعوة رسمية مجهزة برابط ذكي يكتشف نوع هاتف التاجر (أندرويد / آيفون) ويقوده لتوثيق مكتبته فوراً.'
+                : 'Enter target bookstore details to generate a customized invitation with an auto-detecting device link.'}
+            </p>
+
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="font-bold text-foreground">
+                    {lang === 'ar' ? 'اسم المكتبة / المتجر' : 'Store Name'}
+                  </label>
+                  <input
+                    type="text"
+                    value={inviteStoreName}
+                    onChange={e => setInviteStoreName(e.target.value)}
+                    placeholder={lang === 'ar' ? 'مثال: مكتبة آفاق' : 'e.g. Horizons Bookstore'}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-foreground">
+                    {lang === 'ar' ? 'اسم المسؤول / المالك' : 'Owner Name'}
+                  </label>
+                  <input
+                    type="text"
+                    value={inviteOwnerName}
+                    onChange={e => setInviteOwnerName(e.target.value)}
+                    placeholder={lang === 'ar' ? 'مثال: أ. محمد' : 'e.g. Mohamed'}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="font-bold text-foreground">
+                  {lang === 'ar' ? 'رقم هاتف / واتساب المتجر' : 'WhatsApp Phone Number'}
+                </label>
+                <input
+                  type="text"
+                  value={invitePhone}
+                  onChange={e => setInvitePhone(e.target.value)}
+                  placeholder="01012345678"
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 font-mono text-foreground focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              {/* Message Preview */}
+              <div className="space-y-1 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-foreground">
+                    {lang === 'ar' ? 'معاينة نص الدعوة' : 'Message Preview'}
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleCopyInviteLink}
+                    className="text-[11px] font-bold text-primary hover:underline cursor-pointer flex items-center gap-1"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    <span>{copiedInviteLink ? (lang === 'ar' ? 'تم نسخ الرابط!' : 'Link Copied!') : (lang === 'ar' ? 'نسخ الرابط فقط' : 'Copy Link Only')}</span>
+                  </button>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-muted/40 border border-border font-mono text-[11px] whitespace-pre-wrap leading-relaxed text-muted-foreground max-h-48 overflow-y-auto">
+                  {getGeneratedInviteMessage()}
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-3 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCopyInviteMessage}
+                  className="rounded-xl font-bold text-xs gap-1.5 cursor-pointer"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  <span>{copiedInvite ? (lang === 'ar' ? 'تم النسخ بنجاح!' : 'Copied!') : (lang === 'ar' ? 'نسخ نص الدعوة' : 'Copy Message')}</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={handleSendInviteWhatsApp}
+                  className="rounded-xl font-bold text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer shadow-sm"
+                >
+                  <MessageCircle className="h-3.5 w-3.5" />
+                  <span>{lang === 'ar' ? 'إرسال عبر واتساب الآن' : 'Send via WhatsApp'}</span>
                 </Button>
               </div>
             </div>
