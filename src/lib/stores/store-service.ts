@@ -223,34 +223,33 @@ export async function getBookstores(params?: {
     }
 
     const { data, error } = await q
-    const dbStores = (!error && data) ? (data as Bookstore[]) : []
-
-    // Merge database stores with local & demo stores
-    const all = [...dbStores]
-
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem(STORES_STORAGE_KEY)
-        if (stored) {
-          const map = JSON.parse(stored)
-          const customList: Bookstore[] = Object.values(map)
-          for (const s of customList) {
-            if (!all.some(existing => existing.id === s.id || existing.slug === s.slug)) {
-              all.push(s)
+    if (!error && Array.isArray(data)) {
+      const dbStores = data as Bookstore[]
+      // Database is the single source of truth: purge any deleted stores from local storage
+      if (typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem(STORES_STORAGE_KEY)
+          if (stored) {
+            const map = JSON.parse(stored)
+            let changed = false
+            for (const key of Object.keys(map)) {
+              const item = map[key]
+              if (!dbStores.some(d => d.id === item?.id || d.slug === item?.slug)) {
+                delete map[key]
+                changed = true
+              }
+            }
+            if (changed) {
+              localStorage.setItem(STORES_STORAGE_KEY, JSON.stringify(map))
             }
           }
-        }
-      } catch {}
-    }
-
-    // Include demo stores if not already in database
-    for (const demo of filterDemoStores(params)) {
-      if (!all.some(existing => existing.slug === demo.slug || existing.id === demo.id)) {
-        all.push(demo)
+        } catch {}
       }
+      return dbStores
     }
 
-    return all
+    // Only fallback if database query returned an error
+    return filterDemoStores(params)
   } catch {
     return filterDemoStores(params)
   }
@@ -397,25 +396,22 @@ export async function toggleStoreVerified(
 export async function deleteBookstore(storeId: string): Promise<{ success: boolean }> {
   try {
     const supabase = createClient()
-    const { error } = await supabase
-      .from('bookstores')
-      .delete()
-      .eq('id', storeId)
+    
+    // 1. Direct Supabase deletion
+    await supabase.from('bookstores').delete().eq('id', storeId)
+    await supabase.from('partner_requests').delete().or(`id.eq.${storeId},submitted_by.eq.${storeId}`)
 
-    if (error) {
-      const res = await fetch(`/api/stores?id=${encodeURIComponent(storeId)}`, {
+    // 2. Server API route deletion (guarantees admin rights)
+    try {
+      await fetch(`/api/stores?id=${encodeURIComponent(storeId)}`, {
         method: 'DELETE',
       })
-      if (res.ok) {
-        const json = await res.json()
-        if (json.success) {
-          removeLocalStore(storeId)
-          return { success: true }
-        }
-      }
-      return { success: false }
-    }
+      await fetch(`/api/partner-requests?id=${encodeURIComponent(storeId)}`, {
+        method: 'DELETE',
+      })
+    } catch {}
 
+    // 3. Purge from local storage cache
     removeLocalStore(storeId)
     return { success: true }
   } catch (err) {
@@ -429,11 +425,69 @@ export async function deleteBookstore(storeId: string): Promise<{ success: boole
         const stored = localStorage.getItem(STORES_STORAGE_KEY)
         if (stored) {
           const map = JSON.parse(stored)
-          delete map[id]
+          for (const k of Object.keys(map)) {
+            const item = map[k]
+            if (k === id || item?.id === id || item?.slug === id) {
+              delete map[k]
+            }
+          }
+          localStorage.setItem(STORES_STORAGE_KEY, JSON.stringify(map))
+        }
+      } catch {}
+      try {
+        const appStored = localStorage.getItem(APPLICATIONS_STORAGE_KEY)
+        if (appStored) {
+          const apps: StoreApplication[] = JSON.parse(appStored)
+          const remaining = apps.filter(a => a.id !== id && a.approved_store_id !== id)
+          localStorage.setItem(APPLICATIONS_STORAGE_KEY, JSON.stringify(remaining))
+        }
+      } catch {}
+    }
+  }
+}
+
+/**
+ * Delete a partner store application permanently (Admin only)
+ */
+export async function deleteStoreApplication(applicationId: string): Promise<{ success: boolean }> {
+  try {
+    const supabase = createClient()
+    await supabase.from('partner_requests').delete().eq('id', applicationId)
+    await supabase.from('bookstores').delete().eq('id', applicationId)
+
+    try {
+      await fetch(`/api/partner-requests?id=${encodeURIComponent(applicationId)}`, {
+        method: 'DELETE',
+      })
+    } catch {}
+
+    if (typeof window !== 'undefined') {
+      try {
+        const appStored = localStorage.getItem(APPLICATIONS_STORAGE_KEY)
+        if (appStored) {
+          const apps: StoreApplication[] = JSON.parse(appStored)
+          const remaining = apps.filter(a => a.id !== applicationId)
+          localStorage.setItem(APPLICATIONS_STORAGE_KEY, JSON.stringify(remaining))
+        }
+      } catch {}
+      try {
+        const stored = localStorage.getItem(STORES_STORAGE_KEY)
+        if (stored) {
+          const map = JSON.parse(stored)
+          for (const k of Object.keys(map)) {
+            const item = map[k]
+            if (k === applicationId || item?.id === applicationId || item?.slug === applicationId) {
+              delete map[k]
+            }
+          }
           localStorage.setItem(STORES_STORAGE_KEY, JSON.stringify(map))
         }
       } catch {}
     }
+    return { success: true }
+  } catch (err) {
+    console.error('deleteStoreApplication error:', err)
+    return { success: false }
   }
 }
 
@@ -1647,17 +1701,13 @@ export async function getStoreApplications(): Promise<StoreApplication[]> {
       console.warn('Direct bookstores fetch fallback in getStoreApplications:', e)
     }
 
-    try {
-      const stored = localStorage.getItem(APPLICATIONS_STORAGE_KEY)
-      const localApps: StoreApplication[] = stored ? JSON.parse(stored) : []
-      const merged = [...dbApps]
-      for (const loc of localApps) {
-        if (!merged.some(m => m.id === loc.id)) {
-          merged.push(loc)
-        }
-      }
-      if (merged.length > 0) return merged
-    } catch {}
+    // Database is the source of truth: synchronize local applications cache
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(APPLICATIONS_STORAGE_KEY, JSON.stringify(dbApps))
+      } catch {}
+    }
+    return dbApps
   }
   return DEMO_STORE_APPLICATIONS
 }

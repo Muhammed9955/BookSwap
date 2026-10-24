@@ -287,3 +287,48 @@ export async function POST(req: NextRequest) {
     )
   }
 }
+
+/**
+ * DELETE /api/partner-requests?id=...
+ * Permanently delete a partner request & unverified bookstore counterpart
+ */
+export async function DELETE(req: NextRequest) {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    const isAdmin = profile?.role === 'ADMIN' || profile?.role === 'MODERATOR'
+    if (!isAdmin) {
+      return NextResponse.json({ success: false, error: 'Forbidden: Admins only' }, { status: 403 })
+    }
+
+    const { searchParams } = new URL(req.url)
+    const requestId = searchParams.get('id')
+
+    if (!requestId) {
+      return NextResponse.json({ success: false, error: 'Request ID is required' }, { status: 400 })
+    }
+
+    // Delete from partner_requests
+    await supabase.from('partner_requests').delete().eq('id', requestId)
+
+    // Delete from bookstores if it exists by id
+    await supabase.from('bookstores').delete().eq('id', requestId)
+
+    return NextResponse.json({ success: true, message: 'Partner request deleted successfully' })
+  } catch (err: any) {
+    return NextResponse.json({ success: false, error: err?.message }, { status: 500 })
+  }
+}

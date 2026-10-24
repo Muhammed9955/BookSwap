@@ -30,7 +30,7 @@ import { cn, formatRelativeTime } from '@/lib/utils'
 import { updateCommunityDetails, deleteCommunity } from '@/lib/communities/community-service'
 import {
   getStoreApplications, approveStoreApplication, rejectStoreApplication, getBookstores,
-  toggleStoreActive, toggleStoreVerified, deleteBookstore, updateBookstore
+  toggleStoreActive, toggleStoreVerified, deleteBookstore, updateBookstore, deleteStoreApplication
 } from '@/lib/stores/store-service'
 import { WaraqLogo } from '@/components/ui/waraq-logo'
 
@@ -465,6 +465,28 @@ export function AdminDashboardClient({
       if (inspectingApp?.id === appId) {
         setInspectingApp(null)
       }
+    }
+  }
+
+  const handleDeleteApp = async (appId: string, storeTitle?: string) => {
+    const title = storeTitle || 'هذا الطلب'
+    const confirmed = window.confirm(
+      lang === 'ar'
+        ? `هل أنت متأكد من حذف طلب "${title}" نهائياً من قاعدة البيانات والمنصة؟\n\nهذا الإجراء نهائي ولا يمكن التراجع عنه.`
+        : `Permanently delete partner application "${title}" from database?`
+    )
+    if (!confirmed) return
+
+    const res = await deleteStoreApplication(appId)
+    if (res.success) {
+      setStoreApps(prev => prev.filter(a => a.id !== appId))
+      if (inspectingApp?.id === appId) {
+        setInspectingApp(null)
+      }
+      setApprovalFeedback(
+        lang === 'ar' ? `🗑️ تم حذف طلب "${title}" نهائياً بنجاح` : `🗑️ Application "${title}" deleted permanently`
+      )
+      setTimeout(() => setApprovalFeedback(null), 4000)
     }
   }
 
@@ -1744,7 +1766,15 @@ export function AdminDashboardClient({
                                                </DropdownMenuItem>
                                              </>
                                            )}
-                                         </DropdownMenuContent>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem
+                                              onClick={() => handleDeleteApp(app.id, app.store_name_ar || app.business_name)}
+                                              className="gap-2 font-semibold text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/30 cursor-pointer"
+                                            >
+                                              <Trash2 className="h-4 w-4" />
+                                              <span>{lang === 'ar' ? 'حذف الطلب نهائياً' : 'Delete Application'}</span>
+                                            </DropdownMenuItem>
+                                          </DropdownMenuContent>
                                        </DropdownMenu>
                                      </div>
                                    </td>
