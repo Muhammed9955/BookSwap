@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils'
 import { useLanguage } from '@/i18n/language-context'
 import { t } from '@/i18n/translations'
 import { useAuth } from '@/lib/auth/auth-context'
+import { createClient } from '@/lib/supabase/client'
 import { ThemeToggle } from './theme-toggle'
 import { WaraqLogo } from '@/components/ui/waraq-logo'
 
@@ -169,6 +170,46 @@ export function TopNav({
     authUser?.user_metadata?.name ||
     null
   const effectiveUnread = Math.max(initialUnreadCount, unreadNotifications)
+
+  const [hasConfirmedStore, setHasConfirmedStore] = useState(false)
+
+  useEffect(() => {
+    if (!activeUser?.id) return
+    let isMounted = true
+
+    // Check localStorage cache first for instant display
+    try {
+      if (localStorage.getItem(`waraq_store_confirmed_${activeUser.id}`) === 'true') {
+        setHasConfirmedStore(true)
+      }
+    } catch {}
+
+    // Verify in database if user owns a store or has approved application
+    const supabaseClient = createClient()
+    Promise.all([
+      supabaseClient.from('bookstores').select('id, is_verified').eq('owner_id', activeUser.id).maybeSingle(),
+      supabaseClient.from('partner_requests').select('id, status').eq('submitted_by', activeUser.id).eq('status', 'APPROVED').maybeSingle(),
+    ]).then(([{ data: storeData }, { data: reqData }]) => {
+      if (isMounted && (storeData || reqData)) {
+        setHasConfirmedStore(true)
+        try {
+          localStorage.setItem(`waraq_store_confirmed_${activeUser.id}`, 'true')
+        } catch {}
+      }
+    }).catch(() => {})
+
+    return () => {
+      isMounted = false
+    }
+  }, [activeUser?.id])
+
+  const isStorePartner = Boolean(
+    activeUser?.profile?.role === 'ADMIN' ||
+    activeUser?.profile?.role === 'MODERATOR' ||
+    activeUser?.profile?.role === 'PARTNER' ||
+    (activeUser?.profile as any)?.role === 'STORE_OWNER' ||
+    hasConfirmedStore
+  )
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -631,6 +672,19 @@ export function TopNav({
                   <span className="whitespace-nowrap font-black">{t('nav_add', lang)}</span>
                 </Link>
 
+                {/* Store Dashboard Direct Badge for Verified Partners */}
+                {isStorePartner && (
+                  <Link
+                    href="/stores/dashboard"
+                    prefetch={true}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 text-xs font-black transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-xs"
+                    title={lang === 'ar' ? 'لوحة إدارة متجري والمخزون' : 'Store Manager Dashboard'}
+                  >
+                    <Store className="h-3.5 w-3.5 shrink-0" />
+                    <span className="hidden lg:inline">{lang === 'ar' ? 'متجري 🏬' : 'My Store 🏬'}</span>
+                  </Link>
+                )}
+
                 {/* User Avatar with Status Ring and Solid Dropdown */}
                 <div className="relative" ref={dropdownRef}>
                   <button
@@ -815,13 +869,13 @@ export function TopNav({
                         </Link>
 
                         {/* Store Manager Dashboard — Matched to store partner / staff roles */}
-                        {(activeUser.profile?.role === 'ADMIN' || activeUser.profile?.role === 'MODERATOR' || activeUser.profile?.role === 'PARTNER' || (activeUser.profile as any)?.role === 'STORE_OWNER') && (
+                        {isStorePartner && (
                           <Link
                             href="/stores/dashboard"
                             onClick={() => setDropdownOpen(false)}
-                            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-foreground/90 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 hover:text-emerald-600 transition-colors cursor-pointer group"
+                            className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-black text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 hover:text-emerald-600 transition-colors cursor-pointer group border border-emerald-500/20"
                           >
-                            <div className="p-1 rounded-lg bg-emerald-500/10 text-emerald-600 group-hover:scale-110 transition-transform">
+                            <div className="p-1 rounded-lg bg-emerald-500/20 text-emerald-600 group-hover:scale-110 transition-transform">
                               <Store className="h-4 w-4" />
                             </div>
                             <span>{lang === 'ar' ? 'لوحة إدارة متجري والمخزون 🏬' : 'Store Manager Dashboard'}</span>
@@ -1249,7 +1303,7 @@ export function TopNav({
                 </Link>
 
                 {/* Role Matched Store/Admin Management in Mobile Drawer */}
-                {activeUser && (activeUser.profile?.role === 'ADMIN' || activeUser.profile?.role === 'MODERATOR' || activeUser.profile?.role === 'PARTNER' || (activeUser.profile as any)?.role === 'STORE_OWNER') && (
+                {activeUser && isStorePartner && (
                   <div className="pt-2 border-t border-border/60 space-y-1">
                     <div className="px-2 py-1 text-[11px] font-black uppercase text-emerald-600 tracking-wider">
                       {lang === 'ar' ? 'أدوات الإدارة والشركاء' : 'Partner & Admin Tools'}

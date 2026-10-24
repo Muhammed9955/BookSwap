@@ -179,6 +179,12 @@ export function AuthProvider({
                   (n.title && (n.title.includes('توثيق') || n.title.includes('اعتماد') || n.title.includes('متجر'))) ||
                   (n.body && (n.body.includes('لوحة التحكم') || n.body.includes('تفعيل متجر') || n.body.includes('توثيق')))
                 )
+              if (isStoreVerification) {
+                try {
+                  localStorage.setItem(`waraq_store_confirmed_${user.id}`, 'true')
+                } catch {}
+                fetchProfileAndCounts(user.id)
+              }
               const notifUrl = isStoreVerification ? '/stores/dashboard' : (n.action_url || '/notifications')
               showLocalPwaNotification(n.title_ar || n.title, {
                 body: n.body_ar || n.body || undefined,
@@ -195,6 +201,18 @@ export function AuthProvider({
             schema: 'public',
             table: 'notifications',
             filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            if (user?.id) fetchProfileAndCounts(user.id)
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `id=eq.${user.id}`,
           },
           () => {
             if (user?.id) fetchProfileAndCounts(user.id)
