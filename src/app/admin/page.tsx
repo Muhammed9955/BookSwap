@@ -73,7 +73,7 @@ export default async function AdminPage() {
     supabase.from('reports').select('id', { count: 'exact', head: true }).eq('status', 'PENDING'),
     supabase.from('book_listings').select('id', { count: 'exact', head: true }).eq('is_featured', true),
     supabase.from('book_listings')
-      .select('*, book:books(title), seller:profiles(full_name, email)')
+      .select('*, book:books(title), seller:profiles(full_name, whatsapp_number)')
       .order('created_at', { ascending: false })
       .limit(10),
     supabase.from('reports')
@@ -82,9 +82,8 @@ export default async function AdminPage() {
       .order('created_at', { ascending: false })
       .limit(10),
     supabase.from('profiles')
-      .select('id, full_name, email, created_at, role, is_suspended, total_listings')
-      .order('created_at', { ascending: false })
-      .limit(10),
+      .select('id, username, full_name, full_name_ar, avatar_url, bio, bio_ar, role, city_id, city:cities(name_ar, name_en), email_verified, phone_verified, is_verified, total_listings, total_swaps, total_sales, total_donations, total_transactions, rating_average, rating_count, whatsapp_number, show_whatsapp, is_active, is_suspended, suspended_until, suspension_reason, referral_code, created_at, updated_at')
+      .order('created_at', { ascending: false }),
     getCommunities({ _client: supabase }),
   ])
 

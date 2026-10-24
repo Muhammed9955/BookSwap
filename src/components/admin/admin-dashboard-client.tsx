@@ -9,7 +9,8 @@ import {
   Smartphone, Download, ExternalLink, Activity, Calendar, ArrowUpRight,
   Store, Globe, Menu, MessageCircle, CheckCheck, Mail,
   ShieldCheck, Video, BadgeCheck, FileText, CheckSquare, Sparkles, Share2,
-  ChevronLeft, ChevronRight, MoreHorizontal, MoreVertical, Copy, Loader2
+  ChevronLeft, ChevronRight, MoreHorizontal, MoreVertical, Copy, Loader2,
+  UserCheck, UserX, ShieldAlert, Phone, RefreshCw, Award, Filter, MessageSquare
 } from 'lucide-react'
 import type { DashboardStats, Community, CommunityOrgType } from '@/types'
 import type { StoreApplication, StoreApplicationStatus, Bookstore, StoreType } from '@/types/store'
@@ -35,11 +36,43 @@ import {
 } from '@/lib/stores/store-service'
 import { WaraqLogo } from '@/components/ui/waraq-logo'
 
+export interface AdminUserProfile {
+  id: string
+  username?: string | null
+  full_name?: string | null
+  full_name_ar?: string | null
+  avatar_url?: string | null
+  bio?: string | null
+  bio_ar?: string | null
+  role?: string | null
+  city_id?: string | null
+  city?: { name_ar?: string; name_en?: string } | null
+  email_verified?: boolean | null
+  phone_verified?: boolean | null
+  is_verified?: boolean | null
+  total_listings?: number | null
+  total_swaps?: number | null
+  total_sales?: number | null
+  total_donations?: number | null
+  total_transactions?: number | null
+  rating_average?: number | null
+  rating_count?: number | null
+  whatsapp_number?: string | null
+  show_whatsapp?: boolean | null
+  is_active?: boolean | null
+  is_suspended?: boolean | null
+  suspended_until?: string | null
+  suspension_reason?: string | null
+  referral_code?: string | null
+  created_at?: string | null
+  updated_at?: string | null
+}
+
 interface AdminDashboardClientProps {
   stats: DashboardStats
   recentListings: Array<Record<string, unknown>>
   recentReports: Array<Record<string, unknown>>
-  recentUsers: Array<Record<string, unknown>>
+  recentUsers: Array<Record<string, unknown>> | AdminUserProfile[]
   adminRole: string
   initialCommunities?: Community[]
   currentUserId?: string
@@ -103,6 +136,194 @@ export function AdminDashboardClient({
   const [approvalFeedback, setApprovalFeedback] = useState<string | null>(null)
   const [inspectingApp, setInspectingApp] = useState<StoreApplication | null>(null)
   const [inspectingStore, setInspectingStore] = useState<Bookstore | null>(null)
+
+  // Users Management State
+  const [usersList, setUsersList] = useState<AdminUserProfile[]>(() => (recentUsers as unknown as AdminUserProfile[]) || [])
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [userSearch, setUserSearch] = useState('')
+  const [userRoleFilter, setUserRoleFilter] = useState<string>('ALL')
+  const [userStatusFilter, setUserStatusFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED' | 'VERIFIED'>('ALL')
+  const [inspectingUser, setInspectingUser] = useState<AdminUserProfile | null>(null)
+  const [userActionLoading, setUserActionLoading] = useState<string | null>(null)
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
+
+  const handleCopyClipboard = (text: string, key: string) => {
+    try {
+      navigator.clipboard.writeText(text)
+      setCopiedKey(key)
+      setTimeout(() => setCopiedKey(null), 2000)
+    } catch {}
+  }
+
+  useEffect(() => {
+    if (recentUsers && Array.isArray(recentUsers) && recentUsers.length > 0) {
+      setUsersList(recentUsers as unknown as AdminUserProfile[])
+    }
+  }, [recentUsers])
+
+  const handleRefreshUsers = async () => {
+    setUsersLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, full_name_ar, avatar_url, bio, bio_ar, role, city_id, city:cities(name_ar, name_en), email_verified, phone_verified, is_verified, total_listings, total_swaps, total_sales, total_donations, total_transactions, rating_average, rating_count, whatsapp_number, show_whatsapp, is_active, is_suspended, suspended_until, suspension_reason, referral_code, created_at, updated_at')
+        .order('created_at', { ascending: false })
+
+      if (!error && data) {
+        setUsersList(data as unknown as AdminUserProfile[])
+        setApprovalFeedback(
+          lang === 'ar'
+            ? `🔄 تم تحديث قائمة المستخدمين بنجاح (${data.length} مستخدم)`
+            : `🔄 Users list refreshed (${data.length} users)`
+        )
+        setTimeout(() => setApprovalFeedback(null), 3500)
+      }
+    } finally {
+      setUsersLoading(false)
+    }
+  }
+
+  const handleToggleSuspendUser = async (user: AdminUserProfile) => {
+    const isCurrentlySuspended = Boolean(user.is_suspended)
+    const displayName = user.full_name_ar || user.full_name || user.username || user.id.slice(0, 8)
+
+    if (isCurrentlySuspended) {
+      const confirmUnsuspend = window.confirm(
+        lang === 'ar'
+          ? `هل ترغب في رفع التعليق وإعادة تفعيل حساب "${displayName}"؟`
+          : `Lift suspension and reactivate account for "${displayName}"?`
+      )
+      if (!confirmUnsuspend) return
+
+      setUserActionLoading(user.id)
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          is_suspended: false,
+          suspended_until: null,
+          suspension_reason: null,
+        })
+        .eq('id', user.id)
+
+      if (!error) {
+        setUsersList(prev =>
+          prev.map(u => (u.id === user.id ? { ...u, is_suspended: false, suspension_reason: null } : u))
+        )
+        if (inspectingUser?.id === user.id) {
+          setInspectingUser(prev => prev ? { ...prev, is_suspended: false, suspension_reason: null } : null)
+        }
+        setApprovalFeedback(
+          lang === 'ar'
+            ? `✅ تم رفع التعليق وتفعيل حساب ${displayName} بنجاح`
+            : `✅ Account reactivated for ${displayName}`
+        )
+        setTimeout(() => setApprovalFeedback(null), 4000)
+      } else {
+        alert(lang === 'ar' ? 'حدث خطأ أثناء رفع التعليق' : 'Failed to reactivate user')
+      }
+      setUserActionLoading(null)
+    } else {
+      const reason = window.prompt(
+        lang === 'ar'
+          ? `أدخل سبب تعليق حساب "${displayName}":`
+          : `Enter suspension reason for "${displayName}":`,
+        lang === 'ar' ? 'مخالفة سياسات مجتمع ورق كونكت' : 'Violation of community guidelines'
+      )
+      if (reason === null) return
+
+      setUserActionLoading(user.id)
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          is_suspended: true,
+          suspension_reason: reason.trim() || 'مخالفة سياسات المنصة',
+        })
+        .eq('id', user.id)
+
+      if (!error) {
+        setUsersList(prev =>
+          prev.map(u => (u.id === user.id ? { ...u, is_suspended: true, suspension_reason: reason.trim() } : u))
+        )
+        if (inspectingUser?.id === user.id) {
+          setInspectingUser(prev => prev ? { ...prev, is_suspended: true, suspension_reason: reason.trim() } : null)
+        }
+        setApprovalFeedback(
+          lang === 'ar'
+            ? `⛔ تم تعليق حساب ${displayName}`
+            : `⛔ Account suspended for ${displayName}`
+        )
+        setTimeout(() => setApprovalFeedback(null), 4000)
+      } else {
+        alert(lang === 'ar' ? 'حدث خطأ أثناء تعليق الحساب' : 'Failed to suspend user')
+      }
+      setUserActionLoading(null)
+    }
+  }
+
+  const handleChangeUserRole = async (userId: string, newRole: string) => {
+    const targetUser = usersList.find(u => u.id === userId)
+    const displayName = targetUser?.full_name_ar || targetUser?.full_name || targetUser?.username || userId.slice(0, 8)
+
+    const confirmRole = window.confirm(
+      lang === 'ar'
+        ? `هل أنت متأكد من تغيير صلاحية حساب "${displayName}" إلى (${newRole})؟`
+        : `Change role of "${displayName}" to (${newRole})?`
+    )
+    if (!confirmRole) return
+
+    setUserActionLoading(userId)
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role: newRole })
+      .eq('id', userId)
+
+    if (!error) {
+      setUsersList(prev =>
+        prev.map(u => (u.id === userId ? { ...u, role: newRole } : u))
+      )
+      if (inspectingUser?.id === userId) {
+        setInspectingUser(prev => prev ? { ...prev, role: newRole } : null)
+      }
+      setApprovalFeedback(
+        lang === 'ar'
+          ? `🛡️ تم تغيير صلاحية ${displayName} إلى ${newRole} بنجاح`
+          : `🛡️ User role updated to ${newRole}`
+      )
+      setTimeout(() => setApprovalFeedback(null), 4000)
+    } else {
+      alert(lang === 'ar' ? 'حدث خطأ أثناء تعديل الصلاحية' : 'Failed to change role')
+    }
+    setUserActionLoading(null)
+  }
+
+  const handleToggleUserVerified = async (user: AdminUserProfile) => {
+    const nextVerified = !user.is_verified
+    const displayName = user.full_name_ar || user.full_name || user.username || user.id.slice(0, 8)
+
+    setUserActionLoading(user.id)
+    const { error } = await supabase
+      .from('profiles')
+      .update({ is_verified: nextVerified })
+      .eq('id', user.id)
+
+    if (!error) {
+      setUsersList(prev =>
+        prev.map(u => (u.id === user.id ? { ...u, is_verified: nextVerified } : u))
+      )
+      if (inspectingUser?.id === user.id) {
+        setInspectingUser(prev => prev ? { ...prev, is_verified: nextVerified } : null)
+      }
+      setApprovalFeedback(
+        lang === 'ar'
+          ? (nextVerified ? `🟢 تم منح شارة التوثيق لـ ${displayName}` : `⚪ تم إزالة شارة التوثيق عن ${displayName}`)
+          : (nextVerified ? `🟢 Verified badge granted to ${displayName}` : `⚪ Verified badge removed from ${displayName}`)
+      )
+      setTimeout(() => setApprovalFeedback(null), 4000)
+    } else {
+      alert(lang === 'ar' ? 'حدث خطأ أثناء تعديل شارة التوثيق' : 'Failed to update verification status')
+    }
+    setUserActionLoading(null)
+  }
 
   useEffect(() => {
     // 1. Initial Load of applications and bookstores
@@ -903,10 +1124,15 @@ export function AdminDashboardClient({
   }
 
   const suspendUser = async (id: string) => {
-    setActionLoading(id)
-    await supabase.from('profiles').update({ is_suspended: true }).eq('id', id)
-    setActionLoading(null)
-    window.location.reload()
+    const user = usersList.find(u => u.id === id)
+    if (user) {
+      await handleToggleSuspendUser(user)
+    } else {
+      setActionLoading(id)
+      await supabase.from('profiles').update({ is_suspended: true }).eq('id', id)
+      setUsersList(prev => prev.map(u => (u.id === id ? { ...u, is_suspended: true } : u)))
+      setActionLoading(null)
+    }
   }
 
   const featureListing = async (id: string) => {
@@ -3038,59 +3264,499 @@ export function AdminDashboardClient({
 
           {/* Users Tab */}
           {activeTab === 'users' && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-bold">{lang === 'ar' ? 'أحدث المستخدمين' : 'Recent Users'}</h2>
-              <div className="rounded-xl border overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-muted/50">
-                    <tr>
-                      <th className="text-start p-3 font-semibold">{lang === 'ar' ? 'الاسم' : 'Name'}</th>
-                      <th className="text-start p-3 font-semibold">{lang === 'ar' ? 'الدور' : 'Role'}</th>
-                      <th className="text-start p-3 font-semibold">{lang === 'ar' ? 'الكتب' : 'Books'}</th>
-                      <th className="text-start p-3 font-semibold">{lang === 'ar' ? 'تاريخ الانضمام' : 'Joined'}</th>
-                      <th className="text-start p-3 font-semibold">{lang === 'ar' ? 'إجراءات' : 'Actions'}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {recentUsers.map((u: Record<string, unknown>) => (
-                      <tr key={u.id as string} className="border-t hover:bg-muted/20 transition-colors">
-                        <td className="p-3">
-                          <p className="font-medium">{u.full_name as string ?? '—'}</p>
-                          <p className="text-xs text-muted-foreground">{u.email as string}</p>
-                        </td>
-                        <td className="p-3">
-                          <Badge variant={u.role === 'ADMIN' ? 'default' : 'muted'} className="text-[10px]">
-                            {u.role as string}
-                          </Badge>
-                        </td>
-                        <td className="p-3 text-muted-foreground">{u.total_listings as number ?? 0}</td>
-                        <td className="p-3 text-muted-foreground text-xs">
-                          {formatRelativeTime(u.created_at as string, lang)}
-                        </td>
-                        <td className="p-3">
-                          <div className="flex gap-1">
-                            {!(u.is_suspended as boolean) && (
-                              <Button
-                                size="icon-sm"
-                                variant="ghost"
-                                className="text-red-500 hover:text-red-700"
-                                onClick={() => suspendUser(u.id as string)}
-                                disabled={actionLoading === u.id as string}
-                                title="Suspend user"
-                              >
-                                <Shield className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-                            {u.is_suspended as boolean && (
-                              <Badge variant="destructive" className="text-[10px]">Suspended</Badge>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <div className="space-y-6">
+              {/* Header with Title and Refresh Button */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-black text-foreground">
+                      {lang === 'ar' ? 'إدارة المستخدمين والأعضاء' : 'User Management & Members'}
+                    </h2>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                      {usersList.length} {lang === 'ar' ? 'مستخدم مسجل' : 'registered'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {lang === 'ar'
+                      ? 'عرض تفاصيل كافة المستخدمين المسجلين، إدارة الصلاحيات، التوثيق، والتواصل المباشر'
+                      : 'View full profiles, manage roles, verification badges & direct communication'}
+                  </p>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefreshUsers}
+                  disabled={usersLoading}
+                  className="gap-2 font-bold rounded-xl cursor-pointer shadow-xs border-border hover:border-primary/50"
+                >
+                  <RefreshCw className={cn("h-3.5 w-3.5", usersLoading && "animate-spin text-primary")} />
+                  <span>{usersLoading ? (lang === 'ar' ? 'جاري التحديث...' : 'Refreshing...') : (lang === 'ar' ? 'تحديث القائمة' : 'Refresh List')}</span>
+                </Button>
               </div>
+
+              {/* KPI Summary Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+                <Card className="border border-border/80 shadow-2xs">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {lang === 'ar' ? 'إجمالي المسجلين' : 'Total Registered'}
+                      </p>
+                      <p className="text-2xl font-black text-foreground mt-0.5">
+                        {usersList.length.toLocaleString()}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {lang === 'ar' ? 'جميع حسابات المنصة' : 'All accounts'}
+                      </p>
+                    </div>
+                    <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <Users className="h-5 w-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border border-border/80 shadow-2xs">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {lang === 'ar' ? 'الشركاء والمتاجر' : 'Store Partners'}
+                      </p>
+                      <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                        {usersList.filter(u => u.role === 'PARTNER' || u.role === 'STORE_OWNER').length.toLocaleString()}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {lang === 'ar' ? 'أصحاب المكتبات المعتمدة' : 'Verified store owners'}
+                      </p>
+                    </div>
+                    <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                      <Store className="h-5 w-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border border-border/80 shadow-2xs">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {lang === 'ar' ? 'حسابات موثقة' : 'Verified Users'}
+                      </p>
+                      <p className="text-2xl font-black text-blue-600 dark:text-blue-400 mt-0.5">
+                        {usersList.filter(u => u.is_verified).length.toLocaleString()}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {lang === 'ar' ? 'تحمل شارة التوثيق 🟢' : 'With verified badge'}
+                      </p>
+                    </div>
+                    <div className="h-10 w-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                      <BadgeCheck className="h-5 w-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border border-border/80 shadow-2xs">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {lang === 'ar' ? 'حسابات معلقة' : 'Suspended'}
+                      </p>
+                      <p className="text-2xl font-black text-rose-600 dark:text-rose-400 mt-0.5">
+                        {usersList.filter(u => u.is_suspended).length.toLocaleString()}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {lang === 'ar' ? 'موقوفة للمراجعة أو مخالفة' : 'Banned / suspended'}
+                      </p>
+                    </div>
+                    <div className="h-10 w-10 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                      <ShieldAlert className="h-5 w-5" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Search & Filter Bar */}
+              <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between bg-card p-3 rounded-2xl border border-border">
+                {/* Search Input */}
+                <div className="relative flex-1">
+                  <Search className="absolute start-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <input
+                    type="text"
+                    value={userSearch}
+                    onChange={e => setUserSearch(e.target.value)}
+                    placeholder={
+                      lang === 'ar'
+                        ? 'بحث بالاسم، اسم المستخدم، رقم الواتساب، كود الإحالة، أو المحافظة...'
+                        : 'Search by name, username, WhatsApp, referral code, or city...'
+                    }
+                    className="w-full ps-9 pe-9 py-2 text-sm rounded-xl border border-border bg-background focus:outline-none focus:border-primary text-foreground placeholder:text-muted-foreground/70"
+                  />
+                  {userSearch && (
+                    <button
+                      onClick={() => setUserSearch('')}
+                      className="absolute end-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filters */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Role Filter Chips */}
+                  <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-xl border border-border/60">
+                    {(['ALL', 'USER', 'PARTNER', 'MODERATOR', 'ADMIN'] as const).map(role => (
+                      <button
+                        key={role}
+                        onClick={() => setUserRoleFilter(role)}
+                        className={cn(
+                          "px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                          userRoleFilter === role
+                            ? "bg-background text-foreground shadow-xs border border-border"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {role === 'ALL'
+                          ? (lang === 'ar' ? 'الكل' : 'All')
+                          : role === 'PARTNER'
+                          ? (lang === 'ar' ? 'مكتبات' : 'Partners')
+                          : role}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Status Filter Chips */}
+                  <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-xl border border-border/60">
+                    {(['ALL', 'ACTIVE', 'VERIFIED', 'SUSPENDED'] as const).map(status => (
+                      <button
+                        key={status}
+                        onClick={() => setUserStatusFilter(status)}
+                        className={cn(
+                          "px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                          userStatusFilter === status
+                            ? "bg-background text-foreground shadow-xs border border-border"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {status === 'ALL'
+                          ? (lang === 'ar' ? 'كافة الحالات' : 'All Status')
+                          : status === 'ACTIVE'
+                          ? (lang === 'ar' ? 'نشط' : 'Active')
+                          : status === 'VERIFIED'
+                          ? (lang === 'ar' ? 'موثق 🟢' : 'Verified')
+                          : (lang === 'ar' ? 'معلق ⛔' : 'Suspended')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Users Table */}
+              {(() => {
+                const filteredUsers = usersList.filter(u => {
+                  if (userRoleFilter !== 'ALL' && u.role !== userRoleFilter) return false
+                  if (userStatusFilter === 'ACTIVE' && u.is_suspended) return false
+                  if (userStatusFilter === 'SUSPENDED' && !u.is_suspended) return false
+                  if (userStatusFilter === 'VERIFIED' && !u.is_verified) return false
+
+                  const q = userSearch.trim().toLowerCase()
+                  if (!q) return true
+
+                  const fullName = (u.full_name || '').toLowerCase()
+                  const fullNameAr = (u.full_name_ar || '').toLowerCase()
+                  const username = (u.username || '').toLowerCase()
+                  const phone = (u.whatsapp_number || '').toLowerCase()
+                  const id = (u.id || '').toLowerCase()
+                  const refCode = (u.referral_code || '').toLowerCase()
+                  const cityAr = (u.city?.name_ar || '').toLowerCase()
+                  const cityEn = (u.city?.name_en || '').toLowerCase()
+
+                  return (
+                    fullName.includes(q) ||
+                    fullNameAr.includes(q) ||
+                    username.includes(q) ||
+                    phone.includes(q) ||
+                    id.includes(q) ||
+                    refCode.includes(q) ||
+                    cityAr.includes(q) ||
+                    cityEn.includes(q)
+                  )
+                })
+
+                if (filteredUsers.length === 0) {
+                  return (
+                    <div className="text-center py-12 border border-dashed rounded-2xl bg-card">
+                      <Users className="h-10 w-10 mx-auto text-muted-foreground mb-3 opacity-60" />
+                      <p className="font-bold text-foreground text-sm">
+                        {lang === 'ar' ? 'لم يتم العثور على أي مستخدمين' : 'No users found'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {lang === 'ar'
+                          ? 'جرب تعديل كلمات البحث أو الفلاتر المحددة'
+                          : 'Try adjusting your search terms or filters'}
+                      </p>
+                    </div>
+                  )
+                }
+
+                return (
+                  <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-2xs">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/50 border-b border-border">
+                          <tr>
+                            <th className="text-start p-3.5 font-bold text-xs text-foreground uppercase tracking-wider">
+                              {lang === 'ar' ? 'المستخدم' : 'User'}
+                            </th>
+                            <th className="text-start p-3.5 font-bold text-xs text-foreground uppercase tracking-wider">
+                              {lang === 'ar' ? 'الصلاحية والتوثيق' : 'Role & Status'}
+                            </th>
+                            <th className="text-start p-3.5 font-bold text-xs text-foreground uppercase tracking-wider">
+                              {lang === 'ar' ? 'الواتساب والتواصل' : 'WhatsApp & Contact'}
+                            </th>
+                            <th className="text-start p-3.5 font-bold text-xs text-foreground uppercase tracking-wider">
+                              {lang === 'ar' ? 'المحافظة' : 'Location'}
+                            </th>
+                            <th className="text-start p-3.5 font-bold text-xs text-foreground uppercase tracking-wider">
+                              {lang === 'ar' ? 'النشاط' : 'Activity'}
+                            </th>
+                            <th className="text-start p-3.5 font-bold text-xs text-foreground uppercase tracking-wider">
+                              {lang === 'ar' ? 'التقييم' : 'Rating'}
+                            </th>
+                            <th className="text-start p-3.5 font-bold text-xs text-foreground uppercase tracking-wider">
+                              {lang === 'ar' ? 'الانضمام' : 'Joined'}
+                            </th>
+                            <th className="text-start p-3.5 font-bold text-xs text-foreground uppercase tracking-wider">
+                              {lang === 'ar' ? 'إجراءات' : 'Actions'}
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/60">
+                          {filteredUsers.map(u => {
+                            const displayName = u.full_name_ar || u.full_name || (u.username ? `@${u.username}` : 'مستخدم بدون اسم')
+                            const cleanPhone = u.whatsapp_number ? u.whatsapp_number.replace(/[^0-9]/g, '') : null
+                            const ownsStore = activeStores.find(s => s.owner_id === u.id)
+                            const hasStoreApp = storeApps.find(a => a.applicant_id === u.id || (u.whatsapp_number && a.phone === u.whatsapp_number))
+
+                            return (
+                              <tr key={u.id} className="hover:bg-muted/20 transition-colors">
+                                {/* User Info */}
+                                <td className="p-3.5">
+                                  <div className="flex items-center gap-3">
+                                    {u.avatar_url ? (
+                                      <img
+                                        src={u.avatar_url}
+                                        alt={displayName}
+                                        className="h-10 w-10 rounded-full object-cover border border-border shrink-0"
+                                      />
+                                    ) : (
+                                      <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 text-primary flex items-center justify-center font-bold text-sm shrink-0 border border-primary/20">
+                                        {(displayName[0] || 'U').toUpperCase()}
+                                      </div>
+                                    )}
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <p className="font-bold text-foreground text-sm truncate">
+                                          {displayName}
+                                        </p>
+                                        {u.is_verified && (
+                                          <span title={lang === 'ar' ? 'موثق رسمياً' : 'Officially Verified'}>
+                                            <BadgeCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-muted-foreground truncate">
+                                        {u.username ? `@${u.username}` : '—'}
+                                      </p>
+                                      {u.referral_code && (
+                                        <p className="text-[10px] text-muted-foreground/80 font-mono mt-0.5">
+                                          Ref: {u.referral_code}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* Role & Status Badges */}
+                                <td className="p-3.5">
+                                  <div className="flex flex-col gap-1 items-start">
+                                    <Badge
+                                      variant={
+                                        u.role === 'ADMIN'
+                                          ? 'default'
+                                          : u.role === 'PARTNER' || u.role === 'STORE_OWNER'
+                                          ? 'secondary'
+                                          : 'muted'
+                                      }
+                                      className={cn(
+                                        "text-[10px] font-bold px-2 py-0.5",
+                                        u.role === 'ADMIN' && "bg-purple-600 hover:bg-purple-700 text-white",
+                                        (u.role === 'PARTNER' || u.role === 'STORE_OWNER') && "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+                                        u.role === 'MODERATOR' && "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30"
+                                      )}
+                                    >
+                                      {u.role === 'PARTNER' || u.role === 'STORE_OWNER'
+                                        ? (lang === 'ar' ? 'شريك مكتبة' : 'Partner')
+                                        : u.role || 'USER'}
+                                    </Badge>
+
+                                    {u.is_suspended ? (
+                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-rose-500/15 text-rose-700 dark:text-rose-300 text-[10px] font-bold border border-rose-500/30">
+                                        <ShieldAlert className="h-3 w-3" />
+                                        <span>{lang === 'ar' ? 'معلق' : 'Suspended'}</span>
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                                        <span>{lang === 'ar' ? 'نشط' : 'Active'}</span>
+                                      </span>
+                                    )}
+
+                                    {ownsStore && (
+                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-bold">
+                                        <Store className="h-3 w-3" />
+                                        <span>{ownsStore.name_ar || ownsStore.name}</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+
+                                {/* WhatsApp / Contact */}
+                                <td className="p-3.5">
+                                  {cleanPhone ? (
+                                    <div className="flex flex-col gap-1 items-start">
+                                      <a
+                                        href={`https://wa.me/${cleanPhone}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors text-xs font-bold"
+                                        title={lang === 'ar' ? 'مراسلة عبر واتساب' : 'Chat on WhatsApp'}
+                                      >
+                                        <MessageCircle className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                                        <span dir="ltr">{u.whatsapp_number}</span>
+                                      </a>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  )}
+                                </td>
+
+                                {/* Location */}
+                                <td className="p-3.5 text-xs text-muted-foreground">
+                                  {u.city ? (
+                                    <div className="flex items-center gap-1 font-medium text-foreground">
+                                      <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                      <span>{lang === 'ar' ? (u.city.name_ar || u.city.name_en) : (u.city.name_en || u.city.name_ar)}</span>
+                                    </div>
+                                  ) : (
+                                    <span>—</span>
+                                  )}
+                                </td>
+
+                                {/* Activity */}
+                                <td className="p-3.5">
+                                  <div className="flex flex-wrap gap-1 text-[11px]">
+                                    <span className="px-2 py-0.5 rounded-md bg-muted text-foreground font-semibold" title="الكتب المعروضة">
+                                      {u.total_listings ?? 0} {lang === 'ar' ? 'كتاب' : 'bks'}
+                                    </span>
+                                    {(u.total_swaps ?? 0) > 0 && (
+                                      <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary font-semibold" title="عمليات التبادل">
+                                        {u.total_swaps} {lang === 'ar' ? 'تبادل' : 'swps'}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+
+                                {/* Rating */}
+                                <td className="p-3.5">
+                                  {u.rating_count && u.rating_count > 0 ? (
+                                    <div className="flex items-center gap-1 text-xs font-bold">
+                                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+                                      <span>{(u.rating_average ?? 0).toFixed(1)}</span>
+                                      <span className="text-[10px] text-muted-foreground">({u.rating_count})</span>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">{lang === 'ar' ? 'جديد' : 'New'}</span>
+                                  )}
+                                </td>
+
+                                {/* Joined Date */}
+                                <td className="p-3.5 text-xs text-muted-foreground" title={u.created_at ? new Date(u.created_at).toLocaleString() : ''}>
+                                  {u.created_at ? formatRelativeTime(u.created_at, lang) : '—'}
+                                </td>
+
+                                {/* Actions */}
+                                <td className="p-3.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-8 text-xs font-bold rounded-lg gap-1 border-border hover:border-primary/50 cursor-pointer shadow-2xs"
+                                      onClick={() => setInspectingUser(u)}
+                                    >
+                                      <Eye className="h-3.5 w-3.5 text-primary" />
+                                      <span>{lang === 'ar' ? 'التفاصيل' : 'Details'}</span>
+                                    </Button>
+
+                                    {/* Role Change Dropdown */}
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          size="icon-sm"
+                                          variant="ghost"
+                                          className="h-8 w-8 rounded-lg cursor-pointer text-muted-foreground hover:text-foreground"
+                                          title={lang === 'ar' ? 'تعديل الصلاحيات' : 'Change role'}
+                                          disabled={userActionLoading === u.id}
+                                        >
+                                          <Shield className="h-3.5 w-3.5" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end" className="w-48">
+                                        <DropdownMenuLabel className="text-xs font-bold">
+                                          {lang === 'ar' ? 'تعديل الصلاحية' : 'Change Role'}
+                                        </DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={() => handleChangeUserRole(u.id, 'USER')} className="cursor-pointer text-xs">
+                                          {lang === 'ar' ? 'مستخدم قياسي (USER)' : 'Standard User (USER)'}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleChangeUserRole(u.id, 'PARTNER')} className="cursor-pointer text-xs font-bold text-emerald-600">
+                                          {lang === 'ar' ? 'شريك مكتبة (PARTNER)' : 'Bookstore Partner (PARTNER)'}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleChangeUserRole(u.id, 'MODERATOR')} className="cursor-pointer text-xs text-blue-600">
+                                          {lang === 'ar' ? 'مشرف (MODERATOR)' : 'Moderator (MODERATOR)'}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleChangeUserRole(u.id, 'ADMIN')} className="cursor-pointer text-xs font-bold text-purple-600">
+                                          {lang === 'ar' ? 'مدير منصة (ADMIN)' : 'Platform Admin (ADMIN)'}
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+
+                                    {/* Suspend / Unsuspend */}
+                                    <Button
+                                      size="icon-sm"
+                                      variant="ghost"
+                                      className={cn(
+                                        "h-8 w-8 rounded-lg cursor-pointer",
+                                        u.is_suspended
+                                          ? "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10"
+                                          : "text-rose-500 hover:text-rose-700 hover:bg-rose-500/10"
+                                      )}
+                                      onClick={() => handleToggleSuspendUser(u)}
+                                      disabled={userActionLoading === u.id}
+                                      title={u.is_suspended ? (lang === 'ar' ? 'رفع التعليق وتفعيل الحساب' : 'Unsuspend user') : (lang === 'ar' ? 'تعليق الحساب' : 'Suspend user')}
+                                    >
+                                      {u.is_suspended ? <UserCheck className="h-3.5 w-3.5" /> : <ShieldAlert className="h-3.5 w-3.5" />}
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           )}
 
@@ -4546,6 +5212,490 @@ export function AdminDashboardClient({
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* User Details Inspection Modal */}
+      {inspectingUser && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200"
+          onClick={() => setInspectingUser(null)}
+        >
+          <div
+            className="bg-card border border-border rounded-3xl max-w-2xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden my-auto animate-in zoom-in-95 duration-150"
+            onClick={e => e.stopPropagation()}
+            dir={isRTL ? 'rtl' : 'ltr'}
+          >
+            {/* Modal Header */}
+            <div className="p-5 sm:p-6 border-b border-border bg-gradient-to-r from-primary/10 via-card to-card flex items-start justify-between gap-4">
+              <div className="flex items-center gap-4 min-w-0">
+                {inspectingUser.avatar_url ? (
+                  <img
+                    src={inspectingUser.avatar_url}
+                    alt={inspectingUser.full_name || 'User'}
+                    className="h-16 w-16 rounded-2xl object-cover border-2 border-primary/30 shadow-md shrink-0"
+                  />
+                ) : (
+                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/25 to-primary/10 text-primary flex items-center justify-center font-black text-2xl border-2 border-primary/20 shadow-md shrink-0">
+                    {((inspectingUser.full_name_ar || inspectingUser.full_name || inspectingUser.username || 'U')[0]).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg sm:text-xl font-black text-foreground truncate">
+                      {inspectingUser.full_name_ar || inspectingUser.full_name || 'مستخدم بدون اسم'}
+                    </h2>
+                    {inspectingUser.is_verified && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold border border-emerald-500/30">
+                        <BadgeCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>{lang === 'ar' ? 'موثق رسمياً' : 'Verified'}</span>
+                      </span>
+                    )}
+                    {inspectingUser.is_suspended && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-700 dark:text-rose-300 text-[11px] font-bold border border-rose-500/30">
+                        <ShieldAlert className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+                        <span>{lang === 'ar' ? 'معلق' : 'Suspended'}</span>
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {inspectingUser.username ? `@${inspectingUser.username}` : (lang === 'ar' ? 'بدون اسم مستخدم' : 'No username')}
+                  </p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge
+                      variant={
+                        inspectingUser.role === 'ADMIN'
+                          ? 'default'
+                          : inspectingUser.role === 'PARTNER' || inspectingUser.role === 'STORE_OWNER'
+                          ? 'secondary'
+                          : 'muted'
+                      }
+                      className={cn(
+                        "text-xs font-bold px-2.5 py-0.5",
+                        inspectingUser.role === 'ADMIN' && "bg-purple-600 text-white",
+                        (inspectingUser.role === 'PARTNER' || inspectingUser.role === 'STORE_OWNER') && "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
+                        inspectingUser.role === 'MODERATOR' && "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/30"
+                      )}
+                    >
+                      {inspectingUser.role === 'PARTNER' || inspectingUser.role === 'STORE_OWNER'
+                        ? (lang === 'ar' ? 'شريك مكتبة معتمد' : 'Store Partner')
+                        : inspectingUser.role || 'USER'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setInspectingUser(null)}
+                className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-6 text-sm flex-1">
+              {/* Quick Administrative Action Bar */}
+              <div className="p-4 rounded-2xl bg-muted/40 border border-border space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-foreground uppercase tracking-wider flex items-center gap-1.5">
+                    <Shield className="h-3.5 w-3.5 text-primary" />
+                    <span>{lang === 'ar' ? 'إجراءات الإدارة السريعة' : 'Admin Quick Actions'}</span>
+                  </span>
+                  {userActionLoading === inspectingUser.id && (
+                    <span className="text-xs text-primary font-bold flex items-center gap-1">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>{lang === 'ar' ? 'جاري المعالجة...' : 'Processing...'}</span>
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Role Selector Buttons */}
+                  <div className="flex items-center gap-1 bg-background p-1 rounded-xl border border-border">
+                    <span className="text-[11px] font-bold text-muted-foreground px-2">
+                      {lang === 'ar' ? 'الدور:' : 'Role:'}
+                    </span>
+                    {(['USER', 'PARTNER', 'MODERATOR', 'ADMIN'] as const).map(role => (
+                      <button
+                        key={role}
+                        onClick={() => handleChangeUserRole(inspectingUser.id, role)}
+                        disabled={userActionLoading === inspectingUser.id}
+                        className={cn(
+                          "px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer",
+                          inspectingUser.role === role
+                            ? "bg-primary text-primary-foreground shadow-xs"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                        )}
+                      >
+                        {role === 'PARTNER' ? (lang === 'ar' ? 'شريك مكتبة' : 'Partner') : role}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Toggle Verification */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleToggleUserVerified(inspectingUser)}
+                    disabled={userActionLoading === inspectingUser.id}
+                    className="text-xs font-bold gap-1.5 rounded-xl border-border hover:border-emerald-500/50 cursor-pointer"
+                  >
+                    <BadgeCheck className={cn("h-3.5 w-3.5", inspectingUser.is_verified ? "text-emerald-600" : "text-muted-foreground")} />
+                    <span>
+                      {inspectingUser.is_verified
+                        ? (lang === 'ar' ? 'إلغاء التوثيق' : 'Remove Verified')
+                        : (lang === 'ar' ? 'منح شارة التوثيق 🟢' : 'Grant Verified Badge 🟢')}
+                    </span>
+                  </Button>
+
+                  {/* Suspend / Unsuspend */}
+                  <Button
+                    size="sm"
+                    variant={inspectingUser.is_suspended ? 'default' : 'outline'}
+                    onClick={() => handleToggleSuspendUser(inspectingUser)}
+                    disabled={userActionLoading === inspectingUser.id}
+                    className={cn(
+                      "text-xs font-bold gap-1.5 rounded-xl cursor-pointer",
+                      inspectingUser.is_suspended
+                        ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                        : "border-rose-500/30 text-rose-600 hover:bg-rose-500/10 hover:border-rose-500"
+                    )}
+                  >
+                    {inspectingUser.is_suspended ? (
+                      <>
+                        <UserCheck className="h-3.5 w-3.5" />
+                        <span>{lang === 'ar' ? 'رفع التعليق وتفعيل الحساب' : 'Lift Suspension & Activate'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldAlert className="h-3.5 w-3.5" />
+                        <span>{lang === 'ar' ? 'تعليق الحساب ⛔' : 'Suspend Account ⛔'}</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Suspension Reason Banner */}
+              {inspectingUser.is_suspended && (
+                <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-900 dark:text-rose-200 space-y-1">
+                  <div className="flex items-center gap-2 font-bold text-xs text-rose-600 dark:text-rose-400">
+                    <ShieldAlert className="h-4 w-4 shrink-0" />
+                    <span>{lang === 'ar' ? 'تنبيه: هذا الحساب موقوف حالياً' : 'Notice: This account is currently suspended'}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    <span className="font-semibold text-foreground">{lang === 'ar' ? 'سبب التعليق: ' : 'Reason: '}</span>
+                    {inspectingUser.suspension_reason || (lang === 'ar' ? 'مخالفة معايير وشروط المنصة' : 'Violation of platform terms')}
+                  </p>
+                </div>
+              )}
+
+              {/* Activity & Performance Metrics Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3.5 rounded-2xl bg-muted/30 border border-border text-center">
+                  <p className="text-[11px] font-medium text-muted-foreground">
+                    {lang === 'ar' ? 'الكتب المعروضة' : 'Listings'}
+                  </p>
+                  <p className="text-xl font-black text-foreground mt-0.5">
+                    {(inspectingUser.total_listings ?? 0).toLocaleString()}
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-muted/30 border border-border text-center">
+                  <p className="text-[11px] font-medium text-muted-foreground">
+                    {lang === 'ar' ? 'عمليات التبادل' : 'Swaps'}
+                  </p>
+                  <p className="text-xl font-black text-primary mt-0.5">
+                    {(inspectingUser.total_swaps ?? 0).toLocaleString()}
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-muted/30 border border-border text-center">
+                  <p className="text-[11px] font-medium text-muted-foreground">
+                    {lang === 'ar' ? 'المبيعات المكتملة' : 'Sales'}
+                  </p>
+                  <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                    {(inspectingUser.total_sales ?? 0).toLocaleString()}
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-muted/30 border border-border text-center">
+                  <p className="text-[11px] font-medium text-muted-foreground">
+                    {lang === 'ar' ? 'التقييم العام' : 'Rating'}
+                  </p>
+                  <div className="flex items-center justify-center gap-1 mt-0.5">
+                    <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                    <span className="text-xl font-black text-foreground">
+                      {(inspectingUser.rating_average ?? 0).toFixed(1)}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">
+                      ({inspectingUser.rating_count ?? 0})
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Identity & Contact Details */}
+              <div className="rounded-2xl border border-border p-4 space-y-3 bg-card">
+                <h3 className="font-bold text-xs text-foreground uppercase tracking-wider flex items-center gap-2">
+                  <UserCheck className="h-3.5 w-3.5 text-primary" />
+                  <span>{lang === 'ar' ? 'بيانات الحساب والتواصل' : 'Account & Contact Details'}</span>
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  {/* User UUID */}
+                  <div className="p-2.5 rounded-xl bg-muted/30 border border-border/60">
+                    <span className="text-muted-foreground block text-[10px]">
+                      {lang === 'ar' ? 'المعرف الفريد (User UUID)' : 'User UUID'}
+                    </span>
+                    <div className="flex items-center justify-between gap-2 mt-1">
+                      <span className="font-mono text-foreground truncate select-all">{inspectingUser.id}</span>
+                      <button
+                        onClick={() => handleCopyClipboard(inspectingUser.id, 'user_id')}
+                        className="text-muted-foreground hover:text-foreground p-1 shrink-0"
+                        title={lang === 'ar' ? 'نسخ المعرف' : 'Copy UUID'}
+                      >
+                        {copiedKey === 'user_id' ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-600" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* WhatsApp */}
+                  <div className="p-2.5 rounded-xl bg-muted/30 border border-border/60">
+                    <span className="text-muted-foreground block text-[10px]">
+                      {lang === 'ar' ? 'رقم الواتساب للتواصل' : 'WhatsApp Number'}
+                    </span>
+                    {inspectingUser.whatsapp_number ? (
+                      <div className="flex items-center justify-between gap-2 mt-1">
+                        <span dir="ltr" className="font-bold text-foreground">{inspectingUser.whatsapp_number}</span>
+                        <a
+                          href={`https://wa.me/${inspectingUser.whatsapp_number.replace(/[^0-9]/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 font-bold hover:bg-emerald-500/25 transition-colors"
+                        >
+                          <MessageCircle className="h-3 w-3" />
+                          <span>{lang === 'ar' ? 'محادثة' : 'Chat'}</span>
+                        </a>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground mt-1 block">{lang === 'ar' ? 'غير مسجل' : 'Not provided'}</span>
+                    )}
+                  </div>
+
+                  {/* Location */}
+                  <div className="p-2.5 rounded-xl bg-muted/30 border border-border/60">
+                    <span className="text-muted-foreground block text-[10px]">
+                      {lang === 'ar' ? 'المحافظة والمدينة' : 'Governorate / City'}
+                    </span>
+                    <div className="flex items-center gap-1.5 mt-1 font-bold text-foreground">
+                      <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>
+                        {inspectingUser.city
+                          ? (lang === 'ar' ? (inspectingUser.city.name_ar || inspectingUser.city.name_en) : (inspectingUser.city.name_en || inspectingUser.city.name_ar))
+                          : (lang === 'ar' ? 'غير محددة' : 'Not specified')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Referral Code */}
+                  <div className="p-2.5 rounded-xl bg-muted/30 border border-border/60">
+                    <span className="text-muted-foreground block text-[10px]">
+                      {lang === 'ar' ? 'كود الإحالة' : 'Referral Code'}
+                    </span>
+                    {inspectingUser.referral_code ? (
+                      <div className="flex items-center justify-between gap-2 mt-1">
+                        <span className="font-mono font-bold text-primary">{inspectingUser.referral_code}</span>
+                        <button
+                          onClick={() => handleCopyClipboard(inspectingUser.referral_code || '', 'ref_code')}
+                          className="text-muted-foreground hover:text-foreground p-1 shrink-0"
+                          title="Copy referral code"
+                        >
+                          {copiedKey === 'ref_code' ? (
+                            <Check className="h-3.5 w-3.5 text-emerald-600" />
+                          ) : (
+                            <Copy className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground mt-1 block">—</span>
+                    )}
+                  </div>
+
+                  {/* Joined Date */}
+                  <div className="p-2.5 rounded-xl bg-muted/30 border border-border/60">
+                    <span className="text-muted-foreground block text-[10px]">
+                      {lang === 'ar' ? 'تاريخ التسجيل' : 'Registration Date'}
+                    </span>
+                    <span className="font-medium text-foreground mt-1 block">
+                      {inspectingUser.created_at ? new Date(inspectingUser.created_at).toLocaleString() : '—'}
+                    </span>
+                  </div>
+
+                  {/* Last Updated */}
+                  <div className="p-2.5 rounded-xl bg-muted/30 border border-border/60">
+                    <span className="text-muted-foreground block text-[10px]">
+                      {lang === 'ar' ? 'آخر نشاط / تحديث' : 'Last Updated'}
+                    </span>
+                    <span className="font-medium text-foreground mt-1 block">
+                      {inspectingUser.updated_at ? new Date(inspectingUser.updated_at).toLocaleString() : '—'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* User Bio */}
+              {(inspectingUser.bio_ar || inspectingUser.bio) && (
+                <div className="rounded-2xl border border-border p-4 space-y-1.5 bg-card">
+                  <h3 className="font-bold text-xs text-foreground uppercase tracking-wider">
+                    {lang === 'ar' ? 'النبذة الشخصية (Bio)' : 'User Bio'}
+                  </h3>
+                  <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                    {inspectingUser.bio_ar || inspectingUser.bio}
+                  </p>
+                </div>
+              )}
+
+              {/* Associated Bookstore or Partner Request */}
+              {(() => {
+                const userStore = activeStores.find(s => s.owner_id === inspectingUser.id)
+                const userApp = storeApps.find(
+                  a => a.applicant_id === inspectingUser.id || (inspectingUser.whatsapp_number && a.phone === inspectingUser.whatsapp_number)
+                )
+
+                if (userStore) {
+                  return (
+                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                          <Store className="h-4 w-4" />
+                          <span>{lang === 'ar' ? 'المكتبة المعتمدة التابعة لهذا الحساب' : 'Owned Verified Bookstore'}</span>
+                        </span>
+                        <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
+                          {userStore.store_type}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div>
+                          <p className="font-bold text-sm text-foreground">
+                            {userStore.name_ar || userStore.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {userStore.address || (lang === 'ar' ? 'متجر إلكتروني' : 'Online Store')}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Link href={`/stores/${userStore.slug}`} target="_blank">
+                            <Button size="sm" variant="outline" className="text-xs font-bold gap-1 rounded-xl">
+                              <ExternalLink className="h-3.5 w-3.5" />
+                              <span>{lang === 'ar' ? 'صفحة المتجر' : 'Public Store'}</span>
+                            </Button>
+                          </Link>
+                          <Button
+                            size="sm"
+                            className="text-xs font-bold gap-1 rounded-xl bg-primary text-primary-foreground"
+                            onClick={() => {
+                              setInspectingStore(userStore)
+                              setInspectingUser(null)
+                              setActiveTab('stores')
+                              setStoreSubTab('ACTIVE_STORES')
+                            }}
+                          >
+                            <Store className="h-3.5 w-3.5" />
+                            <span>{lang === 'ar' ? 'إدارة في لوحة المتاجر' : 'Manage Store'}</span>
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+
+                if (userApp) {
+                  return (
+                    <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                          <Store className="h-4 w-4" />
+                          <span>{lang === 'ar' ? 'طلب شراكة متجر مسجل لهذا الحساب' : 'Store Partnership Application'}</span>
+                        </span>
+                        <Badge
+                          variant={userApp.status === 'APPROVED' ? 'default' : userApp.status === 'REJECTED' ? 'destructive' : 'secondary'}
+                          className="text-[10px] font-bold"
+                        >
+                          {userApp.status}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div>
+                          <p className="font-bold text-sm text-foreground">
+                            {userApp.business_name || userApp.store_name || userApp.owner_name}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {userApp.city ? `${userApp.city} • ` : ''}{userApp.phone}
+                          </p>
+                        </div>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs font-bold gap-1 rounded-xl"
+                          onClick={() => {
+                            setInspectingApp(userApp)
+                            setInspectingUser(null)
+                            setActiveTab('stores')
+                            setStoreSubTab('REQUESTS')
+                          }}
+                        >
+                          <Eye className="h-3.5 w-3.5 text-amber-600" />
+                          <span>{lang === 'ar' ? 'مراجعة الطلب' : 'Review App'}</span>
+                        </Button>
+                      </div>
+                    </div>
+                  )
+                }
+
+                return (
+                  <div className="p-4 rounded-2xl bg-muted/20 border border-dashed border-border flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Store className="h-4 w-4 opacity-50 shrink-0" />
+                      <span>{lang === 'ar' ? 'لا توجد مكتبة أو طلب شراكة مرتبط بهذا الحساب' : 'No store or partner request linked to this account'}</span>
+                    </div>
+                    {inspectingUser.role !== 'PARTNER' && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleChangeUserRole(inspectingUser.id, 'PARTNER')}
+                        className="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:bg-emerald-500/10 rounded-xl"
+                      >
+                        + {lang === 'ar' ? 'ترقية إلى شريك' : 'Promote to Partner'}
+                      </Button>
+                    )}
+                  </div>
+                )
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-border bg-card flex items-center justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setInspectingUser(null)}
+                className="font-bold rounded-xl cursor-pointer"
+              >
+                {lang === 'ar' ? 'إغلاق' : 'Close'}
+              </Button>
+            </div>
           </div>
         </div>
       )}
