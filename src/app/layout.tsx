@@ -8,6 +8,7 @@ import { GoogleAnalyticsScripts } from '@/components/analytics/google-tags'
 import { PwaRegister } from '@/components/pwa/pwa-register'
 
 export const metadata: Metadata = {
+  applicationName: 'WaraqConnect',
   title: {
     default: 'WaraqConnect — ورق كونكت | عالم جديد بين كل صفحة والتانية',
     template: '%s | WaraqConnect — ورق كونكت',
@@ -143,7 +144,7 @@ const organizationSchema = {
       '@id': 'https://waraqconnect.vercel.app/#website',
       url: 'https://waraqconnect.vercel.app',
       name: 'WaraqConnect',
-      alternateName: 'ورق كونكت',
+      alternateName: ['ورق كونكت', 'Waraq Connect', 'WARAQ'],
       publisher: {
         '@id': 'https://waraqconnect.vercel.app/#organization',
       },
